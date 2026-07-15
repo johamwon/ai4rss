@@ -1,0 +1,20 @@
+library;
+
+import 'package:flutter/services.dart';
+
+abstract interface class RiverPlatformBridge {
+  Future<String> platformVersion();
+}
+
+final class MethodChannelRiverPlatform implements RiverPlatformBridge {
+  const MethodChannelRiverPlatform({
+    MethodChannel channel = const MethodChannel('app.river/platform'),
+  }) : _channel = channel;
+
+  final MethodChannel _channel;
+
+  @override
+  Future<String> platformVersion() async {
+    return await _channel.invokeMethod<String>('platformVersion') ?? 'unknown';
+  }
+}

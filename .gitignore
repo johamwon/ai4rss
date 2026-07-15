@@ -1,0 +1,17 @@
+.dart_tool/
+.packages
+build/
+dist/
+coverage/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.vscode/
+**/generated/
+reports/
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+**/secrets.*

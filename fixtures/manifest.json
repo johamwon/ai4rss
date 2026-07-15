@@ -1,0 +1,16 @@
+{
+  "fixtures": [
+    {
+      "path": "fixtures/feeds/basic_rss.xml",
+      "contains": ["<rss", "Synthetic River Feed"]
+    },
+    {
+      "path": "fixtures/html/wechat_synthetic.html",
+      "contains": ["js_content", "可验证的测试正文"]
+    },
+    {
+      "path": "fixtures/ai/article_001.json",
+      "contains": ["River", "本地优先"]
+    }
+  ]
+}

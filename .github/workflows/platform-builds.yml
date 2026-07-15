@@ -1,0 +1,47 @@
+name: Platform merge lane
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows
+          - os: ubuntu-latest
+            target: apk
+          - os: macos-latest
+            target: ios
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate native runners when absent
+        shell: bash
+        run: flutter create --project-name river_app --platforms android,ios,windows apps/river_app
+      - name: Resolve workspace
+        run: flutter pub get
+      - name: Build Windows
+        if: matrix.target == 'windows'
+        working-directory: apps/river_app
+        run: flutter build windows --debug -t lib/main.dart
+      - name: Build Android
+        if: matrix.target == 'apk'
+        working-directory: apps/river_app
+        run: flutter build apk --debug -t lib/main.dart
+      - name: Build iOS without signing
+        if: matrix.target == 'ios'
+        working-directory: apps/river_app
+        run: flutter build ios --debug --no-codesign -t lib/main.dart

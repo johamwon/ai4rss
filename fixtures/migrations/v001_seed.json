@@ -1,0 +1,13 @@
+{
+  "folder": {"id": "folder-1", "name": "技术"},
+  "feed": {
+    "id": "feed-1",
+    "canonicalUrl": "https://example.test/feed.xml",
+    "title": "Synthetic River Feed"
+  },
+  "article": {
+    "id": "article-1",
+    "canonicalUrl": "https://example.test/article-1",
+    "title": "River v1 migration fixture"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "cases": [
+    {
+      "id": "summary-article-001",
+      "fixture": "fixtures/ai/article_001.json",
+      "requiredFacts": ["本地优先", "RSS"],
+      "forbiddenClaims": ["出售用户数据"],
+      "replay": {
+        "oneLine": "River 是本地优先的 RSS 阅读工具。",
+        "keyPoints": ["基础阅读不要求云端账号"],
+        "language": "zh-CN",
+        "model": "replay-model",
+        "promptVersion": "summary-v1"
+      }
+    }
+  ]
+}

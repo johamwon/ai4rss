@@ -1,0 +1,11 @@
+{
+  "cases": [
+    {
+      "id": "wechat-synthetic-001",
+      "fixture": "fixtures/html/wechat_synthetic.html",
+      "url": "https://mp.weixin.qq.com/s/synthetic",
+      "plainTextContains": ["可验证的测试正文", "本地优先架构"],
+      "htmlForbids": ["<script", "onclick=", "onerror=", "javascript:"]
+    }
+  ]
+}

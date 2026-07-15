@@ -1,0 +1,25 @@
+{
+  "version": "https://jsonfeed.org/version/1.1",
+  "title": "Synthetic JSON Feed",
+  "home_page_url": "https://example.test/json/",
+  "feed_url": "https://example.test/feed.json",
+  "description": "Copyright-safe deterministic fixture.",
+  "items": [
+    {
+      "id": "json-001",
+      "url": "articles/json-001",
+      "title": "JSON Feed test article",
+      "summary": "A deterministic JSON Feed summary.",
+      "content_html": "<p>Full JSON Feed content.</p>",
+      "date_published": "2026-07-14T08:00:00+08:00",
+      "authors": [{"name": "River Fixture"}],
+      "attachments": [
+        {
+          "url": "https://example.test/audio/json-001.mp3",
+          "mime_type": "audio/mpeg",
+          "duration_in_seconds": 90.5
+        }
+      ]
+    }
+  ]
+}

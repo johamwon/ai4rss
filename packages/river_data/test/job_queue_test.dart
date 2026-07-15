@@ -1,0 +1,81 @@
+import 'package:drift/native.dart';
+import 'package:river_data/river_data.dart';
+import 'package:test/test.dart';
+
+void main() {
+  late RiverDatabase database;
+  late PersistentJobQueue queue;
+
+  setUp(() {
+    database = RiverDatabase(NativeDatabase.memory());
+    queue = PersistentJobQueue(database);
+  });
+
+  tearDown(() => database.close());
+
+  test('enqueue is idempotent and claims a job once', () async {
+    final now = DateTime.utc(2026, 7, 15);
+    final job = NewDurableJob(
+      id: 'job-1',
+      type: 'refresh-feed',
+      idempotencyKey: 'refresh:feed-1:2026-07-15',
+      payloadJson: '{"feedId":"feed-1"}',
+      availableAt: now,
+    );
+
+    expect(await queue.enqueue(job, now), isTrue);
+    expect(await queue.enqueue(job, now), isFalse);
+    final claimed = await queue.claimNext(now: now);
+    expect(claimed?.id, 'job-1');
+    expect(claimed?.attempt, 1);
+    expect(await queue.claimNext(now: now), isNull);
+  });
+
+  test('expired lease is recovered after process interruption', () async {
+    final now = DateTime.utc(2026, 7, 15);
+    await queue.enqueue(
+      NewDurableJob(
+        id: 'job-1',
+        type: 'extract',
+        idempotencyKey: 'extract:article-1',
+        payloadJson: '{"articleId":"article-1"}',
+        availableAt: now,
+      ),
+      now,
+    );
+    await queue.claimNext(now: now, leaseDuration: const Duration(seconds: 30));
+
+    final recovered = await queue.recoverExpiredLeases(
+      now.add(const Duration(seconds: 31)),
+    );
+    final reclaimed = await queue.claimNext(
+      now: now.add(const Duration(seconds: 31)),
+    );
+
+    expect(recovered, 1);
+    expect(reclaimed?.id, 'job-1');
+    expect(reclaimed?.attempt, 2);
+  });
+
+  test('failed jobs stop retrying at max attempts', () async {
+    final now = DateTime.utc(2026, 7, 15);
+    await queue.enqueue(
+      NewDurableJob(
+        id: 'job-1',
+        type: 'extract',
+        idempotencyKey: 'extract:article-1',
+        payloadJson: '{}',
+        availableAt: now,
+        maxAttempts: 1,
+      ),
+      now,
+    );
+    await queue.claimNext(now: now);
+    await queue.failOrRetry(id: 'job-1', errorCode: 'timeout', now: now);
+
+    expect(
+      await queue.claimNext(now: now.add(const Duration(days: 1))),
+      isNull,
+    );
+  });
+}

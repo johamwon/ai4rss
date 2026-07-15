@@ -1,0 +1,22 @@
+name: river_test_harness
+description: Deterministic fakes, fixtures, scenarios and eval runners.
+publish_to: none
+version: 0.1.0
+resolution: workspace
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+dependencies:
+  river_ai:
+    path: ../river_ai
+  river_domain:
+    path: ../river_domain
+  river_extract:
+    path: ../river_extract
+  river_feed:
+    path: ../river_feed
+  river_preferences:
+    path: ../river_preferences
+  river_sync:
+    path: ../river_sync
+dev_dependencies:
+  test: ^1.25.0

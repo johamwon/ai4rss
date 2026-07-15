@@ -1,0 +1,43 @@
+name: river_app
+description: River native client for Android, iOS and Windows.
+publish_to: none
+version: 0.1.0+1
+resolution: workspace
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+dependencies:
+  flutter:
+    sdk: flutter
+  river_ai:
+    path: ../../packages/river_ai
+  river_audio:
+    path: ../../packages/river_audio
+  river_commerce:
+    path: ../../packages/river_commerce
+  river_design_system:
+    path: ../../packages/river_design_system
+  river_data:
+    path: ../../packages/river_data
+  river_domain:
+    path: ../../packages/river_domain
+  river_extract:
+    path: ../../packages/river_extract
+  river_feed:
+    path: ../../packages/river_feed
+  river_knowledge:
+    path: ../../packages/river_knowledge
+  river_platform:
+    path: ../../packages/river_platform
+  river_preferences:
+    path: ../../packages/river_preferences
+  river_sync:
+    path: ../../packages/river_sync
+  drift_flutter: 0.3.0
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

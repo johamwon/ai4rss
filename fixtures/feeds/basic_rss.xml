@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>Synthetic River Feed</title>
+    <link>https://example.test/</link>
+    <description>Copyright-safe deterministic fixture.</description>
+    <item>
+      <guid>article-001</guid>
+      <title>River feed test article</title>
+      <link>https://example.test/articles/001</link>
+      <dc:creator>River Fixture</dc:creator>
+      <pubDate>Tue, 14 Jul 2026 08:30:00 +0800</pubDate>
+      <description>A deterministic feed summary.</description>
+      <content:encoded><![CDATA[<p>Full fixture content.</p>]]></content:encoded>
+      <enclosure url="https://example.test/audio/001.mp3" type="audio/mpeg" />
+    </item>
+  </channel>
+</rss>

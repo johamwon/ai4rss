@@ -1,0 +1,25 @@
+{
+  "cases": [
+    {
+      "id": "rss-basic-001",
+      "fixture": "fixtures/feeds/basic_rss.xml",
+      "kind": "rss",
+      "title": "Synthetic River Feed",
+      "itemCount": 1
+    },
+    {
+      "id": "atom-basic-001",
+      "fixture": "fixtures/feeds/basic_atom.xml",
+      "kind": "atom",
+      "title": "Synthetic Atom Feed",
+      "itemCount": 1
+    },
+    {
+      "id": "json-feed-basic-001",
+      "fixture": "fixtures/feeds/basic_json_feed.json",
+      "kind": "jsonFeed",
+      "title": "Synthetic JSON Feed",
+      "itemCount": 1
+    }
+  ]
+}

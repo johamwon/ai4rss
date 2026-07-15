@@ -1,0 +1,31 @@
+name: Nightly eval lane
+
+on:
+  schedule:
+    - cron: '30 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  replay-evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Run full offline corpus
+        run: dart run packages/river_test_harness/bin/river_harness.dart check
+      - name: Preserve eval report
+        if: always()
+        run: mkdir -p reports && dart run packages/river_test_harness/bin/river_harness.dart check > reports/nightly.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: river-nightly-evals
+          path: reports/nightly.json

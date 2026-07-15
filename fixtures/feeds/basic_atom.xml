@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Synthetic Atom Feed</title>
+  <subtitle>Copyright-safe deterministic fixture.</subtitle>
+  <link href="https://example.test/atom/" />
+  <link rel="self" href="https://example.test/atom.xml" />
+  <id>urn:river:fixture:atom</id>
+  <updated>2026-07-14T08:30:00+08:00</updated>
+  <entry>
+    <title>Atom test article</title>
+    <link href="articles/atom-001" />
+    <id>atom-001</id>
+    <published>2026-07-14T08:00:00+08:00</published>
+    <updated>2026-07-14T08:30:00+08:00</updated>
+    <author><name>River Fixture</name></author>
+    <summary>A deterministic Atom summary.</summary>
+    <content type="html">&lt;p&gt;Full Atom content.&lt;/p&gt;</content>
+  </entry>
+</feed>

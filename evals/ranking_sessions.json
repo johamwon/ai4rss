@@ -1,0 +1,14 @@
+{
+  "cases": [
+    {
+      "id": "negative-feedback-dominates-click",
+      "positive": "open",
+      "negative": "notInterested"
+    },
+    {
+      "id": "completion-dominates-impression",
+      "positive": "completed",
+      "negative": "impression"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+name: river_extract
+description: Full-text extraction pipeline and sanitization.
+publish_to: none
+version: 0.1.0
+resolution: workspace
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+dependencies:
+  river_domain:
+    path: ../river_domain
+dev_dependencies:
+  test: ^1.25.0
