@@ -27,7 +27,10 @@ final class FeedRefreshService {
 
   Future<void> delete(String feedId) => repository.delete(feedId);
 
-  Future<FeedRefreshResult> subscribeOrRefresh(Uri requestedUri) async {
+  Future<FeedRefreshResult> subscribeOrRefresh(
+    Uri requestedUri, {
+    PortHttpResponse? prefetchedResponse,
+  }) async {
     final canonicalUrl = canonicalizeFeedUrl(requestedUri);
     final existing = await repository.findByCanonicalUrl(canonicalUrl);
     final headers = <String, String>{
@@ -35,7 +38,8 @@ final class FeedRefreshService {
       if (existing?.lastModified case final modified?)
         'if-modified-since': modified,
     };
-    final response = await http.get(canonicalUrl, headers: headers);
+    final response =
+        prefetchedResponse ?? await http.get(canonicalUrl, headers: headers);
     final refreshedAt = clock.now().toUtc();
     if (response.statusCode == 304 && existing != null) {
       await repository.markNotModified(

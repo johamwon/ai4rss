@@ -24,6 +24,10 @@ final class AppDependencies {
       clock: clock,
       ids: ids,
     );
+    feedDiscovery = FeedDiscoveryService(
+      http: http,
+      feedRefresh: feedRefresh,
+    );
   }
 
   static Future<AppDependencies> production() async {
@@ -53,6 +57,7 @@ final class AppDependencies {
   late final PersistentJobQueue jobs;
   late final DriftFeedRepository feeds;
   late final FeedRefreshService feedRefresh;
+  late final FeedDiscoveryService feedDiscovery;
   final RiverDatabase _database;
 
   Future<void> close() async {

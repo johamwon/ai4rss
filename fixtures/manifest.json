@@ -9,6 +9,10 @@
       "contains": ["js_content", "可验证的测试正文"]
     },
     {
+      "path": "fixtures/html/feed_discovery_synthetic.html",
+      "contains": ["application/rss+xml", "feeds.example.test/news.atom"]
+    },
+    {
       "path": "fixtures/ai/article_001.json",
       "contains": ["River", "本地优先"]
     }

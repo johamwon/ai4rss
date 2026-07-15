@@ -8,15 +8,24 @@ Future<void> main(List<String> arguments) async {
     return;
   }
 
-  await _run('flutter', <String>['pub', 'get']);
+  if (Platform.environment['RIVER_CI_SKIP_BOOTSTRAP'] != 'true') {
+    await _run('flutter', <String>['pub', 'get']);
+  }
   await _run(
     'dart',
-    <String>['format', '--output=none', '--set-exit-if-changed', '.'],
+    <String>[
+      'format',
+      '--output=none',
+      '--set-exit-if-changed',
+      ..._formatTargets(),
+    ],
   );
-  await _run(
-    'flutter',
-    <String>['analyze', '--fatal-infos', '--fatal-warnings'],
-  );
+  for (final target in <String>['tool', ..._workspacePackageDirectories()]) {
+    await _run(
+      'dart',
+      <String>['analyze', '--fatal-infos', '--fatal-warnings', target],
+    );
+  }
 
   const pureDartPackages = <String>[
     'packages/river_domain',
@@ -44,7 +53,11 @@ Future<void> main(List<String> arguments) async {
   ];
   for (final package in flutterPackages) {
     if (Directory('$package/test').existsSync()) {
-      await _run('flutter', <String>['test'], workingDirectory: package);
+      await _run(
+        'flutter',
+        <String>['test', '--no-pub'],
+        workingDirectory: package,
+      );
     }
   }
 
@@ -56,6 +69,35 @@ Future<void> main(List<String> arguments) async {
       'check',
     ],
   );
+}
+
+List<String> _formatTargets() {
+  const sourceDirectories = <String>['lib', 'test', 'integration_test', 'bin'];
+  final targets = <String>['tool'];
+  for (final package in _workspacePackageDirectories()) {
+    for (final sourceDirectory in sourceDirectories) {
+      final path = '$package${Platform.pathSeparator}$sourceDirectory';
+      if (Directory(path).existsSync()) {
+        targets.add(path);
+      }
+    }
+  }
+  return targets;
+}
+
+List<String> _workspacePackageDirectories() {
+  final packages = <String>[];
+  for (final workspaceDirectory in <String>['apps', 'packages']) {
+    final root = Directory(workspaceDirectory);
+    if (!root.existsSync()) {
+      continue;
+    }
+    packages.addAll(
+      root.listSync().whereType<Directory>().map((directory) => directory.path),
+    );
+  }
+  packages.sort();
+  return packages;
 }
 
 Future<void> _run(
@@ -87,6 +129,11 @@ String _resolveSdkExecutable(String executable) {
   if (!Platform.isWindows) return executable;
   if (executable == 'dart') return Platform.resolvedExecutable;
   if (executable != 'flutter') return executable;
+
+  final override = Platform.environment['RIVER_FLUTTER_EXECUTABLE'];
+  if (override != null && override.trim().isNotEmpty) {
+    return override;
+  }
 
   final dartSdkBin = File(Platform.resolvedExecutable).parent;
   final flutterBin = dartSdkBin.parent.parent.parent;

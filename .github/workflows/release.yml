@@ -1,0 +1,147 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Version tag to create, for example v0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Release gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+
+      - name: Run deterministic release gate
+        run: dart run tool/ci.dart fast
+
+  build:
+    name: Package ${{ matrix.target }}
+    needs: validate
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: android
+            os: ubuntu-latest
+          - target: ios
+            os: macos-latest
+          - target: windows
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+
+      - name: Resolve workspace
+        run: flutter pub get
+
+      - name: Build Android packages
+        if: matrix.target == 'android'
+        run: |
+          flutter build apk --release
+          flutter build appbundle --release
+        working-directory: apps/river_app
+
+      - name: Collect Android packages
+        if: matrix.target == 'android'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp apps/river_app/build/app/outputs/flutter-apk/app-release.apk "dist/river-android-${RELEASE_TAG}.apk"
+          cp apps/river_app/build/app/outputs/bundle/release/app-release.aab "dist/river-android-${RELEASE_TAG}.aab"
+
+      - name: Build iOS package without signing
+        if: matrix.target == 'ios'
+        run: flutter build ios --release --no-codesign
+        working-directory: apps/river_app
+
+      - name: Collect unsigned iOS package
+        if: matrix.target == 'ios'
+        shell: bash
+        run: |
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent apps/river_app/build/ios/iphoneos/Runner.app "dist/river-ios-${RELEASE_TAG}-unsigned.zip"
+
+      - name: Build Windows package
+        if: matrix.target == 'windows'
+        run: flutter build windows --release
+        working-directory: apps/river_app
+
+      - name: Collect Windows package
+        if: matrix.target == 'windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path 'apps\river_app\build\windows\x64\runner\Release\*' -DestinationPath "dist\river-windows-$env:RELEASE_TAG.zip"
+
+      - name: Upload packaged files
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+  publish-draft:
+    name: Create draft GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download packaged files
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS.txt
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release create "$RELEASE_TAG" dist/* \
+            --draft \
+            --generate-notes \
+            --target "$GITHUB_SHA" \
+            --title "River $RELEASE_TAG"
