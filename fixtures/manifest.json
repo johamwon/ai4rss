@@ -13,6 +13,10 @@
       "contains": ["application/rss+xml", "feeds.example.test/news.atom"]
     },
     {
+      "path": "fixtures/opml/subscriptions_nested.opml",
+      "contains": ["River OPML Fixture", "AI &amp; 工具"]
+    },
+    {
       "path": "fixtures/ai/article_001.json",
       "contains": ["River", "本地优先"]
     }

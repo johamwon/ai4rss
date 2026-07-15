@@ -1,9 +1,13 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
+import 'package:river_domain/river_domain.dart' as domain;
 import 'package:river_feed/river_feed.dart' as feed;
 
 import 'database.dart';
 
-final class DriftFeedRepository implements feed.FeedRepository {
+final class DriftFeedRepository
+    implements feed.FeedRepository, feed.SubscriptionOrganizerRepository {
   const DriftFeedRepository(this.database);
 
   final RiverDatabase database;
@@ -26,6 +30,249 @@ final class DriftFeedRepository implements feed.FeedRepository {
       ]);
     return query.watch().map(
       (rows) => rows.map(_subscription).toList(growable: false),
+    );
+  }
+
+  @override
+  Stream<List<feed.FeedFolderRecord>> watchFolders() {
+    final query = database.select(database.folders)
+      ..orderBy(<OrderingTerm Function($FoldersTable)>[
+        (table) => OrderingTerm.asc(table.position),
+        (table) => OrderingTerm.asc(table.name),
+      ]);
+    return query.watch().map(
+      (rows) => rows.map(_folder).toList(growable: false),
+    );
+  }
+
+  @override
+  Future<feed.FeedFolderRecord> createFolder({
+    required String id,
+    required List<String> path,
+    required DateTime createdAt,
+  }) {
+    return database.transaction(() async {
+      final rows = await database.select(database.folders).get();
+      _ensureUniqueFolderPath(rows, path);
+      final position =
+          rows.fold<int>(
+            -1,
+            (maximum, row) => row.position > maximum ? row.position : maximum,
+          ) +
+          1;
+      final storedPath = _encodeFolderPath(path);
+      await database
+          .into(database.folders)
+          .insert(
+            FoldersCompanion.insert(
+              id: id,
+              name: storedPath,
+              position: Value<int>(position),
+              createdAt: createdAt,
+              updatedAt: createdAt,
+            ),
+          );
+      return feed.FeedFolderRecord(
+        id: id,
+        path: List<String>.unmodifiable(path),
+        position: position,
+      );
+    });
+  }
+
+  @override
+  Future<void> renameFolder({
+    required String folderId,
+    required String name,
+    required DateTime updatedAt,
+  }) {
+    return database.transaction(() async {
+      final rows = await database.select(database.folders).get();
+      final row = rows.where((folder) => folder.id == folderId).firstOrNull;
+      if (row == null) {
+        throw const feed.SubscriptionOrganizerException('文件夹不存在');
+      }
+      final path = _decodeFolderPath(row.name);
+      final renamedPath = <String>[...path.take(path.length - 1), name];
+      _ensureUniqueFolderPath(rows, renamedPath, excludingId: folderId);
+      await (database.update(
+        database.folders,
+      )..where((table) => table.id.equals(folderId))).write(
+        FoldersCompanion(
+          name: Value<String>(_encodeFolderPath(renamedPath)),
+          updatedAt: Value<DateTime>(updatedAt),
+        ),
+      );
+    });
+  }
+
+  @override
+  Future<void> deleteFolder({
+    required String folderId,
+    required DateTime updatedAt,
+  }) {
+    return database.transaction(() async {
+      await (database.update(
+        database.feedSubscriptions,
+      )..where((table) => table.folderId.equals(folderId))).write(
+        FeedSubscriptionsCompanion(
+          folderId: const Value<String?>(null),
+          updatedAt: Value<DateTime>(updatedAt),
+        ),
+      );
+      await (database.delete(
+        database.folders,
+      )..where((table) => table.id.equals(folderId))).go();
+    });
+  }
+
+  @override
+  Future<void> moveFeed({
+    required String feedId,
+    required String? folderId,
+    required DateTime updatedAt,
+  }) async {
+    if (folderId != null) {
+      final folder = await (database.select(
+        database.folders,
+      )..where((table) => table.id.equals(folderId))).getSingleOrNull();
+      if (folder == null) {
+        throw const feed.SubscriptionOrganizerException('目标文件夹不存在');
+      }
+    }
+    final changed =
+        await (database.update(
+          database.feedSubscriptions,
+        )..where((table) => table.id.equals(feedId))).write(
+          FeedSubscriptionsCompanion(
+            folderId: Value<String?>(folderId),
+            updatedAt: Value<DateTime>(updatedAt),
+          ),
+        );
+    if (changed == 0) {
+      throw const feed.SubscriptionOrganizerException('订阅源不存在');
+    }
+  }
+
+  @override
+  Future<feed.OpmlImportReport> importOpml({
+    required feed.OpmlDocument document,
+    required domain.IdGenerator ids,
+    required DateTime importedAt,
+  }) {
+    return database.transaction(() async {
+      final folderRows = await database.select(database.folders).get();
+      final foldersByPath = <String, Folder>{
+        for (final row in folderRows)
+          _folderPathKey(_decodeFolderPath(row.name)): row,
+      };
+      final subscriptionRows = await database
+          .select(database.feedSubscriptions)
+          .get();
+      final existingUrls = subscriptionRows
+          .map((row) => row.canonicalUrl)
+          .toSet();
+      var nextPosition =
+          folderRows.fold<int>(
+            -1,
+            (maximum, row) => row.position > maximum ? row.position : maximum,
+          ) +
+          1;
+      var createdFolders = 0;
+      var importedSubscriptions = 0;
+      var existingDuplicates = 0;
+
+      for (final entry in document.feeds) {
+        final canonicalUrl = entry.xmlUrl.toString();
+        if (!existingUrls.add(canonicalUrl)) {
+          existingDuplicates += 1;
+          continue;
+        }
+
+        String? folderId;
+        if (entry.folderPath.isNotEmpty) {
+          final key = _folderPathKey(entry.folderPath);
+          var folder = foldersByPath[key];
+          if (folder == null) {
+            final id = ids.next();
+            final storedPath = _encodeFolderPath(entry.folderPath);
+            await database
+                .into(database.folders)
+                .insert(
+                  FoldersCompanion.insert(
+                    id: id,
+                    name: storedPath,
+                    position: Value<int>(nextPosition),
+                    createdAt: importedAt,
+                    updatedAt: importedAt,
+                  ),
+                );
+            folder = Folder(
+              id: id,
+              name: storedPath,
+              position: nextPosition,
+              createdAt: importedAt,
+              updatedAt: importedAt,
+            );
+            foldersByPath[key] = folder;
+            nextPosition += 1;
+            createdFolders += 1;
+          }
+          folderId = folder.id;
+        }
+
+        await database
+            .into(database.feedSubscriptions)
+            .insert(
+              FeedSubscriptionsCompanion.insert(
+                id: ids.next(),
+                canonicalUrl: canonicalUrl,
+                title: _limited(entry.title, 1024),
+                folderId: Value<String?>(folderId),
+                feedKind: feed.FeedDocumentKind.unknown.name,
+                createdAt: importedAt,
+                updatedAt: importedAt,
+              ),
+            );
+        importedSubscriptions += 1;
+      }
+
+      return feed.OpmlImportReport(
+        importedSubscriptions: importedSubscriptions,
+        createdFolders: createdFolders,
+        skippedDuplicates:
+            document.skippedDuplicateEntries + existingDuplicates,
+        skippedInvalid: document.skippedInvalidEntries,
+      );
+    });
+  }
+
+  @override
+  Future<feed.OpmlDocument> exportOpml() async {
+    final folderRows = await database.select(database.folders).get();
+    final paths = <String, List<String>>{
+      for (final row in folderRows) row.id: _decodeFolderPath(row.name),
+    };
+    final query = database.select(database.feedSubscriptions)
+      ..orderBy(<OrderingTerm Function($FeedSubscriptionsTable)>[
+        (table) => OrderingTerm.asc(table.title),
+      ]);
+    final subscriptions = await query.get();
+    return feed.OpmlDocument(
+      title: 'River subscriptions',
+      feeds: subscriptions
+          .map(
+            (row) => feed.OpmlFeedEntry(
+              title: row.title,
+              xmlUrl: Uri.parse(row.canonicalUrl),
+              folderPath: row.folderId == null
+                  ? const <String>[]
+                  : List<String>.unmodifiable(
+                      paths[row.folderId] ?? const <String>[],
+                    ),
+            ),
+          )
+          .toList(growable: false),
     );
   }
 
@@ -192,7 +439,14 @@ feed.FeedSubscriptionRecord _subscription(FeedSubscription row) =>
       etag: row.etag,
       lastModified: row.lastModified,
       lastRefreshedAt: row.lastRefreshedAt,
+      folderId: row.folderId,
     );
+
+feed.FeedFolderRecord _folder(Folder row) => feed.FeedFolderRecord(
+  id: row.id,
+  path: List<String>.unmodifiable(_decodeFolderPath(row.name)),
+  position: row.position,
+);
 
 feed.FeedArticleRecord _article(Article row) => feed.FeedArticleRecord(
   id: row.id,
@@ -208,3 +462,52 @@ feed.FeedArticleRecord _article(Article row) => feed.FeedArticleRecord(
 
 String _limited(String value, int maxLength) =>
     value.length <= maxLength ? value : value.substring(0, maxLength);
+
+const _folderPathPrefix = '@river:path:';
+
+String _encodeFolderPath(List<String> path) {
+  final normalized = path
+      .map((segment) => segment.trim())
+      .toList(growable: false);
+  if (normalized.isEmpty || normalized.any((segment) => segment.isEmpty)) {
+    throw const feed.SubscriptionOrganizerException('文件夹路径无效');
+  }
+  final encoded = '$_folderPathPrefix${jsonEncode(normalized)}';
+  if (encoded.length > 256) {
+    throw const feed.SubscriptionOrganizerException('文件夹路径不能超过 256 个字符');
+  }
+  return encoded;
+}
+
+List<String> _decodeFolderPath(String stored) {
+  if (!stored.startsWith(_folderPathPrefix)) {
+    return <String>[stored];
+  }
+  try {
+    final decoded = jsonDecode(stored.substring(_folderPathPrefix.length));
+    if (decoded is List<Object?> && decoded.every((item) => item is String)) {
+      return decoded.cast<String>();
+    }
+  } on Object {
+    // Preserve legacy or manually edited values as a visible single folder.
+  }
+  return <String>[stored];
+}
+
+String _folderPathKey(List<String> path) =>
+    path.map((segment) => segment.trim().toLowerCase()).join('\u001f');
+
+void _ensureUniqueFolderPath(
+  List<Folder> rows,
+  List<String> path, {
+  String? excludingId,
+}) {
+  final key = _folderPathKey(path);
+  if (rows.any(
+    (row) =>
+        row.id != excludingId &&
+        _folderPathKey(_decodeFolderPath(row.name)) == key,
+  )) {
+    throw const feed.SubscriptionOrganizerException('同名文件夹已存在');
+  }
+}

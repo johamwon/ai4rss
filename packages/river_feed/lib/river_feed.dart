@@ -6,3 +6,5 @@ export 'src/feed_parser.dart';
 export 'src/feed_refresh_service.dart';
 export 'src/feed_repository.dart';
 export 'src/http_client.dart';
+export 'src/opml_codec.dart';
+export 'src/subscription_organizer.dart';

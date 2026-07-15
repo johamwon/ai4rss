@@ -2,6 +2,8 @@ library;
 
 import 'package:flutter/services.dart';
 
+export 'src/opml_file_gateway.dart';
+
 abstract interface class RiverPlatformBridge {
   Future<String> platformVersion();
 }

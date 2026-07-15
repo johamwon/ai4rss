@@ -15,7 +15,9 @@ final class AppDependencies {
     required this.platform,
     required this.http,
     required RiverDatabase database,
-  }) : _database = database {
+    OpmlFileGateway? opmlFiles,
+  })  : opmlFiles = opmlFiles ?? const PlatformOpmlFileGateway(),
+        _database = database {
     jobs = PersistentJobQueue(database);
     feeds = DriftFeedRepository(database);
     feedRefresh = FeedRefreshService(
@@ -27,6 +29,11 @@ final class AppDependencies {
     feedDiscovery = FeedDiscoveryService(
       http: http,
       feedRefresh: feedRefresh,
+    );
+    subscriptionOrganizer = SubscriptionOrganizerService(
+      repository: feeds,
+      clock: clock,
+      ids: ids,
     );
   }
 
@@ -54,10 +61,12 @@ final class AppDependencies {
   final FullTextExtractor fullTextExtractor;
   final RiverPlatformBridge platform;
   final HttpPort http;
+  final OpmlFileGateway opmlFiles;
   late final PersistentJobQueue jobs;
   late final DriftFeedRepository feeds;
   late final FeedRefreshService feedRefresh;
   late final FeedDiscoveryService feedDiscovery;
+  late final SubscriptionOrganizerService subscriptionOrganizer;
   final RiverDatabase _database;
 
   Future<void> close() async {

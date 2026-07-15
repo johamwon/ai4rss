@@ -9,6 +9,8 @@ dependencies:
   drift: 2.33.0
   river_feed:
     path: ../river_feed
+  river_domain:
+    path: ../river_domain
 dev_dependencies:
   build_runner: ^2.7.1
   drift_dev: 2.34.0
