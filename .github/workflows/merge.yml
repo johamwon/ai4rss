@@ -1,0 +1,79 @@
+name: Merge
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: merge-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    name: Fast lane
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+
+      - name: Run deterministic fast lane
+        run: dart run tool/ci.dart fast
+
+  platform-build:
+    name: ${{ matrix.target }} debug build
+    needs: fast
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: android
+            os: ubuntu-latest
+            command: flutter build apk --debug
+            artifact: apps/river_app/build/app/outputs/flutter-apk/app-debug.apk
+          - target: ios
+            os: macos-latest
+            command: flutter build ios --debug --no-codesign
+            artifact: apps/river_app/build/ios/iphoneos/Runner.app
+          - target: windows
+            os: windows-latest
+            command: flutter build windows --debug
+            artifact: apps/river_app/build/windows/x64/runner/Debug
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+
+      - name: Resolve workspace
+        run: flutter pub get
+
+      - name: Build ${{ matrix.target }}
+        run: ${{ matrix.command }}
+        working-directory: apps/river_app
+
+      - name: Upload ${{ matrix.target }} build
+        uses: actions/upload-artifact@v7
+        with:
+          name: merge-${{ matrix.target }}-${{ github.sha }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+          retention-days: 7

@@ -28,4 +28,4 @@ cd apps/river_app
 flutter build windows --debug
 ```
 
-开发顺序见 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)，当前进度见 [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md)，质量门禁见 [docs/QUALITY_HARNESS.md](docs/QUALITY_HARNESS.md)。
+开发顺序见 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)，当前进度见 [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md)，质量门禁见 [docs/QUALITY_HARNESS.md](docs/QUALITY_HARNESS.md)，GitHub 流水线见 [docs/CI_CD.md](docs/CI_CD.md)。

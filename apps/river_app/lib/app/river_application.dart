@@ -61,9 +61,24 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
     }
     await _run(
       () async {
-        await RiverDependenciesScope.of(
-          context,
-        ).feedRefresh.subscribeOrRefresh(uri);
+        final discovery = RiverDependenciesScope.of(context).feedDiscovery;
+        final candidates = await discovery.discover(uri);
+        if (!mounted) {
+          return false;
+        }
+        final selected = candidates.length == 1
+            ? candidates.single
+            : await showDialog<FeedDiscoveryCandidate>(
+                context: context,
+                builder: (context) => _FeedCandidateDialog(
+                  candidates: candidates,
+                ),
+              );
+        if (selected == null) {
+          return false;
+        }
+        await discovery.subscribe(selected);
+        return true;
       },
       successMessage: '订阅源已添加',
     );
@@ -76,19 +91,20 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
         for (final feed in feeds.where((item) => item.enabled)) {
           await service.subscribeOrRefresh(feed.canonicalUrl);
         }
+        return true;
       },
       successMessage: '刷新完成',
     );
   }
 
   Future<void> _run(
-    Future<void> Function() operation, {
+    Future<bool> Function() operation, {
     required String successMessage,
   }) async {
     setState(() => _busy = true);
     try {
-      await operation();
-      if (mounted) {
+      final completed = await operation();
+      if (completed && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(successMessage)),
         );
@@ -258,7 +274,7 @@ final class _EmptyInbox extends StatelessWidget {
     return Center(
       child: Semantics(
         container: true,
-        label: '还没有订阅源，请添加一个 RSS 地址',
+        label: '还没有订阅源，请添加网站或 Feed 地址',
         child: const Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
@@ -266,12 +282,67 @@ final class _EmptyInbox extends StatelessWidget {
             SizedBox(height: 16),
             Text('还没有订阅源'),
             SizedBox(height: 8),
-            Text('点击右上角 +，粘贴 RSS、Atom 或 JSON Feed 地址'),
+            Text('点击右上角 +，粘贴网站或 Feed 地址'),
           ],
         ),
       ),
     );
   }
+}
+
+final class _FeedCandidateDialog extends StatelessWidget {
+  const _FeedCandidateDialog({required this.candidates});
+
+  final List<FeedDiscoveryCandidate> candidates;
+
+  @override
+  Widget build(BuildContext context) {
+    return SimpleDialog(
+      title: const Text('选择订阅源'),
+      children: candidates
+          .map(
+            (candidate) => SimpleDialogOption(
+              onPressed: () => Navigator.of(context).pop(candidate),
+              child: Semantics(
+                button: true,
+                label: '订阅 ${candidate.title}，${_kindLabel(candidate.kind)}',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      candidate.title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_kindLabel(candidate.kind)} · ${candidate.uri.host}'
+                      '${_latestLabel(candidate.latestUpdatedAt)}',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+}
+
+String _kindLabel(FeedDocumentKind kind) => switch (kind) {
+      FeedDocumentKind.rss => 'RSS',
+      FeedDocumentKind.atom => 'Atom',
+      FeedDocumentKind.jsonFeed => 'JSON Feed',
+      FeedDocumentKind.unknown => 'Feed',
+    };
+
+String _latestLabel(DateTime? date) {
+  if (date == null) {
+    return '';
+  }
+  final local = date.toLocal();
+  final month = local.month.toString().padLeft(2, '0');
+  final day = local.day.toString().padLeft(2, '0');
+  return ' · 最近更新 ${local.year}-$month-$day';
 }
 
 final class _AddFeedDialog extends StatefulWidget {

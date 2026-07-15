@@ -25,33 +25,52 @@ final class _FakePlatform implements RiverPlatformBridge {
 }
 
 final class _FakeHttp implements HttpPort {
+  final List<Uri> requests = <Uri>[];
+
   @override
   Future<PortHttpResponse> get(
     Uri uri, {
     Map<String, String> headers = const <String, String>{},
-  }) async =>
-      PortHttpResponse(
+  }) async {
+    requests.add(uri);
+    if (uri.path == '/') {
+      return PortHttpResponse(
         statusCode: 200,
         body: '''
+          <!doctype html><html><head>
+            <link rel="alternate" type="application/rss+xml" href="/feed.xml">
+          </head></html>
+        ''',
+        headers: const <String, String>{'content-type': 'text/html'},
+        effectiveUri: uri,
+      );
+    }
+    return PortHttpResponse(
+      statusCode: 200,
+      body: '''
       <rss version="2.0"><channel><title>Test Feed</title>
         <item><guid>one</guid><title>First article</title>
         <link>https://example.test/one</link></item>
       </channel></rss>
     ''',
-        effectiveUri: uri,
-      );
+      headers: const <String, String>{'content-type': 'application/rss+xml'},
+      effectiveUri: uri,
+    );
+  }
 }
 
 void main() {
   late AppDependencies dependencies;
+  late _FakeHttp http;
 
   setUp(() {
+    http = _FakeHttp();
     dependencies = AppDependencies(
       clock: _FixedClock(),
       ids: _FixedIds(),
       fullTextExtractor: const BasicHtmlExtractor(),
       platform: _FakePlatform(),
-      http: _FakeHttp(),
+      http: http,
       database: RiverDatabase.inMemory(),
     );
   });
@@ -87,6 +106,29 @@ void main() {
     expect(find.textContaining('操作失败'), findsNothing);
     expect(find.text('Test Feed'), findsOneWidget);
     expect(find.text('First article'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('discovers a declared feed from a website address',
+      (tester) async {
+    await tester.pumpWidget(RiverApp(dependencies: dependencies));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('添加订阅源'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'https://example.test');
+    await tester.tap(find.widgetWithText(FilledButton, '添加'));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('操作失败'), findsNothing);
+    expect(find.text('Test Feed'), findsOneWidget);
+    expect(http.requests, <Uri>[
+      Uri.parse('https://example.test/'),
+      Uri.parse('https://example.test/feed.xml'),
+    ]);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));

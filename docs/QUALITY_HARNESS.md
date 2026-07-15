@@ -30,3 +30,5 @@
 | Crash-free sessions after launch | >=99.5% |
 
 Live canaries are advisory for PRs and blocking only after a confirmed regression. Copyrighted full pages must not be committed; use synthetic or minimized fixtures.
+
+GitHub Actions 的工作流映射、产物保留和未签名发布边界见 `docs/CI_CD.md`。
