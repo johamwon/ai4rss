@@ -32,7 +32,7 @@ dependencies:
     path: ../../packages/river_preferences
   river_sync:
     path: ../../packages/river_sync
-  drift_flutter: 0.3.0
+  drift_flutter: 0.3.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
