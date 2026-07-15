@@ -59,18 +59,35 @@ final class _FakeHttp implements HttpPort {
   }
 }
 
+final class _FakeOpmlFiles implements OpmlFileGateway {
+  String? importSource;
+  String? exportedContents;
+
+  @override
+  Future<String?> pickImport() async => importSource;
+
+  @override
+  Future<bool> saveExport(String contents) async {
+    exportedContents = contents;
+    return true;
+  }
+}
+
 void main() {
   late AppDependencies dependencies;
   late _FakeHttp http;
+  late _FakeOpmlFiles opmlFiles;
 
   setUp(() {
     http = _FakeHttp();
+    opmlFiles = _FakeOpmlFiles();
     dependencies = AppDependencies(
       clock: _FixedClock(),
       ids: _FixedIds(),
       fullTextExtractor: const BasicHtmlExtractor(),
       platform: _FakePlatform(),
       http: http,
+      opmlFiles: opmlFiles,
       database: RiverDatabase.inMemory(),
     );
   });
@@ -111,6 +128,25 @@ void main() {
     await tester.pump(const Duration(milliseconds: 1));
   });
 
+  testWidgets('creates and shows an empty folder', (tester) async {
+    await tester.pumpWidget(RiverApp(dependencies: dependencies));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('订阅与 OPML'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('新建文件夹'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '技术');
+    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('技术'), findsOneWidget);
+    expect(find.text('文件夹为空'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
   testWidgets('discovers a declared feed from a website address',
       (tester) async {
     await tester.pumpWidget(RiverApp(dependencies: dependencies));
@@ -129,6 +165,41 @@ void main() {
       Uri.parse('https://example.test/'),
       Uri.parse('https://example.test/feed.xml'),
     ]);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('imports and exports OPML while preserving folders',
+      (tester) async {
+    opmlFiles.importSource = '''
+      <opml version="2.0"><head><title>Fixture</title></head><body>
+        <outline text="技术"><outline text="AI">
+          <outline text="AI Daily" xmlUrl="https://ai.test/feed.xml" />
+        </outline></outline>
+        <outline text="Loose" xmlUrl="https://loose.test/rss" />
+      </body></opml>
+    ''';
+    await tester.pumpWidget(RiverApp(dependencies: dependencies));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('订阅与 OPML'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('导入 OPML'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('技术 / AI'), findsOneWidget);
+    expect(find.text('AI Daily'), findsOneWidget);
+    expect(find.text('Loose'), findsOneWidget);
+    expect(http.requests, isEmpty);
+
+    await tester.tap(find.byTooltip('订阅与 OPML'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('导出 OPML'));
+    await tester.pumpAndSettle();
+
+    expect(opmlFiles.exportedContents, contains('https://ai.test/feed.xml'));
+    expect(opmlFiles.exportedContents, contains('技术'));
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));

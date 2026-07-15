@@ -10,6 +10,7 @@ final class FeedSubscriptionRecord {
     this.etag,
     this.lastModified,
     this.lastRefreshedAt,
+    this.folderId,
   });
 
   final String id;
@@ -20,6 +21,7 @@ final class FeedSubscriptionRecord {
   final String? etag;
   final String? lastModified;
   final DateTime? lastRefreshedAt;
+  final String? folderId;
 }
 
 final class FeedArticleRecord {
