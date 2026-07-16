@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:river_app/app/app_dependencies.dart';
@@ -26,6 +28,21 @@ final class _FakePlatform implements RiverPlatformBridge {
 
 final class _FakeHttp implements HttpPort {
   final List<Uri> requests = <Uri>[];
+  Completer<void>? _nextFeedGate;
+  Completer<void>? _activeFeedGate;
+  Completer<void>? _nextFeedStarted;
+
+  Future<void> get nextFeedStarted => _nextFeedStarted!.future;
+
+  void blockNextFeedRequest() {
+    _nextFeedGate = Completer<void>();
+    _nextFeedStarted = Completer<void>();
+  }
+
+  void releaseFeedRequest() {
+    final gate = _activeFeedGate ?? _nextFeedGate;
+    if (gate != null && !gate.isCompleted) gate.complete();
+  }
 
   @override
   Future<PortHttpResponse> get(
@@ -44,6 +61,14 @@ final class _FakeHttp implements HttpPort {
         headers: const <String, String>{'content-type': 'text/html'},
         effectiveUri: uri,
       );
+    }
+    final gate = _nextFeedGate;
+    if (gate != null) {
+      _nextFeedGate = null;
+      _activeFeedGate = gate;
+      _nextFeedStarted?.complete();
+      await gate.future;
+      _activeFeedGate = null;
     }
     return PortHttpResponse(
       statusCode: 200,
@@ -203,6 +228,49 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('shows progress and cancels a durable refresh', (tester) async {
+    try {
+      await tester.pumpWidget(RiverApp(dependencies: dependencies));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('添加订阅源'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byType(TextField),
+        'https://example.test/feed.xml',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, '添加'));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
+
+      http.blockNextFeedRequest();
+      await tester.tap(find.byTooltip('刷新全部'));
+      await tester.pump();
+      await http.nextFeedStarted;
+      await tester.pump();
+
+      expect(find.byTooltip('取消刷新'), findsOneWidget);
+      expect(find.text('正在刷新 0/1 个来源'), findsOneWidget);
+      await tester.tap(find.byTooltip('取消刷新'));
+      await tester.pump();
+      expect(find.text('正在停止刷新，已开始的请求会安全结束'), findsOneWidget);
+
+      http.releaseFeedRequest();
+      for (var attempt = 0; attempt < 50; attempt += 1) {
+        await tester.pump(const Duration(milliseconds: 20));
+        if (find.textContaining('刷新已取消').evaluate().isNotEmpty) break;
+      }
+      expect(find.textContaining('刷新已取消'), findsOneWidget);
+      expect(find.byTooltip('刷新全部'), findsOneWidget);
+    } finally {
+      http.releaseFeedRequest();
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(milliseconds: 1));
+    }
   });
 
   test('secure IDs keep UUID v4 shape and do not repeat', () {

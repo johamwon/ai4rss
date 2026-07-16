@@ -78,4 +78,30 @@ void main() {
       isNull,
     );
   });
+
+  test('type filtering and cancellation preserve terminal state', () async {
+    final now = DateTime.utc(2026, 7, 15);
+    for (final type in <String>['refresh/a', 'extract']) {
+      await queue.enqueue(
+        NewDurableJob(
+          id: 'job-$type',
+          type: type,
+          idempotencyKey: 'key-$type',
+          payloadJson: '{}',
+          availableAt: now,
+        ),
+        now,
+      );
+    }
+
+    final refresh = await queue.claimNext(now: now, type: 'refresh/a');
+    expect(refresh?.type, 'refresh/a');
+    expect(await queue.cancelType('refresh/a', now), 1);
+    expect(await queue.complete(refresh!.id, now), isFalse);
+    expect(
+      (await queue.list(type: 'refresh/a')).single.status,
+      DurableJobStatus.cancelled,
+    );
+    expect((await queue.claimNext(now: now))?.type, 'extract');
+  });
 }

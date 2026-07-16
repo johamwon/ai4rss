@@ -26,6 +26,12 @@ final class AppDependencies {
       clock: clock,
       ids: ids,
     );
+    feedRefreshCoordinator = FeedRefreshCoordinator(
+      jobs: jobs,
+      refresh: feedRefresh.subscribeOrRefresh,
+      clock: clock,
+      ids: ids,
+    );
     feedDiscovery = FeedDiscoveryService(
       http: http,
       feedRefresh: feedRefresh,
@@ -65,11 +71,13 @@ final class AppDependencies {
   late final PersistentJobQueue jobs;
   late final DriftFeedRepository feeds;
   late final FeedRefreshService feedRefresh;
+  late final FeedRefreshCoordinator feedRefreshCoordinator;
   late final FeedDiscoveryService feedDiscovery;
   late final SubscriptionOrganizerService subscriptionOrganizer;
   final RiverDatabase _database;
 
   Future<void> close() async {
+    await feedRefreshCoordinator.close();
     final httpPort = http;
     if (httpPort is BoundedHttpPort) {
       httpPort.close();

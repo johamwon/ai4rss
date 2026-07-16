@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:river_data/river_data.dart';
 import 'package:river_design_system/river_design_system.dart';
 import 'package:river_feed/river_feed.dart';
 
@@ -37,6 +38,8 @@ final class RiverHomeScreen extends StatefulWidget {
 final class _RiverHomeScreenState extends State<RiverHomeScreen> {
   var _busy = false;
   AppDependencies? _dependencies;
+  StreamSubscription<FeedRefreshBatchState>? _refreshStates;
+  FeedRefreshBatchState _refreshState = const FeedRefreshBatchState.idle();
   late Stream<List<FeedSubscriptionRecord>> _subscriptions;
   late Stream<List<FeedFolderRecord>> _folders;
   late Stream<List<FeedArticleRecord>> _articles;
@@ -46,11 +49,25 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
     super.didChangeDependencies();
     final dependencies = RiverDependenciesScope.of(context);
     if (!identical(dependencies, _dependencies)) {
+      unawaited(_refreshStates?.cancel());
       _dependencies = dependencies;
+      _refreshState = dependencies.feedRefreshCoordinator.state;
+      _refreshStates = dependencies.feedRefreshCoordinator.states.listen(
+        (state) {
+          if (mounted) setState(() => _refreshState = state);
+        },
+      );
       _subscriptions = dependencies.feeds.watchSubscriptions();
       _folders = dependencies.subscriptionOrganizer.watchFolders();
       _articles = dependencies.feeds.watchArticles();
+      unawaited(dependencies.feedRefreshCoordinator.resumePending());
     }
+  }
+
+  @override
+  void dispose() {
+    unawaited(_refreshStates?.cancel());
+    super.dispose();
   }
 
   Future<void> _addFeed() async {
@@ -86,15 +103,27 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
   }
 
   Future<void> _refreshAll(List<FeedSubscriptionRecord> feeds) async {
-    await _run(
-      () async {
-        final service = RiverDependenciesScope.of(context).feedRefresh;
-        for (final feed in feeds.where((item) => item.enabled)) {
-          await service.subscribeOrRefresh(feed.canonicalUrl);
-        }
-        return '刷新完成';
-      },
-    );
+    try {
+      final result = await RiverDependenciesScope.of(context)
+          .feedRefreshCoordinator
+          .start(feeds);
+      if (!mounted) return;
+      if (result.phase == FeedRefreshBatchPhase.cancelled) {
+        _showMessage('刷新已取消：完成 ${result.succeeded}/${result.total}');
+      } else if (result.failed > 0) {
+        _showMessage(
+          '刷新完成：成功 ${result.succeeded}，失败 ${result.failed}',
+        );
+      } else {
+        _showMessage('刷新完成：${result.succeeded} 个来源');
+      }
+    } catch (error) {
+      if (mounted) _showMessage('操作失败：$error');
+    }
+  }
+
+  Future<void> _cancelRefresh() async {
+    await RiverDependenciesScope.of(context).feedRefreshCoordinator.cancel();
   }
 
   Future<void> _run(Future<String?> Function() operation) async {
@@ -102,21 +131,23 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
     try {
       final successMessage = await operation();
       if (successMessage != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(successMessage)),
-        );
+        _showMessage(successMessage);
       }
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('操作失败：$error')),
-        );
+        _showMessage('操作失败：$error');
       }
     } finally {
       if (mounted) {
         setState(() => _busy = false);
       }
     }
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   Future<void> _handleFeedAction(
@@ -261,16 +292,27 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
           final folders = folderSnapshot.data ?? const <FeedFolderRecord>[];
           final subscriptions =
               subscriptionSnapshot.data ?? const <FeedSubscriptionRecord>[];
+          final refreshing = _refreshState.isActive;
           return Scaffold(
             appBar: AppBar(
               title: const Text('River'),
               actions: <Widget>[
                 IconButton(
-                  onPressed: _busy || subscriptions.isEmpty
-                      ? null
-                      : () => unawaited(_refreshAll(subscriptions)),
-                  icon: const Icon(Icons.refresh),
-                  tooltip: '刷新全部',
+                  onPressed: refreshing
+                      ? _refreshState.phase == FeedRefreshBatchPhase.running
+                          ? () => unawaited(_cancelRefresh())
+                          : null
+                      : _busy || subscriptions.isEmpty
+                          ? null
+                          : () => unawaited(_refreshAll(subscriptions)),
+                  icon: Icon(
+                    refreshing ? Icons.stop_circle_outlined : Icons.refresh,
+                  ),
+                  tooltip: refreshing
+                      ? _refreshState.phase == FeedRefreshBatchPhase.cancelling
+                          ? '正在取消刷新'
+                          : '取消刷新'
+                      : '刷新全部',
                 ),
                 IconButton(
                   onPressed: _busy ? null : () => unawaited(_addFeed()),
@@ -302,14 +344,22 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
             ),
             body: _busy && subscriptions.isEmpty
                 ? const Center(child: CircularProgressIndicator())
-                : _Inbox(
-                    subscriptions: subscriptions,
-                    folders: folders,
-                    articles: _articles,
-                    onFeedAction: (feed, action) =>
-                        unawaited(_handleFeedAction(feed, action, folders)),
-                    onFolderAction: (folder, action) =>
-                        unawaited(_handleFolderAction(folder, action)),
+                : Column(
+                    children: <Widget>[
+                      if (refreshing) _RefreshStatusBar(state: _refreshState),
+                      Expanded(
+                        child: _Inbox(
+                          subscriptions: subscriptions,
+                          folders: folders,
+                          articles: _articles,
+                          onFeedAction: (feed, action) => unawaited(
+                            _handleFeedAction(feed, action, folders),
+                          ),
+                          onFolderAction: (folder, action) =>
+                              unawaited(_handleFolderAction(folder, action)),
+                        ),
+                      ),
+                    ],
                   ),
           );
         },
@@ -323,6 +373,34 @@ enum _FeedAction { toggle, move, delete }
 enum _FolderAction { rename, delete }
 
 enum _SubscriptionAction { createFolder, importOpml, exportOpml }
+
+final class _RefreshStatusBar extends StatelessWidget {
+  const _RefreshStatusBar({required this.state});
+
+  final FeedRefreshBatchState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = state.phase == FeedRefreshBatchPhase.cancelling
+        ? '正在停止刷新，已开始的请求会安全结束'
+        : '正在刷新 ${state.settled}/${state.total} 个来源';
+    return Semantics(
+      label: label,
+      value: '${state.settled}/${state.total}',
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text(label, style: Theme.of(context).textTheme.labelMedium),
+            const SizedBox(height: 6),
+            LinearProgressIndicator(value: state.progress),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
 final class _Inbox extends StatelessWidget {
   const _Inbox({
