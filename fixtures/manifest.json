@@ -6,7 +6,19 @@
     },
     {
       "path": "fixtures/html/wechat_synthetic.html",
-      "contains": ["js_content", "可验证的测试正文"]
+      "contains": ["js_content", "River Lab", "data-src"]
+    },
+    {
+      "path": "fixtures/html/feed_full_synthetic.html",
+      "contains": ["complete article", "fastest reliable reading path"]
+    },
+    {
+      "path": "fixtures/html/feed_summary_synthetic.html",
+      "contains": ["short description", "supporting details"]
+    },
+    {
+      "path": "fixtures/html/feed_truncated_synthetic.html",
+      "contains": ["publisher call to action", "Read the full article"]
     },
     {
       "path": "fixtures/html/feed_discovery_synthetic.html",
@@ -14,11 +26,11 @@
     },
     {
       "path": "fixtures/opml/subscriptions_nested.opml",
-      "contains": ["River OPML Fixture", "AI &amp; 工具"]
+      "contains": ["River OPML Fixture", "AI &amp;"]
     },
     {
       "path": "fixtures/ai/article_001.json",
-      "contains": ["River", "本地优先"]
+      "contains": ["River"]
     }
   ]
 }

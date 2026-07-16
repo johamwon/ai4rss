@@ -30,10 +30,7 @@ abstract interface class HttpPort {
 }
 
 abstract interface class FullTextExtractor {
-  Future<ExtractedArticle> extract({
-    required Uri sourceUri,
-    required String rawHtml,
-  });
+  Future<ExtractionResult> extract(ExtractionRequest request);
 }
 
 abstract interface class AiProvider {

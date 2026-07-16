@@ -1,5 +1,96 @@
 enum ContentSource { feed, web, weChat, podcast }
 
+enum ExtractionFailureCode {
+  invalidInput,
+  unsupportedSource,
+  sourceContentMissing,
+  articleBodyMissing,
+  contentTooShort,
+  truncatedContent,
+  unsafeContent,
+  malformedDocument,
+  network,
+  timeout,
+  responseTooLarge,
+  cancelled,
+  unavailable,
+  unexpected,
+}
+
+enum ExtractionAttemptOutcome { succeeded, skipped, failed }
+
+final class ExtractionRequest {
+  const ExtractionRequest({
+    required this.sourceUri,
+    this.pageHtml,
+    this.feedContentHtml,
+    this.feedSummary,
+    this.title,
+    this.author,
+    this.publishedAt,
+  });
+
+  final Uri sourceUri;
+  final String? pageHtml;
+  final String? feedContentHtml;
+  final String? feedSummary;
+  final String? title;
+  final String? author;
+  final DateTime? publishedAt;
+}
+
+final class ExtractionFailure {
+  const ExtractionFailure({
+    required this.code,
+    required this.message,
+    this.retryable = false,
+  });
+
+  final ExtractionFailureCode code;
+  final String message;
+  final bool retryable;
+}
+
+final class ExtractionAttempt {
+  const ExtractionAttempt({
+    required this.extractor,
+    required this.extractorVersion,
+    required this.outcome,
+    this.failureCode,
+    this.qualityScore,
+  }) : assert(
+          qualityScore == null || (qualityScore >= 0 && qualityScore <= 1),
+          'qualityScore must be between 0 and 1',
+        );
+
+  final String extractor;
+  final String extractorVersion;
+  final ExtractionAttemptOutcome outcome;
+  final ExtractionFailureCode? failureCode;
+  final double? qualityScore;
+}
+
+sealed class ExtractionResult {
+  const ExtractionResult({required this.attempts});
+
+  final List<ExtractionAttempt> attempts;
+}
+
+final class ExtractionSuccess extends ExtractionResult {
+  const ExtractionSuccess({required this.article, required super.attempts});
+
+  final ExtractedArticle article;
+}
+
+final class ExtractionFailureResult extends ExtractionResult {
+  const ExtractionFailureResult({
+    required this.failure,
+    required super.attempts,
+  });
+
+  final ExtractionFailure failure;
+}
+
 final class Article {
   const Article({
     required this.id,
@@ -28,16 +119,25 @@ final class ExtractedArticle {
     required this.extractor,
     required this.extractorVersion,
     this.author,
+    this.canonicalUri,
+    this.publishedAt,
     this.imageUrls = const <Uri>[],
-  });
+    this.qualityScore = 0,
+  }) : assert(
+          qualityScore >= 0 && qualityScore <= 1,
+          'qualityScore must be between 0 and 1',
+        );
 
   final String title;
   final String? author;
+  final Uri? canonicalUri;
+  final DateTime? publishedAt;
   final String html;
   final String plainText;
   final List<Uri> imageUrls;
   final String extractor;
   final String extractorVersion;
+  final double qualityScore;
 }
 
 final class ArticleSummary {

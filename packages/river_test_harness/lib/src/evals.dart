@@ -88,17 +88,71 @@ final class HarnessEvals {
     for (final item in cases) {
       final id = item['id'] as String;
       final input = File(_path(item['fixture'] as String)).readAsStringSync();
-      final result = await extractor.extract(
-        sourceUri: Uri.parse(item['url'] as String),
-        rawHtml: input,
-      );
+      final sourceUri = Uri.parse(item['url'] as String);
+      final request = switch (item['input']) {
+        'pageHtml' => ExtractionRequest(
+            sourceUri: sourceUri,
+            pageHtml: input,
+          ),
+        'feedContentHtml' => ExtractionRequest(
+            sourceUri: sourceUri,
+            feedContentHtml: input,
+          ),
+        'feedSummary' => ExtractionRequest(
+            sourceUri: sourceUri,
+            feedSummary: input,
+          ),
+        _ => throw StateError('Unsupported extraction fixture input'),
+      };
+      final result = await extractor.extract(request);
+      final expectedOutcome = item['expectedOutcome'] as String;
+      if (expectedOutcome == 'failure') {
+        if (result is! ExtractionFailureResult) {
+          failures.add(EvalFailure(id, 'expected a classified failure'));
+          continue;
+        }
+        final expectedFailure = item['expectedFailure'] as String;
+        if (result.failure.code.name != expectedFailure) {
+          failures.add(
+            EvalFailure(
+              id,
+              'expected $expectedFailure, got ${result.failure.code.name}',
+            ),
+          );
+        }
+        continue;
+      }
+      if (result is! ExtractionSuccess) {
+        final code = (result as ExtractionFailureResult).failure.code.name;
+        failures.add(EvalFailure(id, 'unexpected extraction failure: $code'));
+        continue;
+      }
+      final article = result.article;
+      final expectedExtractor = item['expectedExtractor'] as String;
+      if (article.extractor != expectedExtractor) {
+        failures.add(
+          EvalFailure(
+            id,
+            'expected extractor $expectedExtractor, got ${article.extractor}',
+          ),
+        );
+      }
+      final qualityAtLeast = (item['qualityAtLeast'] as num).toDouble();
+      if (article.qualityScore < qualityAtLeast) {
+        failures.add(
+          EvalFailure(
+            id,
+            'quality ${article.qualityScore} is below $qualityAtLeast',
+          ),
+        );
+      }
       for (final expected in _strings(item['plainTextContains'])) {
-        if (!result.plainText.contains(expected)) {
+        if (!article.plainText.contains(expected)) {
           failures.add(EvalFailure(id, 'plain text missing: $expected'));
         }
       }
       for (final forbidden in _strings(item['htmlForbids'])) {
-        if (result.html.toLowerCase().contains(forbidden.toLowerCase())) {
+        if (article.html.toLowerCase().contains(forbidden.toLowerCase())) {
           failures.add(EvalFailure(id, 'unsafe HTML retained: $forbidden'));
         }
       }

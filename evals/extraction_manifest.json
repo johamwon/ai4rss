@@ -4,8 +4,39 @@
       "id": "wechat-synthetic-001",
       "fixture": "fixtures/html/wechat_synthetic.html",
       "url": "https://mp.weixin.qq.com/s/synthetic",
-      "plainTextContains": ["可验证的测试正文", "本地优先架构"],
-      "htmlForbids": ["<script", "onclick=", "onerror=", "javascript:"]
+      "input": "pageHtml",
+      "expectedOutcome": "success",
+      "expectedExtractor": "wechat-static",
+      "qualityAtLeast": 0.48,
+      "plainTextContains": ["River", "测试正文", "本地优先架构"],
+      "htmlForbids": ["<script", "onclick=", "onerror=", "javascript:", "js_pc_qr_code"]
+    },
+    {
+      "id": "feed-full-001",
+      "fixture": "fixtures/html/feed_full_synthetic.html",
+      "url": "https://example.test/articles/full",
+      "input": "feedContentHtml",
+      "expectedOutcome": "success",
+      "expectedExtractor": "feed-full-content",
+      "qualityAtLeast": 0.62,
+      "plainTextContains": ["complete article", "fastest reliable reading path"],
+      "htmlForbids": ["<script", "onclick=", "javascript:"]
+    },
+    {
+      "id": "feed-summary-001",
+      "fixture": "fixtures/html/feed_summary_synthetic.html",
+      "url": "https://example.test/articles/summary",
+      "input": "feedSummary",
+      "expectedOutcome": "failure",
+      "expectedFailure": "contentTooShort"
+    },
+    {
+      "id": "feed-truncated-001",
+      "fixture": "fixtures/html/feed_truncated_synthetic.html",
+      "url": "https://example.test/articles/truncated",
+      "input": "feedContentHtml",
+      "expectedOutcome": "failure",
+      "expectedFailure": "truncatedContent"
     }
   ]
 }
