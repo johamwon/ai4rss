@@ -6,7 +6,10 @@ resolution: workspace
 environment:
   sdk: '>=3.6.0 <4.0.0'
 dependencies:
-  file_picker: 11.0.2
+  # Vendored 11.0.2 keeps its path-traversal fix and iOS 13 support while
+  # applying the upstream AGP 9 legacy-KGP compatibility patch.
+  file_picker:
+    path: ../../third_party/file_picker
   flutter:
     sdk: flutter
   river_domain:
