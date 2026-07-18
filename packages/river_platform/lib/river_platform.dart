@@ -2,6 +2,7 @@ library;
 
 import 'package:flutter/services.dart';
 
+export 'src/dynamic_page_renderer.dart';
 export 'src/opml_file_gateway.dart';
 
 abstract interface class RiverPlatformBridge {

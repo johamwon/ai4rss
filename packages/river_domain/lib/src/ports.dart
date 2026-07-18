@@ -33,6 +33,10 @@ abstract interface class FullTextExtractor {
   Future<ExtractionResult> extract(ExtractionRequest request);
 }
 
+abstract interface class DynamicPageRenderer {
+  Future<DynamicPageRenderResult> render(DynamicPageRenderRequest request);
+}
+
 abstract interface class ExtractionCache {
   Future<CachedExtraction?> read({
     required Uri sourceUri,

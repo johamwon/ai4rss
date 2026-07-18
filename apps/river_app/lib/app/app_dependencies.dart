@@ -53,14 +53,17 @@ final class AppDependencies {
     await database.verifyReady();
     final http = BoundedHttpPort.standard();
     const clock = SystemClock();
+    final layeredExtractor = LayeredFullTextExtractor.withDynamicPageRenderer(
+      InAppWebViewDynamicPageRenderer(),
+    );
     return AppDependencies(
       clock: clock,
       ids: SecureIdGenerator(),
       fullTextExtractor: CachedFullTextExtractor(
-        delegate: const LayeredFullTextExtractor(),
+        delegate: layeredExtractor,
         cache: DriftExtractionCache(database),
         clock: clock,
-        extractorVersions: LayeredFullTextExtractor.currentExtractorVersions,
+        extractorVersions: layeredExtractor.extractorVersions,
       ),
       platform: const MethodChannelRiverPlatform(),
       http: http,

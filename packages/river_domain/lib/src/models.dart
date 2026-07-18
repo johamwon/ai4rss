@@ -47,6 +47,35 @@ final class ExtractionRequest {
   final bool forceReparse;
 }
 
+final class DynamicPageRenderRequest {
+  const DynamicPageRenderRequest({
+    required this.sourceUri,
+    this.timeout = const Duration(seconds: 12),
+    this.maxHtmlCharacters = 5 * 1024 * 1024,
+  });
+
+  final Uri sourceUri;
+  final Duration timeout;
+  final int maxHtmlCharacters;
+}
+
+sealed class DynamicPageRenderResult {
+  const DynamicPageRenderResult();
+}
+
+final class DynamicPageRenderSuccess extends DynamicPageRenderResult {
+  const DynamicPageRenderSuccess({required this.html, required this.finalUri});
+
+  final String html;
+  final Uri finalUri;
+}
+
+final class DynamicPageRenderFailure extends DynamicPageRenderResult {
+  const DynamicPageRenderFailure(this.failure);
+
+  final ExtractionFailure failure;
+}
+
 final class ExtractionFailure {
   const ExtractionFailure({
     required this.code,
