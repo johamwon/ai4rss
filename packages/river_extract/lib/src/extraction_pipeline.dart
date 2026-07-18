@@ -104,12 +104,19 @@ final class ExtractionPipeline implements FullTextExtractor {
 final class LayeredFullTextExtractor implements FullTextExtractor {
   const LayeredFullTextExtractor();
 
+  static const _stages = <ExtractionStage>[
+    FeedContentExtractionStage(),
+    WeChatStaticExtractionStage(),
+    ReadabilityExtractionStage(),
+  ];
+
+  static final Map<String, String> currentExtractorVersions =
+      Map<String, String>.unmodifiable(<String, String>{
+    for (final stage in _stages) stage.id: stage.version,
+  });
+
   static const _pipeline = ExtractionPipeline(
-    stages: <ExtractionStage>[
-      FeedContentExtractionStage(),
-      WeChatStaticExtractionStage(),
-      ReadabilityExtractionStage(),
-    ],
+    stages: _stages,
   );
 
   @override

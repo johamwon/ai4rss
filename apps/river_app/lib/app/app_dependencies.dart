@@ -52,10 +52,16 @@ final class AppDependencies {
     );
     await database.verifyReady();
     final http = BoundedHttpPort.standard();
+    const clock = SystemClock();
     return AppDependencies(
-      clock: const SystemClock(),
+      clock: clock,
       ids: SecureIdGenerator(),
-      fullTextExtractor: const LayeredFullTextExtractor(),
+      fullTextExtractor: CachedFullTextExtractor(
+        delegate: const LayeredFullTextExtractor(),
+        cache: DriftExtractionCache(database),
+        clock: clock,
+        extractorVersions: LayeredFullTextExtractor.currentExtractorVersions,
+      ),
       platform: const MethodChannelRiverPlatform(),
       http: http,
       database: database,
