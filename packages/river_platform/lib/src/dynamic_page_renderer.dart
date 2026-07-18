@@ -139,7 +139,6 @@ final class InAppWebViewHeadlessPageLoader implements HeadlessPageLoader {
         geolocationEnabled: false,
         mediaPlaybackRequiresUserGesture: true,
         thirdPartyCookiesEnabled: false,
-        saveFormData: false,
         cacheEnabled: true,
       ),
       shouldOverrideUrlLoading: (controller, navigation) async {

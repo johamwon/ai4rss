@@ -11,7 +11,7 @@ UI. Platform SDK types remain inside `river_platform`.
 The renderer accepts only HTTP(S), applies a twelve-second default timeout, caps
 the returned HTML at five MiB, limits main-frame navigations, blocks local URL
 schemes and popup windows, and disables file/content access, geolocation,
-third-party cookies, form data, and automatic media. JavaScript stays enabled
+third-party cookies and automatic media. JavaScript stays enabled
 because this stage exists specifically for script-generated article bodies.
 Rendered HTML is never stored directly: it is parsed by the existing
 Readability stage and passed through the shared sanitizer first.
