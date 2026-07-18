@@ -23,6 +23,9 @@ execution and is runnable on Android, iOS, and Windows; the nightly Windows
 journey executes it automatically. Merge and release builds compile all three
 platform implementations. The plugin requires NuGet for its Windows WebView2
 adapter, so every Windows workflow installs it explicitly.
+The Windows application also defines Microsoft's narrow experimental-coroutine
+compatibility macro for the transitive CppWinRT header used by WebView2; all
+other compiler warnings remain errors.
 
 Rollback removes `DynamicPageExtractionStage` from the composition root and
 restores the static extractor version map. Existing cached articles remain
