@@ -109,7 +109,7 @@ void main() {
     dependencies = AppDependencies(
       clock: _FixedClock(),
       ids: _FixedIds(),
-      fullTextExtractor: const BasicHtmlExtractor(),
+      fullTextExtractor: const LayeredFullTextExtractor(),
       platform: _FakePlatform(),
       http: http,
       opmlFiles: opmlFiles,

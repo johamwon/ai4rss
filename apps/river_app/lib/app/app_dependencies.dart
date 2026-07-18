@@ -55,7 +55,7 @@ final class AppDependencies {
     return AppDependencies(
       clock: const SystemClock(),
       ids: SecureIdGenerator(),
-      fullTextExtractor: const BasicHtmlExtractor(),
+      fullTextExtractor: const LayeredFullTextExtractor(),
       platform: const MethodChannelRiverPlatform(),
       http: http,
       database: database,

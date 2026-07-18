@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <title>本地优先阅读实践 - 合成技术站</title>
+    <meta property="og:title" content="本地优先阅读实践">
+    <meta name="author" content="River 研究组">
+  </head>
+  <body>
+    <div class="menu"><a href="/hot">热门</a><a href="/rank">排行</a></div>
+    <main>
+      <article class="post-content">
+        <h1>本地优先阅读实践</h1>
+        <p>一个可靠的阅读工具，首先应该让用户尽快看到已经拥有的内容，而不是把每次打开文章都变成一次漫长的网络等待。Feed 中存在完整正文时，客户端可以立即展示；只有内容明显截断时，才继续尝试页面提取。</p>
+        <p>正文识别不能只依赖固定选择器，因为普通网站的结构差异很大。候选评分需要综合段落长度、中文标点、链接密度、父级语义以及相邻正文块，才能降低导航栏、推荐列表和评论区被误判为文章的概率。</p>
+        <p>提取完成以后，安全清理仍然是独立边界。脚本、事件属性、危险协议和嵌入表单必须移除；段落、引用、图片、表格与代码等阅读结构则应该保留，从而兼顾安全性与可读性。</p>
+        <blockquote>快速不等于草率，完整也不意味着必须阻塞首屏。</blockquote>
+        <p>这份语料完全由测试工程生成，用于验证中文长文在 Android、iOS 与 Windows 上获得一致结果，不包含真实作者文章、Cookie、令牌或任何用户隐私数据。</p>
+      </article>
+    </main>
+    <div class="comments"><p>评论区内容不应该进入正文。</p></div>
+    <div class="share-widget"><a href="/share">分享按钮</a></div>
+  </body>
+</html>

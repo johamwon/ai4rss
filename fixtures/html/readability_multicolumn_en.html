@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+    <title>River Architecture | Example News</title>
+    <meta property="og:title" content="How River keeps reading local-first">
+    <meta name="author" content="Alex Example">
+    <meta property="article:published_time" content="2026-07-16T09:15:00Z">
+    <link rel="canonical" href="/stories/local-first-river">
+  </head>
+  <body>
+    <header class="site-header">Example News</header>
+    <nav><a href="/news">News</a><a href="/sports">Sports</a></nav>
+    <div class="page-layout">
+      <main id="main-content">
+        <article class="story-body">
+          <h1>How River keeps reading local-first</h1>
+          <p>River displays trustworthy feed content before making any additional request. When a source provides only a summary, the client can progressively enrich the page without delaying the first useful reading state or giving up local control.</p>
+          <p>The extraction pipeline ranks candidate blocks by structure, punctuation, text length, and link density. Navigation lists and promotional sidebars should not outrank several coherent paragraphs that explain one subject in detail.</p>
+          <blockquote>A reader should see the article, not the furniture around it.</blockquote>
+          <p>The normalized result keeps useful structures such as code, quotations, tables, and images. Every fragment still crosses the shared sanitizer before the application stores or renders it.</p>
+          <pre><code>pipeline.extract(request);</code></pre>
+          <table><tbody><tr><th>Stage</th><th>Role</th></tr><tr><td>Feed</td><td>Fast path</td></tr><tr><td>Readability</td><td>Page fallback</td></tr></tbody></table>
+          <figure><img data-src="images/reader.png" alt="Reader"><figcaption>A synthetic reader view.</figcaption></figure>
+          <p>This final paragraph supplies a clear conclusion and enough independent context for offline reading. It also gives the deterministic test corpus a stable signal that should survive unrelated layout changes.</p>
+        </article>
+      </main>
+      <aside class="sidebar sponsored"><a href="/offer">Buy this unrelated product</a></aside>
+    </div>
+    <section class="related recommendations"><a href="/other">Ten unrelated stories</a></section>
+    <footer>Copyright and site links</footer>
+    <script>alert('must never survive')</script>
+  </body>
+</html>

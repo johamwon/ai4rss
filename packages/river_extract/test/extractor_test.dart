@@ -72,8 +72,186 @@ void main() {
     });
   });
 
+  group('ReadabilityExtractionStage', () {
+    const extractor = LayeredFullTextExtractor();
+
+    test('extracts a multicolumn article and preserves rich structures',
+        () async {
+      final result = await extractor.extract(
+        ExtractionRequest(
+          sourceUri: Uri.parse('https://example.test/news/source'),
+          pageHtml: _fixture('readability_multicolumn_en.html'),
+        ),
+      );
+
+      expect(
+        result,
+        isA<ExtractionSuccess>(),
+        reason:
+            result is ExtractionFailureResult ? result.failure.code.name : null,
+      );
+      final article = (result as ExtractionSuccess).article;
+      expect(article.extractor, 'readability');
+      expect(article.title, 'How River keeps reading local-first');
+      expect(article.author, 'Alex Example');
+      expect(
+        article.canonicalUri,
+        Uri.parse('https://example.test/stories/local-first-river'),
+      );
+      expect(article.publishedAt, DateTime.utc(2026, 7, 16, 9, 15));
+      expect(article.plainText, contains('trustworthy feed content'));
+      expect(article.plainText, contains('deterministic test corpus'));
+      expect(article.plainText, isNot(contains('unrelated product')));
+      expect(article.plainText, isNot(contains('unrelated stories')));
+      expect(article.html, contains('<blockquote>'));
+      expect(article.html, contains('<pre>'));
+      expect(article.html, contains('<table>'));
+      expect(
+        article.html,
+        contains('https://example.test/news/images/reader.png'),
+      );
+      expect(article.html, isNot(contains('<script')));
+    });
+
+    test('scores Chinese punctuation and excludes comments and sharing',
+        () async {
+      final result = await extractor.extract(
+        ExtractionRequest(
+          sourceUri: Uri.parse('https://cn.example.test/posts/local-first'),
+          pageHtml: _fixture('readability_chinese_long.html'),
+        ),
+      );
+
+      expect(
+        result,
+        isA<ExtractionSuccess>(),
+        reason:
+            result is ExtractionFailureResult ? result.failure.code.name : null,
+      );
+      final article = (result as ExtractionSuccess).article;
+      expect(article.extractor, 'readability');
+      expect(article.author, 'River 研究组');
+      expect(article.plainText, contains('快速不等于草率'));
+      expect(article.plainText, contains('Android、iOS 与 Windows'));
+      expect(article.plainText, isNot(contains('评论区内容')));
+      expect(article.plainText, isNot(contains('分享按钮')));
+      expect(article.qualityScore, greaterThanOrEqualTo(0.50));
+    });
+
+    test('extracts substantial paragraphs placed directly under body',
+        () async {
+      final result = await extractor.extract(
+        ExtractionRequest(
+          sourceUri: Uri.parse('https://plain.example.test/story'),
+          pageHtml: '<html><body>'
+              '<p>This direct paragraph contains enough coherent article text, punctuation, and detail to become a candidate even without semantic article markup.</p>'
+              '<p>The second paragraph confirms that body-level content is copied as children instead of producing an invalid nested body element.</p>'
+              '<p>A final paragraph makes the result trustworthy for the reader and stable for this deterministic regression test.</p>'
+              '</body></html>',
+        ),
+      );
+
+      expect(
+        result,
+        isA<ExtractionSuccess>(),
+        reason:
+            result is ExtractionFailureResult ? result.failure.code.name : null,
+      );
+      final article = (result as ExtractionSuccess).article;
+      expect(article.extractor, 'readability');
+      expect(article.plainText, contains('body-level content'));
+      expect(article.html, isNot(contains('<body')));
+    });
+
+    test('falls back from a missing WeChat body to Readability', () async {
+      final result = await extractor.extract(
+        ExtractionRequest(
+          sourceUri: Uri.parse('https://mp.weixin.qq.com/s/fallback'),
+          pageHtml: _fixture('wechat_readability_fallback_synthetic.html'),
+        ),
+      );
+
+      expect(result, isA<ExtractionSuccess>());
+      final success = result as ExtractionSuccess;
+      expect(success.article.extractor, 'readability');
+      expect(success.article.author, 'River Fallback Lab');
+      expect(success.article.imageUrls.single.path, '/wechat-fallback.png');
+      expect(success.attempts, hasLength(3));
+      expect(success.attempts[1].extractor, 'wechat-static');
+      expect(
+        success.attempts[1].failureCode,
+        ExtractionFailureCode.articleBodyMissing,
+      );
+      expect(
+        success.attempts.last.outcome,
+        ExtractionAttemptOutcome.succeeded,
+      );
+    });
+
+    test('rejects input above the configured character limit', () async {
+      const pipeline = ExtractionPipeline(
+        stages: <ExtractionStage>[
+          ReadabilityExtractionStage(maxInputCharacters: 32),
+        ],
+      );
+      final result = await pipeline.extract(
+        ExtractionRequest(
+          sourceUri: Uri.parse('https://example.test/oversized'),
+          pageHtml: '<article><p>${'x' * 80}</p></article>',
+        ),
+      );
+
+      expect(result, isA<ExtractionFailureResult>());
+      expect(
+        (result as ExtractionFailureResult).failure.code,
+        ExtractionFailureCode.responseTooLarge,
+      );
+    });
+
+    test('rejects a DOM above the configured element limit', () async {
+      const pipeline = ExtractionPipeline(
+        stages: <ExtractionStage>[
+          ReadabilityExtractionStage(maxElements: 3),
+        ],
+      );
+      final result = await pipeline.extract(
+        ExtractionRequest(
+          sourceUri: Uri.parse('https://example.test/dom-limit'),
+          pageHtml:
+              '<article><section><p>one</p><p>two</p></section></article>',
+        ),
+      );
+
+      expect(result, isA<ExtractionFailureResult>());
+      expect(
+        (result as ExtractionFailureResult).failure.code,
+        ExtractionFailureCode.responseTooLarge,
+      );
+    });
+
+    test('applies the input limit before parsing a WeChat page', () async {
+      const pipeline = ExtractionPipeline(
+        stages: <ExtractionStage>[
+          WeChatStaticExtractionStage(maxInputCharacters: 32),
+        ],
+      );
+      final result = await pipeline.extract(
+        ExtractionRequest(
+          sourceUri: Uri.parse('https://mp.weixin.qq.com/s/oversized'),
+          pageHtml: '<div id="js_content">${'x' * 80}</div>',
+        ),
+      );
+
+      expect(result, isA<ExtractionFailureResult>());
+      expect(
+        (result as ExtractionFailureResult).failure.code,
+        ExtractionFailureCode.responseTooLarge,
+      );
+    });
+  });
+
   group('ExtractionPipeline', () {
-    const extractor = BasicHtmlExtractor();
+    const extractor = LayeredFullTextExtractor();
 
     test('stops at trusted feed content', () async {
       final result = await extractor.extract(

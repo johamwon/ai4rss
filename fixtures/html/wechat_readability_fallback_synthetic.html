@@ -1,0 +1,22 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Fallback WeChat fixture</title>
+    <meta property="og:title" content="WeChat structure fallback fixture">
+    <meta name="author" content="River Fallback Lab">
+    <meta property="og:url" content="https://mp.weixin.qq.com/s/fallback-canonical">
+    <meta property="article:published_time" content="2026-07-16T10:00:00+08:00">
+  </head>
+  <body>
+    <main class="rich_media_area_primary">
+      <article class="rich_media_content story-body">
+        <h1>WeChat structure fallback fixture</h1>
+        <p>This synthetic WeChat page intentionally omits the usual js_content identifier. The site adapter must report a classified structural miss so the same request can continue through the cross-platform Readability stage.</p>
+        <p>The fallback still preserves paragraphs, metadata, and lazy images while removing executable markup. It proves that a small upstream structure change does not immediately force users into a blank reader page.</p>
+        <img data-src="https://images.example.test/wechat-fallback.png" alt="Fallback">
+        <p>The final extracted article should identify Readability as its extractor, retain the canonical source URL, and record both stage attempts for diagnostics without logging any article body.</p>
+        <script>alert('remove')</script>
+      </article>
+    </main>
+  </body>
+</html>

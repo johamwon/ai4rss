@@ -12,10 +12,9 @@ The local pipeline stops at the first trusted result. Its initial order is:
 
 1. complete content supplied by the feed;
 2. the static `mp.weixin.qq.com` adapter;
-3. the temporary generic HTML fallback.
+3. the pure Dart Readability adapter.
 
-The generic fallback is not considered a Readability implementation. A formal
-Readability stage and platform WebView stages can be inserted into the same
+Platform WebView stages can be inserted after Readability through the same
 contract without changing consumers. All remote HTML crosses the shared
 sanitizer before it becomes an `ExtractedArticle`.
 

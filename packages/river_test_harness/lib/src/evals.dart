@@ -83,7 +83,7 @@ final class HarnessEvals {
     final manifest = _readJson('evals/extraction_manifest.json');
     final cases = _list(manifest['cases']);
     final failures = <EvalFailure>[];
-    const extractor = BasicHtmlExtractor();
+    const extractor = LayeredFullTextExtractor();
 
     for (final item in cases) {
       final id = item['id'] as String;

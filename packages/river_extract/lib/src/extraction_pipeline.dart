@@ -2,6 +2,7 @@ import 'package:river_domain/river_domain.dart';
 
 import 'feed_content.dart';
 import 'html_stages.dart';
+import 'readability_stage.dart';
 
 abstract interface class ExtractionStage {
   String get id;
@@ -100,14 +101,14 @@ final class ExtractionPipeline implements FullTextExtractor {
   }
 }
 
-final class BasicHtmlExtractor implements FullTextExtractor {
-  const BasicHtmlExtractor();
+final class LayeredFullTextExtractor implements FullTextExtractor {
+  const LayeredFullTextExtractor();
 
   static const _pipeline = ExtractionPipeline(
     stages: <ExtractionStage>[
       FeedContentExtractionStage(),
       WeChatStaticExtractionStage(),
-      GenericHtmlExtractionStage(),
+      ReadabilityExtractionStage(),
     ],
   );
 

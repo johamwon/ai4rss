@@ -12,6 +12,39 @@
       "htmlForbids": ["<script", "onclick=", "onerror=", "javascript:", "js_pc_qr_code"]
     },
     {
+      "id": "readability-multicolumn-en-001",
+      "fixture": "fixtures/html/readability_multicolumn_en.html",
+      "url": "https://example.test/news/source",
+      "input": "pageHtml",
+      "expectedOutcome": "success",
+      "expectedExtractor": "readability",
+      "qualityAtLeast": 0.50,
+      "plainTextContains": ["trustworthy feed content", "deterministic test corpus", "pipeline.extract"],
+      "htmlForbids": ["<script", "unrelated product", "unrelated stories", "javascript:"]
+    },
+    {
+      "id": "readability-chinese-001",
+      "fixture": "fixtures/html/readability_chinese_long.html",
+      "url": "https://cn.example.test/posts/local-first",
+      "input": "pageHtml",
+      "expectedOutcome": "success",
+      "expectedExtractor": "readability",
+      "qualityAtLeast": 0.50,
+      "plainTextContains": ["快速不等于草率", "Android、iOS 与 Windows"],
+      "htmlForbids": ["评论区内容", "分享按钮", "<script"]
+    },
+    {
+      "id": "wechat-readability-fallback-001",
+      "fixture": "fixtures/html/wechat_readability_fallback_synthetic.html",
+      "url": "https://mp.weixin.qq.com/s/fallback",
+      "input": "pageHtml",
+      "expectedOutcome": "success",
+      "expectedExtractor": "readability",
+      "qualityAtLeast": 0.50,
+      "plainTextContains": ["intentionally omits", "cross-platform Readability stage"],
+      "htmlForbids": ["<script", "alert(", "javascript:"]
+    },
+    {
       "id": "feed-full-001",
       "fixture": "fixtures/html/feed_full_synthetic.html",
       "url": "https://example.test/articles/full",

@@ -21,6 +21,18 @@
       "contains": ["publisher call to action", "Read the full article"]
     },
     {
+      "path": "fixtures/html/readability_multicolumn_en.html",
+      "contains": ["story-body", "pipeline.extract", "data-src"]
+    },
+    {
+      "path": "fixtures/html/readability_chinese_long.html",
+      "contains": ["本地优先阅读实践", "评论区内容", "share-widget"]
+    },
+    {
+      "path": "fixtures/html/wechat_readability_fallback_synthetic.html",
+      "contains": ["rich_media_content", "intentionally omits", "data-src"]
+    },
+    {
       "path": "fixtures/html/feed_discovery_synthetic.html",
       "contains": ["application/rss+xml", "feeds.example.test/news.atom"]
     },
