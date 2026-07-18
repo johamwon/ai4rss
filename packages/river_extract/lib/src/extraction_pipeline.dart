@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:river_domain/river_domain.dart';
 
+import 'dynamic_page_stage.dart';
 import 'feed_content.dart';
 import 'html_stages.dart';
 import 'readability_stage.dart';
@@ -8,7 +11,7 @@ abstract interface class ExtractionStage {
   String get id;
   String get version;
 
-  StageExtractionResult extract(ExtractionRequest request);
+  FutureOr<StageExtractionResult> extract(ExtractionRequest request);
 }
 
 sealed class StageExtractionResult {
@@ -48,7 +51,7 @@ final class ExtractionPipeline implements FullTextExtractor {
     for (final stage in stages) {
       StageExtractionResult stageResult;
       try {
-        stageResult = stage.extract(request);
+        stageResult = await stage.extract(request);
       } catch (_) {
         stageResult = const StageExtractionFailure(
           ExtractionFailure(
@@ -102,22 +105,44 @@ final class ExtractionPipeline implements FullTextExtractor {
 }
 
 final class LayeredFullTextExtractor implements FullTextExtractor {
-  const LayeredFullTextExtractor();
+  const LayeredFullTextExtractor()
+      : _pipeline = _staticPipeline,
+        extractorVersions = currentExtractorVersions;
 
-  static const _stages = <ExtractionStage>[
+  LayeredFullTextExtractor.withDynamicPageRenderer(
+    DynamicPageRenderer renderer,
+  )   : _pipeline = ExtractionPipeline(
+          stages: <ExtractionStage>[
+            ..._staticStages,
+            DynamicPageExtractionStage(renderer: renderer),
+          ],
+        ),
+        extractorVersions = Map<String, String>.unmodifiable(
+          <String, String>{
+            ...currentExtractorVersions,
+            DynamicPageExtractionStage.extractorId:
+                DynamicPageExtractionStage.extractorVersion,
+          },
+        );
+
+  static const _staticStages = <ExtractionStage>[
     FeedContentExtractionStage(),
     WeChatStaticExtractionStage(),
     ReadabilityExtractionStage(),
   ];
 
-  static final Map<String, String> currentExtractorVersions =
-      Map<String, String>.unmodifiable(<String, String>{
-    for (final stage in _stages) stage.id: stage.version,
-  });
+  static const Map<String, String> currentExtractorVersions = <String, String>{
+    'feed-full-content': '1',
+    'wechat-static': '1',
+    'readability': '1',
+  };
 
-  static const _pipeline = ExtractionPipeline(
-    stages: _stages,
+  static const _staticPipeline = ExtractionPipeline(
+    stages: _staticStages,
   );
+
+  final ExtractionPipeline _pipeline;
+  final Map<String, String> extractorVersions;
 
   @override
   Future<ExtractionResult> extract(ExtractionRequest request) =>

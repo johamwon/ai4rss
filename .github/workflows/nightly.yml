@@ -63,12 +63,18 @@ jobs:
           flutter-version-file: pubspec.yaml
           cache: true
 
+      - name: Set up NuGet for WebView2
+        if: matrix.target == 'windows'
+        uses: NuGet/setup-nuget@v2
+
       - name: Resolve workspace
         run: flutter pub get
 
       - name: Run Windows integration journey
         if: matrix.target == 'windows'
-        run: flutter test integration_test/foundation_journey_test.dart -d windows
+        run: |
+          flutter test integration_test/foundation_journey_test.dart -d windows
+          flutter test integration_test/dynamic_page_renderer_test.dart -d windows
         working-directory: apps/river_app
 
       - name: Build ${{ matrix.target }}

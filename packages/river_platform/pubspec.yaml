@@ -12,6 +12,7 @@ dependencies:
     path: ../../third_party/file_picker
   flutter:
     sdk: flutter
+  flutter_inappwebview: 6.1.5
   river_domain:
     path: ../river_domain
   river_feed:
