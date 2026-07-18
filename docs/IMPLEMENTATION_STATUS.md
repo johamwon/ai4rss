@@ -1,6 +1,6 @@
 # River 实施状态
 
-更新时间：2026-07-16
+更新时间：2026-07-18
 
 ## 已完成
 
@@ -17,6 +17,7 @@
 - EXT-001：统一正文提取请求、规范化成功结果、稳定失败码、阶段尝试记录、Extractor 版本和质量评分。
 - EXT-002：Feed 全文可信度判定，可区分完整正文、短摘要、显式截断和空内容，并在可信时停止后续提取。
 - EXT-003 核心：纯 Dart Readability 候选评分、链接密度、正文兄弟合并、中文标点、多栏噪声清理、元数据归一化与输入规模上限。
+- EXT-006：SQLite 正文缓存、SHA-256 内容哈希、ETag/Last-Modified 与规则版本失效、显式重解析、同 URL 请求合并、全局/同源并发限制及离线旧缓存回退。
 - 首个纵向切片：添加 Feed URL → 下载 → 解析 → SQLite 幂等写入 → 订阅及文章列表。
 - Windows Debug 构建和真实 Runner Integration Test。
 
@@ -32,18 +33,18 @@
 
 ## 下一批
 
-1. EXT-006：正文缓存、同 URL 并发合并、内容哈希与规则版本重解析。
-2. EXT-007：Android WebView、WKWebView 与 WebView2 动态渲染回退契约。
-3. READ-001：文章状态、阅读页和离线闭环。
-4. FEED-007：接入三端平台后台刷新契约与 Smoke Test。
-5. FEED-008：离线提示和断网重试体验。
+1. EXT-007：Android WebView、WKWebView 与 WebView2 动态渲染回退契约。
+2. READ-001：文章状态、阅读页和离线闭环。
+3. FEED-007：接入三端平台后台刷新契约与 Smoke Test。
+4. FEED-008：离线提示和断网重试体验。
+5. EXT-008：全文失败恢复 UX 与原文/重试入口。
 
 ## 最近验证
 
 - Fast Lane：通过，静态分析 0 问题。
 - `river_feed`：22 个测试通过。
-- `river_data`：15 个测试通过，覆盖并发限制、部分失败、取消和重启恢复。
+- `river_data`：18 个测试通过，覆盖正文缓存持久化、失败保留、并发限制、部分失败、取消和重启恢复。
 - `river_app`：7 个测试通过，覆盖刷新进度与取消反馈。
-- `river_extract`：16 个测试通过，覆盖安全清理、Feed 全文判定、微信静态提取、Readability 中英正文、多栏噪声、富结构、输入上限、流水线回退与异常分类。
+- `river_extract`：23 个测试通过，覆盖缓存命中、请求合并、全局/同源并发、版本/验证器失效、哈希与旧缓存回退，以及安全清理、Feed 全文、微信和 Readability。
 - Harness：fixtures 11/11、feeds 3/3、extraction 7/7、AI replay 1/1、ranking 2/2。
-- 三端构建：最近一次 Android/iOS/Windows Nightly 发布候选与主分支 Debug 构建均已通过；FEED-006 不修改原生平台代码。
+- 三端构建：最近一次 Android/iOS/Windows 主分支 Debug 构建均已通过；EXT-006 不修改原生平台代码或数据库 schema。

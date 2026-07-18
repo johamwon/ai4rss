@@ -33,6 +33,31 @@ abstract interface class FullTextExtractor {
   Future<ExtractionResult> extract(ExtractionRequest request);
 }
 
+abstract interface class ExtractionCache {
+  Future<CachedExtraction?> read({
+    required Uri sourceUri,
+    String? articleId,
+  });
+
+  Future<void> writeSuccess({
+    required String articleId,
+    required ExtractedArticle article,
+    required String contentHash,
+    required DateTime extractedAt,
+    String? etag,
+    String? lastModified,
+  });
+
+  Future<void> writeFailure({
+    required String articleId,
+    required ExtractionFailureCode failureCode,
+    required String extractorVersion,
+    required DateTime attemptedAt,
+    String? etag,
+    String? lastModified,
+  });
+}
+
 abstract interface class AiProvider {
   Future<ArticleSummary> summarize(Article article);
 }

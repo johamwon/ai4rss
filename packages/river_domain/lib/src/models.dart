@@ -22,21 +22,29 @@ enum ExtractionAttemptOutcome { succeeded, skipped, failed }
 final class ExtractionRequest {
   const ExtractionRequest({
     required this.sourceUri,
+    this.articleId,
     this.pageHtml,
     this.feedContentHtml,
     this.feedSummary,
     this.title,
     this.author,
     this.publishedAt,
+    this.etag,
+    this.lastModified,
+    this.forceReparse = false,
   });
 
   final Uri sourceUri;
+  final String? articleId;
   final String? pageHtml;
   final String? feedContentHtml;
   final String? feedSummary;
   final String? title;
   final String? author;
   final DateTime? publishedAt;
+  final String? etag;
+  final String? lastModified;
+  final bool forceReparse;
 }
 
 final class ExtractionFailure {
@@ -138,6 +146,26 @@ final class ExtractedArticle {
   final String extractor;
   final String extractorVersion;
   final double qualityScore;
+}
+
+final class CachedExtraction {
+  const CachedExtraction({
+    required this.articleId,
+    required this.article,
+    required this.contentHash,
+    required this.extractedAt,
+    this.etag,
+    this.lastModified,
+    this.lastFailureCode,
+  });
+
+  final String articleId;
+  final ExtractedArticle article;
+  final String contentHash;
+  final DateTime extractedAt;
+  final String? etag;
+  final String? lastModified;
+  final ExtractionFailureCode? lastFailureCode;
 }
 
 final class ArticleSummary {
