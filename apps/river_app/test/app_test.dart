@@ -146,7 +146,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('操作失败'), findsNothing);
-    expect(find.text('Test Feed'), findsOneWidget);
+    expect(find.text('Test Feed'), findsWidgets);
     expect(find.text('First article'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
@@ -185,7 +185,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('操作失败'), findsNothing);
-    expect(find.text('Test Feed'), findsOneWidget);
+    expect(find.text('Test Feed'), findsWidgets);
     expect(http.requests, <Uri>[
       Uri.parse('https://example.test/'),
       Uri.parse('https://example.test/feed.xml'),

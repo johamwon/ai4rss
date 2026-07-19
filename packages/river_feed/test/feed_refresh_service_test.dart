@@ -89,7 +89,9 @@ final class _Repository implements FeedRepository {
   }) async {}
 
   @override
-  Stream<List<FeedArticleRecord>> watchArticles({String? feedId}) =>
+  Stream<List<FeedArticleRecord>> watchArticles({
+    FeedArticleQuery query = const FeedArticleQuery(),
+  }) =>
       const Stream<List<FeedArticleRecord>>.empty();
 
   @override

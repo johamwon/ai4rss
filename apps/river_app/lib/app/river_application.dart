@@ -6,6 +6,7 @@ import 'package:river_design_system/river_design_system.dart';
 import 'package:river_feed/river_feed.dart';
 
 import 'app_dependencies.dart';
+import 'article_list.dart';
 import 'dependency_scope.dart';
 
 final class RiverApp extends StatelessWidget {
@@ -42,7 +43,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
   FeedRefreshBatchState _refreshState = const FeedRefreshBatchState.idle();
   late Stream<List<FeedSubscriptionRecord>> _subscriptions;
   late Stream<List<FeedFolderRecord>> _folders;
-  late Stream<List<FeedArticleRecord>> _articles;
+  ArticleListController? _articleListController;
 
   @override
   void didChangeDependencies() {
@@ -59,7 +60,10 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
       );
       _subscriptions = dependencies.feeds.watchSubscriptions();
       _folders = dependencies.subscriptionOrganizer.watchFolders();
-      _articles = dependencies.feeds.watchArticles();
+      _articleListController?.dispose();
+      _articleListController = ArticleListController(
+        load: (query) => dependencies.feeds.watchArticles(query: query),
+      );
       unawaited(dependencies.feedRefreshCoordinator.resumePending());
     }
   }
@@ -67,6 +71,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
   @override
   void dispose() {
     unawaited(_refreshStates?.cancel());
+    _articleListController?.dispose();
     super.dispose();
   }
 
@@ -351,7 +356,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
                         child: _Inbox(
                           subscriptions: subscriptions,
                           folders: folders,
-                          articles: _articles,
+                          articleListController: _articleListController!,
                           onFeedAction: (feed, action) => unawaited(
                             _handleFeedAction(feed, action, folders),
                           ),
@@ -406,14 +411,14 @@ final class _Inbox extends StatelessWidget {
   const _Inbox({
     required this.subscriptions,
     required this.folders,
-    required this.articles,
+    required this.articleListController,
     required this.onFeedAction,
     required this.onFolderAction,
   });
 
   final List<FeedSubscriptionRecord> subscriptions;
   final List<FeedFolderRecord> folders;
-  final Stream<List<FeedArticleRecord>> articles;
+  final ArticleListController articleListController;
   final void Function(FeedSubscriptionRecord, _FeedAction) onFeedAction;
   final void Function(FeedFolderRecord, _FolderAction) onFolderAction;
 
@@ -433,21 +438,9 @@ final class _Inbox extends StatelessWidget {
         ),
         const Divider(height: 1),
         Expanded(
-          child: StreamBuilder<List<FeedArticleRecord>>(
-            stream: articles,
-            builder: (context, snapshot) {
-              final items = snapshot.data ?? const <FeedArticleRecord>[];
-              if (items.isEmpty) {
-                return const Center(child: Text('订阅源中还没有文章'));
-              }
-              return ListView.separated(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemBuilder: (context, index) => _ArticleTile(items[index]),
-                separatorBuilder: (context, index) =>
-                    const Divider(height: 1, indent: 72),
-                itemCount: items.length,
-              );
-            },
+          child: ArticleListPane(
+            controller: articleListController,
+            folders: folders,
           ),
         ),
       ],
@@ -575,30 +568,6 @@ final class _FeedGroup {
   final String label;
   final FeedFolderRecord? folder;
   final List<FeedSubscriptionRecord> feeds;
-}
-
-final class _ArticleTile extends StatelessWidget {
-  const _ArticleTile(this.article);
-
-  final FeedArticleRecord article;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: CircleAvatar(
-        child: Icon(article.read ? Icons.done : Icons.article_outlined),
-      ),
-      title: Text(article.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-      subtitle: article.summary == null
-          ? null
-          : Text(
-              article.summary!,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-      trailing: article.starred ? const Icon(Icons.star) : null,
-    );
-  }
 }
 
 final class _EmptyInbox extends StatelessWidget {
