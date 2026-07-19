@@ -6,13 +6,15 @@ import 'package:river_app/app/article_reader.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
 
+import '../test_support/article_reader_fakes.dart';
+
 void main() {
   testWidgets('shows available feed content while full text is pending', (
     tester,
   ) async {
     final details = StreamController<FeedArticleDetailRecord?>();
     final extraction = Completer<ExtractionResult>();
-    final controller = ArticleReaderController(
+    final controller = buildReaderController(
       articleId: 'article-1',
       watch: (_) => details.stream,
       extract: (_) => extraction.future,
@@ -53,7 +55,7 @@ void main() {
         'Additional complete article ending.';
     final details = StreamController<FeedArticleDetailRecord?>();
     final extraction = Completer<ExtractionResult>();
-    final controller = ArticleReaderController(
+    final controller = buildReaderController(
       articleId: 'article-1',
       watch: (_) => details.stream,
       extract: (_) => extraction.future,
@@ -88,12 +90,13 @@ void main() {
     expect(updatedState.documentText, complete);
     expect(updatedState.selectedText, selected);
     expect(updatedState.scrollOffset, greaterThan(0));
+    await tester.pump(const Duration(milliseconds: 500));
   });
 
   testWidgets('cached article is readable when enhancement fails', (
     tester,
   ) async {
-    final controller = ArticleReaderController(
+    final controller = buildReaderController(
       articleId: 'article-1',
       watch: (_) => Stream<FeedArticleDetailRecord?>.value(
         _detail(
@@ -130,7 +133,7 @@ void main() {
 
   testWidgets('detail load failure is private and retryable', (tester) async {
     var calls = 0;
-    final controller = ArticleReaderController(
+    final controller = buildReaderController(
       articleId: 'article-1',
       watch: (_) {
         calls += 1;
@@ -157,6 +160,107 @@ void main() {
     expect(find.text('Recovered article'), findsOneWidget);
     expect(calls, 2);
   });
+
+  testWidgets(
+    'restores progress and persists reader actions settings and safe share',
+    (tester) async {
+      final body = List<String>.generate(
+        140,
+        (index) => 'Paragraph $index keeps the reader scrollable.',
+      ).join('\n');
+      final repository = FakeArticleReaderRepository(
+        (_) => Stream<FeedArticleDetailRecord?>.value(
+          _detail(summary: body, scrollDepth: 0.52),
+        ),
+      );
+      final settings = FakeReaderSettingsRepository();
+      final share = FakeShareGateway();
+      final controller = buildReaderController(
+        articleId: 'article-1',
+        watch: repository.watch,
+        repository: repository,
+        settings: settings,
+        share: share,
+        extract: (_) => Completer<ExtractionResult>().future,
+      );
+      addTearDown(() async {
+        controller.dispose();
+        await settings.close();
+      });
+
+      await tester.pumpWidget(_TestHost(controller: controller));
+      await tester.pump();
+      await tester.pump();
+
+      final document = tester.state<ArticleDocumentViewState>(
+        find.byType(ArticleDocumentView),
+      );
+      expect(document.scrollOffset, greaterThan(0));
+      expect(repository.readWrites, <bool>[true]);
+
+      await tester.tap(find.byTooltip('收藏'));
+      await tester.pump();
+      await tester.tap(find.byTooltip('稍后读'));
+      await tester.pump();
+      await tester.tap(find.byTooltip('分享'));
+      await tester.pump();
+
+      expect(repository.starredWrites, <bool>[true]);
+      expect(repository.readLaterWrites, <bool>[true]);
+      expect(share.lastRequest, isNotNull);
+      expect(share.lastRequest!.text, contains('Progressive article'));
+      expect(share.lastRequest!.text, contains('https://example.test/article'));
+      expect(share.lastRequest!.text, isNot(contains('Paragraph 100')));
+
+      await tester.tap(find.byTooltip('阅读排版'));
+      await tester.pumpAndSettle();
+      expect(find.text('阅读排版'), findsOneWidget);
+      expect(find.byType(Slider), findsNWidgets(3));
+      await tester.tap(find.text('深色'));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, '保存'));
+      await tester.pumpAndSettle();
+
+      expect(settings.current.theme, ReaderThemePreference.dark);
+      expect(
+        Theme.of(tester.element(find.byType(TextField))).brightness,
+        Brightness.dark,
+      );
+
+      document.scrollToFraction(0.81);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(repository.progressWrites.last, closeTo(0.81, 0.02));
+    },
+  );
+
+  testWidgets('reader keeps system text scaling above its own typography', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(1.5)),
+          child: Scaffold(
+            body: ArticleDocumentView(
+              content: const ArticleReaderContent(
+                text: 'Accessible reading text',
+                source: ArticleReaderContentSource.feed,
+                revision: 'one',
+              ),
+              settings: const ReaderSettings(fontScale: 1.2),
+              initialProgress: 0,
+              onProgressChanged: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final field = find.byType(TextField);
+    final media = MediaQuery.of(tester.element(field));
+    expect(media.textScaler.scale(10), 15);
+    expect(tester.widget<TextField>(field).style!.fontSize, greaterThan(18));
+  });
 }
 
 final class _TestHost extends StatelessWidget {
@@ -173,6 +277,10 @@ final class _TestHost extends StatelessWidget {
 FeedArticleDetailRecord _detail({
   required String summary,
   FeedArticleContentRecord? content,
+  double scrollDepth = 0,
+  bool read = false,
+  bool starred = false,
+  bool readLater = false,
 }) =>
     FeedArticleDetailRecord(
       id: 'article-1',
@@ -180,9 +288,11 @@ FeedArticleDetailRecord _detail({
       feedTitle: 'Example Feed',
       canonicalUrl: Uri.parse('https://example.test/article'),
       title: 'Progressive article',
-      read: false,
-      starred: false,
-      readLater: false,
+      read: read,
+      starred: starred,
+      readLater: readLater,
+      scrollDepth: scrollDepth,
+      activeReadSeconds: 0,
       publishedAt: DateTime.utc(2026, 7, 19),
       summary: summary,
       content: content,

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 export 'src/dynamic_page_renderer.dart';
 export 'src/opml_file_gateway.dart';
+export 'src/share_gateway.dart';
 
 abstract interface class RiverPlatformBridge {
   Future<String> platformVersion();

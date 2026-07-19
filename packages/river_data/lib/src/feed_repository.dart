@@ -364,6 +364,79 @@ final class DriftFeedRepository
   }
 
   @override
+  Future<void> setRead(
+    String articleId, {
+    required bool read,
+    required DateTime updatedAt,
+  }) => _writeArticleState(
+    articleId,
+    ArticlesCompanion(
+      readState: Value<String>(read ? 'read' : 'unread'),
+      updatedAt: Value<DateTime>(updatedAt),
+    ),
+  );
+
+  @override
+  Future<void> setStarred(
+    String articleId, {
+    required bool starred,
+    required DateTime updatedAt,
+  }) => _writeArticleState(
+    articleId,
+    ArticlesCompanion(
+      starred: Value<bool>(starred),
+      updatedAt: Value<DateTime>(updatedAt),
+    ),
+  );
+
+  @override
+  Future<void> setReadLater(
+    String articleId, {
+    required bool readLater,
+    required DateTime updatedAt,
+  }) => _writeArticleState(
+    articleId,
+    ArticlesCompanion(
+      readLater: Value<bool>(readLater),
+      updatedAt: Value<DateTime>(updatedAt),
+    ),
+  );
+
+  @override
+  Future<void> saveReadingProgress(
+    String articleId, {
+    required double scrollDepth,
+    required DateTime updatedAt,
+  }) {
+    final normalized = scrollDepth.clamp(0, 1).toDouble();
+    return _writeArticleState(
+      articleId,
+      ArticlesCompanion(
+        scrollDepth: Value<double>(normalized),
+        completedAt: normalized >= 0.9
+            ? Value<DateTime?>(updatedAt)
+            : const Value<DateTime?>.absent(),
+        readState: normalized >= 0.9
+            ? const Value<String>('read')
+            : const Value<String>.absent(),
+        updatedAt: Value<DateTime>(updatedAt),
+      ),
+    );
+  }
+
+  Future<void> _writeArticleState(
+    String articleId,
+    ArticlesCompanion companion,
+  ) async {
+    final changed = await (database.update(
+      database.articles,
+    )..where((table) => table.id.equals(articleId))).write(companion);
+    if (changed == 0) {
+      throw const feed.ArticleReaderException('article_missing');
+    }
+  }
+
+  @override
   Future<void> applyRefresh({
     required String feedId,
     required Uri canonicalUrl,
@@ -561,6 +634,9 @@ feed.FeedArticleDetailRecord _articleDetail(
   read: row.readState != 'unread',
   starred: row.starred,
   readLater: row.readLater,
+  scrollDepth: row.scrollDepth.clamp(0, 1).toDouble(),
+  activeReadSeconds: row.activeReadSeconds,
+  completedAt: row.completedAt,
   content: content == null
       ? null
       : feed.FeedArticleContentRecord(

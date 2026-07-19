@@ -66,6 +66,19 @@ abstract interface class AiProvider {
   Future<ArticleSummary> summarize(Article article);
 }
 
+abstract interface class ReaderSettingsRepository {
+  Stream<ReaderSettings> watchSettings();
+
+  Future<void> saveSettings(
+    ReaderSettings settings, {
+    required DateTime updatedAt,
+  });
+}
+
+abstract interface class ShareGateway {
+  Future<ShareOutcome> share(ShareRequest request);
+}
+
 abstract interface class AudioEngine {
   Future<void> load(AudioItem item);
   Future<void> play();

@@ -138,8 +138,11 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
       MaterialPageRoute<void>(
         builder: (context) => ArticleReaderPage(
           articleId: article.id,
-          watch: dependencies.feeds.watchArticle,
-          extract: dependencies.fullTextExtractor.extract,
+          repository: dependencies.feeds,
+          extractor: dependencies.fullTextExtractor,
+          readerSettings: dependencies.readerSettings,
+          share: dependencies.share,
+          clock: dependencies.clock,
         ),
       ),
     );

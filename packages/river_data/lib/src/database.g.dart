@@ -3165,6 +3165,468 @@ class ReadingEventsCompanion extends UpdateCompanion<ReadingEvent> {
   }
 }
 
+class $ReaderSettingsRowsTable extends ReaderSettingsRows
+    with TableInfo<$ReaderSettingsRowsTable, ReaderSettingsRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReaderSettingsRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fontFamilyMeta = const VerificationMeta(
+    'fontFamily',
+  );
+  @override
+  late final GeneratedColumn<String> fontFamily = GeneratedColumn<String>(
+    'font_family',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('system'),
+  );
+  static const VerificationMeta _fontScaleMeta = const VerificationMeta(
+    'fontScale',
+  );
+  @override
+  late final GeneratedColumn<double> fontScale = GeneratedColumn<double>(
+    'font_scale',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _lineHeightMeta = const VerificationMeta(
+    'lineHeight',
+  );
+  @override
+  late final GeneratedColumn<double> lineHeight = GeneratedColumn<double>(
+    'line_height',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1.75),
+  );
+  static const VerificationMeta _contentWidthMeta = const VerificationMeta(
+    'contentWidth',
+  );
+  @override
+  late final GeneratedColumn<double> contentWidth = GeneratedColumn<double>(
+    'content_width',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(760),
+  );
+  static const VerificationMeta _themeMeta = const VerificationMeta('theme');
+  @override
+  late final GeneratedColumn<String> theme = GeneratedColumn<String>(
+    'theme',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('system'),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    fontFamily,
+    fontScale,
+    lineHeight,
+    contentWidth,
+    theme,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reader_settings_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReaderSettingsRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('font_family')) {
+      context.handle(
+        _fontFamilyMeta,
+        fontFamily.isAcceptableOrUnknown(data['font_family']!, _fontFamilyMeta),
+      );
+    }
+    if (data.containsKey('font_scale')) {
+      context.handle(
+        _fontScaleMeta,
+        fontScale.isAcceptableOrUnknown(data['font_scale']!, _fontScaleMeta),
+      );
+    }
+    if (data.containsKey('line_height')) {
+      context.handle(
+        _lineHeightMeta,
+        lineHeight.isAcceptableOrUnknown(data['line_height']!, _lineHeightMeta),
+      );
+    }
+    if (data.containsKey('content_width')) {
+      context.handle(
+        _contentWidthMeta,
+        contentWidth.isAcceptableOrUnknown(
+          data['content_width']!,
+          _contentWidthMeta,
+        ),
+      );
+    }
+    if (data.containsKey('theme')) {
+      context.handle(
+        _themeMeta,
+        theme.isAcceptableOrUnknown(data['theme']!, _themeMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReaderSettingsRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReaderSettingsRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      fontFamily: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}font_family'],
+      )!,
+      fontScale: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}font_scale'],
+      )!,
+      lineHeight: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}line_height'],
+      )!,
+      contentWidth: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}content_width'],
+      )!,
+      theme: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}theme'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ReaderSettingsRowsTable createAlias(String alias) {
+    return $ReaderSettingsRowsTable(attachedDatabase, alias);
+  }
+}
+
+class ReaderSettingsRow extends DataClass
+    implements Insertable<ReaderSettingsRow> {
+  final String id;
+  final String fontFamily;
+  final double fontScale;
+  final double lineHeight;
+  final double contentWidth;
+  final String theme;
+  final DateTime updatedAt;
+  const ReaderSettingsRow({
+    required this.id,
+    required this.fontFamily,
+    required this.fontScale,
+    required this.lineHeight,
+    required this.contentWidth,
+    required this.theme,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['font_family'] = Variable<String>(fontFamily);
+    map['font_scale'] = Variable<double>(fontScale);
+    map['line_height'] = Variable<double>(lineHeight);
+    map['content_width'] = Variable<double>(contentWidth);
+    map['theme'] = Variable<String>(theme);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ReaderSettingsRowsCompanion toCompanion(bool nullToAbsent) {
+    return ReaderSettingsRowsCompanion(
+      id: Value(id),
+      fontFamily: Value(fontFamily),
+      fontScale: Value(fontScale),
+      lineHeight: Value(lineHeight),
+      contentWidth: Value(contentWidth),
+      theme: Value(theme),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ReaderSettingsRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReaderSettingsRow(
+      id: serializer.fromJson<String>(json['id']),
+      fontFamily: serializer.fromJson<String>(json['fontFamily']),
+      fontScale: serializer.fromJson<double>(json['fontScale']),
+      lineHeight: serializer.fromJson<double>(json['lineHeight']),
+      contentWidth: serializer.fromJson<double>(json['contentWidth']),
+      theme: serializer.fromJson<String>(json['theme']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'fontFamily': serializer.toJson<String>(fontFamily),
+      'fontScale': serializer.toJson<double>(fontScale),
+      'lineHeight': serializer.toJson<double>(lineHeight),
+      'contentWidth': serializer.toJson<double>(contentWidth),
+      'theme': serializer.toJson<String>(theme),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ReaderSettingsRow copyWith({
+    String? id,
+    String? fontFamily,
+    double? fontScale,
+    double? lineHeight,
+    double? contentWidth,
+    String? theme,
+    DateTime? updatedAt,
+  }) => ReaderSettingsRow(
+    id: id ?? this.id,
+    fontFamily: fontFamily ?? this.fontFamily,
+    fontScale: fontScale ?? this.fontScale,
+    lineHeight: lineHeight ?? this.lineHeight,
+    contentWidth: contentWidth ?? this.contentWidth,
+    theme: theme ?? this.theme,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ReaderSettingsRow copyWithCompanion(ReaderSettingsRowsCompanion data) {
+    return ReaderSettingsRow(
+      id: data.id.present ? data.id.value : this.id,
+      fontFamily: data.fontFamily.present
+          ? data.fontFamily.value
+          : this.fontFamily,
+      fontScale: data.fontScale.present ? data.fontScale.value : this.fontScale,
+      lineHeight: data.lineHeight.present
+          ? data.lineHeight.value
+          : this.lineHeight,
+      contentWidth: data.contentWidth.present
+          ? data.contentWidth.value
+          : this.contentWidth,
+      theme: data.theme.present ? data.theme.value : this.theme,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReaderSettingsRow(')
+          ..write('id: $id, ')
+          ..write('fontFamily: $fontFamily, ')
+          ..write('fontScale: $fontScale, ')
+          ..write('lineHeight: $lineHeight, ')
+          ..write('contentWidth: $contentWidth, ')
+          ..write('theme: $theme, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    fontFamily,
+    fontScale,
+    lineHeight,
+    contentWidth,
+    theme,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReaderSettingsRow &&
+          other.id == this.id &&
+          other.fontFamily == this.fontFamily &&
+          other.fontScale == this.fontScale &&
+          other.lineHeight == this.lineHeight &&
+          other.contentWidth == this.contentWidth &&
+          other.theme == this.theme &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ReaderSettingsRowsCompanion extends UpdateCompanion<ReaderSettingsRow> {
+  final Value<String> id;
+  final Value<String> fontFamily;
+  final Value<double> fontScale;
+  final Value<double> lineHeight;
+  final Value<double> contentWidth;
+  final Value<String> theme;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const ReaderSettingsRowsCompanion({
+    this.id = const Value.absent(),
+    this.fontFamily = const Value.absent(),
+    this.fontScale = const Value.absent(),
+    this.lineHeight = const Value.absent(),
+    this.contentWidth = const Value.absent(),
+    this.theme = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReaderSettingsRowsCompanion.insert({
+    required String id,
+    this.fontFamily = const Value.absent(),
+    this.fontScale = const Value.absent(),
+    this.lineHeight = const Value.absent(),
+    this.contentWidth = const Value.absent(),
+    this.theme = const Value.absent(),
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       updatedAt = Value(updatedAt);
+  static Insertable<ReaderSettingsRow> custom({
+    Expression<String>? id,
+    Expression<String>? fontFamily,
+    Expression<double>? fontScale,
+    Expression<double>? lineHeight,
+    Expression<double>? contentWidth,
+    Expression<String>? theme,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (fontFamily != null) 'font_family': fontFamily,
+      if (fontScale != null) 'font_scale': fontScale,
+      if (lineHeight != null) 'line_height': lineHeight,
+      if (contentWidth != null) 'content_width': contentWidth,
+      if (theme != null) 'theme': theme,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReaderSettingsRowsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? fontFamily,
+    Value<double>? fontScale,
+    Value<double>? lineHeight,
+    Value<double>? contentWidth,
+    Value<String>? theme,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ReaderSettingsRowsCompanion(
+      id: id ?? this.id,
+      fontFamily: fontFamily ?? this.fontFamily,
+      fontScale: fontScale ?? this.fontScale,
+      lineHeight: lineHeight ?? this.lineHeight,
+      contentWidth: contentWidth ?? this.contentWidth,
+      theme: theme ?? this.theme,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (fontFamily.present) {
+      map['font_family'] = Variable<String>(fontFamily.value);
+    }
+    if (fontScale.present) {
+      map['font_scale'] = Variable<double>(fontScale.value);
+    }
+    if (lineHeight.present) {
+      map['line_height'] = Variable<double>(lineHeight.value);
+    }
+    if (contentWidth.present) {
+      map['content_width'] = Variable<double>(contentWidth.value);
+    }
+    if (theme.present) {
+      map['theme'] = Variable<String>(theme.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReaderSettingsRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('fontFamily: $fontFamily, ')
+          ..write('fontScale: $fontScale, ')
+          ..write('lineHeight: $lineHeight, ')
+          ..write('contentWidth: $contentWidth, ')
+          ..write('theme: $theme, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $KnowledgeItemsTable extends KnowledgeItems
     with TableInfo<$KnowledgeItemsTable, KnowledgeItem> {
   @override
@@ -5524,6 +5986,8 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
     this,
   );
   late final $ReadingEventsTable readingEvents = $ReadingEventsTable(this);
+  late final $ReaderSettingsRowsTable readerSettingsRows =
+      $ReaderSettingsRowsTable(this);
   late final $KnowledgeItemsTable knowledgeItems = $KnowledgeItemsTable(this);
   late final $AudioItemsTable audioItems = $AudioItemsTable(this);
   late final $BackgroundJobsTable backgroundJobs = $BackgroundJobsTable(this);
@@ -5538,6 +6002,7 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
     articles,
     articleContents,
     readingEvents,
+    readerSettingsRows,
     knowledgeItems,
     audioItems,
     backgroundJobs,
@@ -8078,6 +8543,263 @@ typedef $$ReadingEventsTableProcessedTableManager =
       ReadingEvent,
       PrefetchHooks Function({bool articleId})
     >;
+typedef $$ReaderSettingsRowsTableCreateCompanionBuilder =
+    ReaderSettingsRowsCompanion Function({
+      required String id,
+      Value<String> fontFamily,
+      Value<double> fontScale,
+      Value<double> lineHeight,
+      Value<double> contentWidth,
+      Value<String> theme,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ReaderSettingsRowsTableUpdateCompanionBuilder =
+    ReaderSettingsRowsCompanion Function({
+      Value<String> id,
+      Value<String> fontFamily,
+      Value<double> fontScale,
+      Value<double> lineHeight,
+      Value<double> contentWidth,
+      Value<String> theme,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ReaderSettingsRowsTableFilterComposer
+    extends Composer<_$RiverDatabase, $ReaderSettingsRowsTable> {
+  $$ReaderSettingsRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get fontFamily => $composableBuilder(
+    column: $table.fontFamily,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get fontScale => $composableBuilder(
+    column: $table.fontScale,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get lineHeight => $composableBuilder(
+    column: $table.lineHeight,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get contentWidth => $composableBuilder(
+    column: $table.contentWidth,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get theme => $composableBuilder(
+    column: $table.theme,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReaderSettingsRowsTableOrderingComposer
+    extends Composer<_$RiverDatabase, $ReaderSettingsRowsTable> {
+  $$ReaderSettingsRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get fontFamily => $composableBuilder(
+    column: $table.fontFamily,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get fontScale => $composableBuilder(
+    column: $table.fontScale,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get lineHeight => $composableBuilder(
+    column: $table.lineHeight,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get contentWidth => $composableBuilder(
+    column: $table.contentWidth,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get theme => $composableBuilder(
+    column: $table.theme,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReaderSettingsRowsTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $ReaderSettingsRowsTable> {
+  $$ReaderSettingsRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get fontFamily => $composableBuilder(
+    column: $table.fontFamily,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get fontScale =>
+      $composableBuilder(column: $table.fontScale, builder: (column) => column);
+
+  GeneratedColumn<double> get lineHeight => $composableBuilder(
+    column: $table.lineHeight,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get contentWidth => $composableBuilder(
+    column: $table.contentWidth,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get theme =>
+      $composableBuilder(column: $table.theme, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ReaderSettingsRowsTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $ReaderSettingsRowsTable,
+          ReaderSettingsRow,
+          $$ReaderSettingsRowsTableFilterComposer,
+          $$ReaderSettingsRowsTableOrderingComposer,
+          $$ReaderSettingsRowsTableAnnotationComposer,
+          $$ReaderSettingsRowsTableCreateCompanionBuilder,
+          $$ReaderSettingsRowsTableUpdateCompanionBuilder,
+          (
+            ReaderSettingsRow,
+            BaseReferences<
+              _$RiverDatabase,
+              $ReaderSettingsRowsTable,
+              ReaderSettingsRow
+            >,
+          ),
+          ReaderSettingsRow,
+          PrefetchHooks Function()
+        > {
+  $$ReaderSettingsRowsTableTableManager(
+    _$RiverDatabase db,
+    $ReaderSettingsRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReaderSettingsRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReaderSettingsRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReaderSettingsRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> fontFamily = const Value.absent(),
+                Value<double> fontScale = const Value.absent(),
+                Value<double> lineHeight = const Value.absent(),
+                Value<double> contentWidth = const Value.absent(),
+                Value<String> theme = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReaderSettingsRowsCompanion(
+                id: id,
+                fontFamily: fontFamily,
+                fontScale: fontScale,
+                lineHeight: lineHeight,
+                contentWidth: contentWidth,
+                theme: theme,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String> fontFamily = const Value.absent(),
+                Value<double> fontScale = const Value.absent(),
+                Value<double> lineHeight = const Value.absent(),
+                Value<double> contentWidth = const Value.absent(),
+                Value<String> theme = const Value.absent(),
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ReaderSettingsRowsCompanion.insert(
+                id: id,
+                fontFamily: fontFamily,
+                fontScale: fontScale,
+                lineHeight: lineHeight,
+                contentWidth: contentWidth,
+                theme: theme,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReaderSettingsRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $ReaderSettingsRowsTable,
+      ReaderSettingsRow,
+      $$ReaderSettingsRowsTableFilterComposer,
+      $$ReaderSettingsRowsTableOrderingComposer,
+      $$ReaderSettingsRowsTableAnnotationComposer,
+      $$ReaderSettingsRowsTableCreateCompanionBuilder,
+      $$ReaderSettingsRowsTableUpdateCompanionBuilder,
+      (
+        ReaderSettingsRow,
+        BaseReferences<
+          _$RiverDatabase,
+          $ReaderSettingsRowsTable,
+          ReaderSettingsRow
+        >,
+      ),
+      ReaderSettingsRow,
+      PrefetchHooks Function()
+    >;
 typedef $$KnowledgeItemsTableCreateCompanionBuilder =
     KnowledgeItemsCompanion Function({
       required String id,
@@ -9377,6 +10099,8 @@ class $RiverDatabaseManager {
       $$ArticleContentsTableTableManager(_db, _db.articleContents);
   $$ReadingEventsTableTableManager get readingEvents =>
       $$ReadingEventsTableTableManager(_db, _db.readingEvents);
+  $$ReaderSettingsRowsTableTableManager get readerSettingsRows =>
+      $$ReaderSettingsRowsTableTableManager(_db, _db.readerSettingsRows);
   $$KnowledgeItemsTableTableManager get knowledgeItems =>
       $$KnowledgeItemsTableTableManager(_db, _db.knowledgeItems);
   $$AudioItemsTableTableManager get audioItems =>

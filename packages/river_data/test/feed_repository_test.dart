@@ -454,4 +454,92 @@ void main() {
     expect(enhanced!.content!.plainText, 'Complete cached body');
     expect(enhanced.content!.contentHash, 'hash-1');
   });
+
+  test('reader state writes are idempotent and progress restores', () async {
+    final now = DateTime.utc(2026, 7, 19);
+    await repository.applyRefresh(
+      feedId: 'feed-1',
+      canonicalUrl: Uri.parse('https://example.test/feed.xml'),
+      feed: const feed.ParsedFeed(
+        kind: feed.FeedDocumentKind.rss,
+        title: 'State Feed',
+        items: <feed.ParsedFeedItem>[],
+      ),
+      articles: <feed.FeedArticleDraft>[
+        feed.FeedArticleDraft(
+          id: 'article-state',
+          canonicalUrl: Uri.parse('https://example.test/state'),
+          title: 'Persistent state',
+          summary: 'State body',
+        ),
+      ],
+      refreshedAt: now,
+    );
+
+    await repository.setRead('article-state', read: true, updatedAt: now);
+    await repository.setRead('article-state', read: true, updatedAt: now);
+    await repository.setStarred('article-state', starred: true, updatedAt: now);
+    await repository.setStarred('article-state', starred: true, updatedAt: now);
+    await repository.setReadLater(
+      'article-state',
+      readLater: true,
+      updatedAt: now,
+    );
+    await repository.saveReadingProgress(
+      'article-state',
+      scrollDepth: 0.64,
+      updatedAt: now,
+    );
+
+    final stored = await repository.watchArticle('article-state').first;
+    expect(stored, isNotNull);
+    expect(stored!.read, isTrue);
+    expect(stored.starred, isTrue);
+    expect(stored.readLater, isTrue);
+    expect(stored.scrollDepth, 0.64);
+    expect(stored.completedAt, isNull);
+
+    await repository.setRead('article-state', read: false, updatedAt: now);
+    await repository.setStarred(
+      'article-state',
+      starred: false,
+      updatedAt: now,
+    );
+    await repository.setReadLater(
+      'article-state',
+      readLater: false,
+      updatedAt: now,
+    );
+    final cleared = await repository.watchArticle('article-state').first;
+    expect(cleared!.read, isFalse);
+    expect(cleared.starred, isFalse);
+    expect(cleared.readLater, isFalse);
+
+    final completedAt = now.add(const Duration(minutes: 5));
+    await repository.saveReadingProgress(
+      'article-state',
+      scrollDepth: 0.95,
+      updatedAt: completedAt,
+    );
+    final completed = await repository.watchArticle('article-state').first;
+    expect(completed!.scrollDepth, 0.95);
+    expect(completed.completedAt?.toUtc(), completedAt);
+  });
+
+  test('reader state write reports a missing article without leaking data', () {
+    expect(
+      repository.setRead(
+        'missing',
+        read: true,
+        updatedAt: DateTime.utc(2026, 7, 19),
+      ),
+      throwsA(
+        isA<feed.ArticleReaderException>().having(
+          (error) => error.code,
+          'code',
+          'article_missing',
+        ),
+      ),
+    );
+  });
 }

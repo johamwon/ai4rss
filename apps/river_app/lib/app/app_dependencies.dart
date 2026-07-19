@@ -13,6 +13,7 @@ final class AppDependencies {
     required this.ids,
     required this.fullTextExtractor,
     required this.platform,
+    required this.share,
     required this.http,
     required RiverDatabase database,
     OpmlFileGateway? opmlFiles,
@@ -41,6 +42,7 @@ final class AppDependencies {
       clock: clock,
       ids: ids,
     );
+    readerSettings = DriftReaderSettingsRepository(database);
   }
 
   static Future<AppDependencies> production() async {
@@ -69,6 +71,7 @@ final class AppDependencies {
         extractorVersions: layeredExtractor.extractorVersions,
       ),
       platform: const MethodChannelRiverPlatform(),
+      share: SharePlusGateway(),
       http: http,
       database: database,
     );
@@ -78,6 +81,7 @@ final class AppDependencies {
   final IdGenerator ids;
   final FullTextExtractor fullTextExtractor;
   final RiverPlatformBridge platform;
+  final ShareGateway share;
   final HttpPort http;
   final OpmlFileGateway opmlFiles;
   late final PersistentJobQueue jobs;
@@ -86,6 +90,7 @@ final class AppDependencies {
   late final FeedRefreshCoordinator feedRefreshCoordinator;
   late final FeedDiscoveryService feedDiscovery;
   late final SubscriptionOrganizerService subscriptionOrganizer;
+  late final DriftReaderSettingsRepository readerSettings;
   final RiverDatabase _database;
 
   Future<void> close() async {

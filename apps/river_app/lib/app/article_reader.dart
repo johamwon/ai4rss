@@ -1,16 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:river_design_system/river_design_system.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
 import 'package:river_feed/river_feed.dart';
-
-typedef ArticleDetailLoader = Stream<FeedArticleDetailRecord?> Function(
-  String articleId,
-);
-typedef ArticleExtractionLoader = Future<ExtractionResult> Function(
-  ExtractionRequest request,
-);
 
 enum ArticleReaderLoadPhase { loading, ready, missing, failed }
 
@@ -42,6 +36,9 @@ final class ArticleReaderState {
     this.enhancementPhase = ArticleEnhancementPhase.idle,
     this.detail,
     this.content,
+    this.settings = const ReaderSettings(),
+    this.operationFailure,
+    this.isMutating = false,
   });
 
   const ArticleReaderState.loading()
@@ -51,39 +48,65 @@ final class ArticleReaderState {
   final ArticleEnhancementPhase enhancementPhase;
   final FeedArticleDetailRecord? detail;
   final ArticleReaderContent? content;
+  final ReaderSettings settings;
+  final String? operationFailure;
+  final bool isMutating;
 
   ArticleReaderState copyWith({
     ArticleReaderLoadPhase? loadPhase,
     ArticleEnhancementPhase? enhancementPhase,
     FeedArticleDetailRecord? detail,
     ArticleReaderContent? content,
+    ReaderSettings? settings,
+    String? operationFailure,
+    bool clearOperationFailure = false,
+    bool? isMutating,
   }) =>
       ArticleReaderState(
         loadPhase: loadPhase ?? this.loadPhase,
         enhancementPhase: enhancementPhase ?? this.enhancementPhase,
         detail: detail ?? this.detail,
         content: content ?? this.content,
+        settings: settings ?? this.settings,
+        operationFailure: clearOperationFailure
+            ? null
+            : operationFailure ?? this.operationFailure,
+        isMutating: isMutating ?? this.isMutating,
       );
 }
 
 final class ArticleReaderController extends ChangeNotifier {
   ArticleReaderController({
     required this.articleId,
-    required ArticleDetailLoader watch,
-    required ArticleExtractionLoader extract,
-  })  : _watch = watch,
-        _extract = extract {
-    _subscribe();
+    required ArticleReaderRepository repository,
+    required FullTextExtractor extractor,
+    required ReaderSettingsRepository readerSettings,
+    required ShareGateway share,
+    required Clock clock,
+  })  : _repository = repository,
+        _extractor = extractor,
+        _readerSettings = readerSettings,
+        _share = share,
+        _clock = clock {
+    _subscribeArticle();
+    _subscribeSettings();
   }
 
   final String articleId;
-  final ArticleDetailLoader _watch;
-  final ArticleExtractionLoader _extract;
-  StreamSubscription<FeedArticleDetailRecord?>? _subscription;
+  final ArticleReaderRepository _repository;
+  final FullTextExtractor _extractor;
+  final ReaderSettingsRepository _readerSettings;
+  final ShareGateway _share;
+  final Clock _clock;
+  StreamSubscription<FeedArticleDetailRecord?>? _articleSubscription;
+  StreamSubscription<ReaderSettings>? _settingsSubscription;
   ArticleReaderState _state = const ArticleReaderState.loading();
   var _extractionStarted = false;
   var _subscriptionGeneration = 0;
   var _extractionGeneration = 0;
+  var _openedMarked = false;
+  Timer? _progressTimer;
+  double? _pendingProgress;
   var _disposed = false;
 
   ArticleReaderState get state => _state;
@@ -91,14 +114,19 @@ final class ArticleReaderController extends ChangeNotifier {
   void retry() {
     _extractionStarted = false;
     _extractionGeneration += 1;
-    _setState(const ArticleReaderState.loading());
-    _subscribe();
+    _setState(
+      ArticleReaderState(
+        loadPhase: ArticleReaderLoadPhase.loading,
+        settings: _state.settings,
+      ),
+    );
+    _subscribeArticle();
   }
 
-  void _subscribe() {
+  void _subscribeArticle() {
     final generation = ++_subscriptionGeneration;
-    unawaited(_subscription?.cancel());
-    _subscription = _watch(articleId).listen(
+    unawaited(_articleSubscription?.cancel());
+    _articleSubscription = _repository.watchArticle(articleId).listen(
       (detail) {
         if (generation == _subscriptionGeneration) _acceptDetail(detail);
       },
@@ -109,6 +137,17 @@ final class ArticleReaderController extends ChangeNotifier {
         );
       },
     );
+  }
+
+  void _subscribeSettings() {
+    _settingsSubscription = _readerSettings.watchSettings().listen(
+          (settings) => _setState(_state.copyWith(settings: settings)),
+          onError: (Object error, StackTrace stackTrace) => _setState(
+            _state.copyWith(
+              operationFailure: '闃呰璁剧疆鏆備笉鍙敤锛屽凡浣跨敤榛樿鎺掔増',
+            ),
+          ),
+        );
   }
 
   void _acceptDetail(FeedArticleDetailRecord? detail) {
@@ -130,8 +169,15 @@ final class ArticleReaderController extends ChangeNotifier {
         enhancementPhase: _state.enhancementPhase,
         detail: detail,
         content: nextContent,
+        settings: _state.settings,
+        operationFailure: _state.operationFailure,
+        isMutating: _state.isMutating,
       ),
     );
+    if (!_openedMarked) {
+      _openedMarked = true;
+      unawaited(_setRead(true, automatic: true));
+    }
     if (!_extractionStarted) {
       _extractionStarted = true;
       unawaited(_enhance(detail));
@@ -145,7 +191,7 @@ final class ArticleReaderController extends ChangeNotifier {
     );
     ExtractionResult result;
     try {
-      result = await _extract(
+      result = await _extractor.extract(
         ExtractionRequest(
           sourceUri: detail.canonicalUrl,
           articleId: detail.id,
@@ -191,6 +237,137 @@ final class ArticleReaderController extends ChangeNotifier {
     }
   }
 
+  Future<void> toggleRead() async {
+    final detail = _state.detail;
+    if (detail == null) return;
+    await _setRead(!detail.read);
+  }
+
+  Future<void> _setRead(bool read, {bool automatic = false}) => _mutate(
+        () => _repository.setRead(
+          articleId,
+          read: read,
+          updatedAt: _clock.now(),
+        ),
+        failureMessage: automatic ? null : '无法更新已读状态',
+      );
+
+  Future<void> toggleStarred() async {
+    final detail = _state.detail;
+    if (detail == null) return;
+    await _mutate(
+      () => _repository.setStarred(
+        articleId,
+        starred: !detail.starred,
+        updatedAt: _clock.now(),
+      ),
+      failureMessage: '无法更新收藏状态',
+    );
+  }
+
+  Future<void> toggleReadLater() async {
+    final detail = _state.detail;
+    if (detail == null) return;
+    await _mutate(
+      () => _repository.setReadLater(
+        articleId,
+        readLater: !detail.readLater,
+        updatedAt: _clock.now(),
+      ),
+      failureMessage: '无法更新稍后读状态',
+    );
+  }
+
+  Future<void> saveSettings(ReaderSettings settings) async {
+    final previous = _state.settings;
+    _setState(
+      _state.copyWith(settings: settings, clearOperationFailure: true),
+    );
+    try {
+      await _readerSettings.saveSettings(settings, updatedAt: _clock.now());
+    } on Object {
+      _setState(
+        _state.copyWith(
+          settings: previous,
+          operationFailure: '闃呰璁剧疆淇濆瓨澶辫触锛岃閲嶈瘯',
+        ),
+      );
+    }
+  }
+
+  Future<void> shareArticle({ShareAnchor? anchor}) async {
+    final detail = _state.detail;
+    if (detail == null) return;
+    try {
+      final outcome = await _share.share(
+        ShareRequest(
+          title: detail.title,
+          subject: detail.title,
+          text: '${detail.title}\n${detail.canonicalUrl}',
+          anchor: anchor,
+        ),
+      );
+      if (outcome == ShareOutcome.unavailable) {
+        _setState(
+          _state.copyWith(operationFailure: '褰撳墠绯荤粺鏆備笉鏀寔鍒嗕韩'),
+        );
+      }
+    } on Object {
+      _setState(_state.copyWith(operationFailure: '鍒嗕韩澶辫触锛岃閲嶈瘯'));
+    }
+  }
+
+  void reportProgress(double progress) {
+    final normalized = progress.clamp(0, 1).toDouble();
+    _pendingProgress = normalized;
+    _progressTimer?.cancel();
+    _progressTimer = Timer(const Duration(milliseconds: 450), _flushProgress);
+  }
+
+  void clearOperationFailure() =>
+      _setState(_state.copyWith(clearOperationFailure: true));
+
+  Future<void> _mutate(
+    Future<void> Function() operation, {
+    required String? failureMessage,
+  }) async {
+    _setState(
+      _state.copyWith(isMutating: true, clearOperationFailure: true),
+    );
+    try {
+      await operation();
+    } on Object {
+      if (failureMessage != null) {
+        _setState(_state.copyWith(operationFailure: failureMessage));
+      }
+    } finally {
+      _setState(_state.copyWith(isMutating: false));
+    }
+  }
+
+  void _flushProgress() {
+    _progressTimer?.cancel();
+    _progressTimer = null;
+    final progress = _pendingProgress;
+    _pendingProgress = null;
+    if (progress == null) return;
+    unawaited(
+      _repository
+          .saveReadingProgress(
+        articleId,
+        scrollDepth: progress,
+        updatedAt: _clock.now(),
+      )
+          .onError((Object error, StackTrace stackTrace) {
+        if (!_disposed) {
+          _setState(
+            _state.copyWith(operationFailure: '闃呰杩涘害淇濆瓨澶辫触'),
+          );
+        }
+      }),
+    );
+  }
+
   ArticleReaderContent? _availableContent(FeedArticleDetailRecord detail) {
     final cached = detail.content;
     if (cached != null && cached.isReadable) {
@@ -225,9 +402,12 @@ final class ArticleReaderController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _flushProgress();
+    _progressTimer?.cancel();
     _subscriptionGeneration += 1;
     _extractionGeneration += 1;
-    unawaited(_subscription?.cancel());
+    unawaited(_articleSubscription?.cancel());
+    unawaited(_settingsSubscription?.cancel());
     super.dispose();
   }
 }
@@ -235,14 +415,20 @@ final class ArticleReaderController extends ChangeNotifier {
 final class ArticleReaderPage extends StatefulWidget {
   const ArticleReaderPage({
     required this.articleId,
-    required this.watch,
-    required this.extract,
+    required this.repository,
+    required this.extractor,
+    required this.readerSettings,
+    required this.share,
+    required this.clock,
     super.key,
   });
 
   final String articleId;
-  final ArticleDetailLoader watch;
-  final ArticleExtractionLoader extract;
+  final ArticleReaderRepository repository;
+  final FullTextExtractor extractor;
+  final ReaderSettingsRepository readerSettings;
+  final ShareGateway share;
+  final Clock clock;
 
   @override
   State<ArticleReaderPage> createState() => _ArticleReaderPageState();
@@ -256,8 +442,11 @@ final class _ArticleReaderPageState extends State<ArticleReaderPage> {
     super.initState();
     _controller = ArticleReaderController(
       articleId: widget.articleId,
-      watch: widget.watch,
-      extract: widget.extract,
+      repository: widget.repository,
+      extractor: widget.extractor,
+      readerSettings: widget.readerSettings,
+      share: widget.share,
+      clock: widget.clock,
     );
   }
 
@@ -283,16 +472,28 @@ final class ArticleReaderScreen extends StatelessWidget {
       listenable: controller,
       builder: (context, child) {
         final state = controller.state;
-        return Scaffold(
-          appBar: AppBar(title: Text(state.detail?.feedTitle ?? '阅读文章')),
-          body: switch (state.loadPhase) {
-            ArticleReaderLoadPhase.loading => const _ReaderLoading(),
-            ArticleReaderLoadPhase.missing => const _ReaderMissing(),
-            ArticleReaderLoadPhase.failed => _ReaderFailure(
-                onRetry: controller.retry,
-              ),
-            ArticleReaderLoadPhase.ready => _ReaderReady(state: state),
-          },
+        final inheritedTheme = Theme.of(context);
+        final theme = switch (state.settings.theme) {
+          ReaderThemePreference.system => inheritedTheme,
+          ReaderThemePreference.light => RiverTheme.light(),
+          ReaderThemePreference.dark => RiverTheme.dark(),
+        };
+        return Theme(
+          data: theme,
+          child: Scaffold(
+            appBar: AppBar(title: Text(state.detail?.feedTitle ?? '阅读文章')),
+            body: switch (state.loadPhase) {
+              ArticleReaderLoadPhase.loading => const _ReaderLoading(),
+              ArticleReaderLoadPhase.missing => const _ReaderMissing(),
+              ArticleReaderLoadPhase.failed => _ReaderFailure(
+                  onRetry: controller.retry,
+                ),
+              ArticleReaderLoadPhase.ready => _ReaderReady(
+                  state: state,
+                  controller: controller,
+                ),
+            },
+          ),
         );
       },
     );
@@ -300,9 +501,10 @@ final class ArticleReaderScreen extends StatelessWidget {
 }
 
 final class _ReaderReady extends StatelessWidget {
-  const _ReaderReady({required this.state});
+  const _ReaderReady({required this.state, required this.controller});
 
   final ArticleReaderState state;
+  final ArticleReaderController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -311,15 +513,106 @@ final class _ReaderReady extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        if (state.operationFailure case final failure?)
+          MaterialBanner(
+            content: Text(failure),
+            actions: <Widget>[
+              TextButton(
+                onPressed: controller.clearOperationFailure,
+                child: const Text('关闭'),
+              ),
+            ],
+          ),
+        _ReaderActions(state: state, controller: controller),
+        const Divider(height: 1),
         _ReaderHeader(detail: detail, enhancement: state.enhancementPhase),
         const Divider(height: 1),
         Expanded(
           child: content == null
               ? const _ReaderContentPending()
-              : ArticleDocumentView(content: content),
+              : ArticleDocumentView(
+                  content: content,
+                  settings: state.settings,
+                  initialProgress: detail.scrollDepth,
+                  onProgressChanged: controller.reportProgress,
+                ),
         ),
       ],
     );
+  }
+}
+
+final class _ReaderActions extends StatelessWidget {
+  const _ReaderActions({required this.state, required this.controller});
+
+  final ArticleReaderState state;
+  final ArticleReaderController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final detail = state.detail!;
+    return Semantics(
+      container: true,
+      label: '文章状态与阅读操作',
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        child: Row(
+          children: <Widget>[
+            IconButton(
+              onPressed: state.isMutating
+                  ? null
+                  : () => unawaited(controller.toggleRead()),
+              icon: Icon(detail.read ? Icons.mark_email_unread : Icons.done),
+              tooltip: detail.read ? '标记未读' : '标记已读',
+            ),
+            IconButton(
+              onPressed: state.isMutating
+                  ? null
+                  : () => unawaited(controller.toggleStarred()),
+              icon: Icon(detail.starred ? Icons.star : Icons.star_outline),
+              tooltip: detail.starred ? '取消收藏' : '收藏',
+            ),
+            IconButton(
+              onPressed: state.isMutating
+                  ? null
+                  : () => unawaited(controller.toggleReadLater()),
+              icon: Icon(
+                detail.readLater ? Icons.bookmark : Icons.bookmark_outline,
+              ),
+              tooltip: detail.readLater ? '移出稍后读' : '稍后读',
+            ),
+            IconButton(
+              onPressed: () => unawaited(_share(context)),
+              icon: const Icon(Icons.share_outlined),
+              tooltip: '分享',
+            ),
+            IconButton(
+              onPressed: () => unawaited(
+                _showReaderSettings(context, state.settings, controller),
+              ),
+              icon: const Icon(Icons.text_fields),
+              tooltip: '阅读排版',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _share(BuildContext context) async {
+    final box = context.findRenderObject();
+    ShareAnchor? anchor;
+    if (box is RenderBox && box.hasSize) {
+      final origin = box.localToGlobal(Offset.zero);
+      anchor = ShareAnchor(
+        left: origin.dx,
+        top: origin.dy,
+        width: box.size.width,
+        height: box.size.height,
+      );
+    }
+    await controller.shareArticle(anchor: anchor);
   }
 }
 
@@ -383,9 +676,18 @@ final class _ReaderHeader extends StatelessWidget {
 }
 
 final class ArticleDocumentView extends StatefulWidget {
-  const ArticleDocumentView({required this.content, super.key});
+  const ArticleDocumentView({
+    required this.content,
+    required this.settings,
+    required this.initialProgress,
+    required this.onProgressChanged,
+    super.key,
+  });
 
   final ArticleReaderContent content;
+  final ReaderSettings settings;
+  final double initialProgress;
+  final ValueChanged<double> onProgressChanged;
 
   @override
   State<ArticleDocumentView> createState() => ArticleDocumentViewState();
@@ -397,6 +699,7 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
   late final FocusNode _focusNode;
   String? _pendingText;
   var _updatingText = false;
+  var _restoredInitialProgress = false;
 
   TextSelection get selection => _textController.selection;
   String get documentText => _textController.text;
@@ -411,10 +714,11 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController();
+    _scrollController = ScrollController()..addListener(_reportProgress);
     _textController = TextEditingController(text: widget.content.text)
       ..addListener(_handleSelectionChange);
     _focusNode = FocusNode();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _restoreProgress());
   }
 
   @override
@@ -436,6 +740,28 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
     _scrollController.jumpTo(
       _scrollController.position.maxScrollExtent * fraction.clamp(0, 1),
     );
+  }
+
+  void _restoreProgress() {
+    if (!mounted || _restoredInitialProgress || !_scrollController.hasClients) {
+      return;
+    }
+    _restoredInitialProgress = true;
+    final extent = _scrollController.position.maxScrollExtent;
+    if (extent > 0) {
+      _scrollController.jumpTo(
+        extent * widget.initialProgress.clamp(0, 1).toDouble(),
+      );
+    }
+  }
+
+  void _reportProgress() {
+    if (!_scrollController.hasClients) return;
+    final extent = _scrollController.position.maxScrollExtent;
+    final progress = extent <= 0
+        ? 1.0
+        : (_scrollController.offset / extent).clamp(0, 1).toDouble();
+    widget.onProgressChanged(progress);
   }
 
   void _handleSelectionChange() {
@@ -495,7 +821,9 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
     _textController
       ..removeListener(_handleSelectionChange)
       ..dispose();
-    _scrollController.dispose();
+    _scrollController
+      ..removeListener(_reportProgress)
+      ..dispose();
     _focusNode.dispose();
     super.dispose();
   }
@@ -510,7 +838,7 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 48),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 760),
+            constraints: BoxConstraints(maxWidth: widget.settings.contentWidth),
             child: Semantics(
               container: true,
               label: '文章正文',
@@ -521,7 +849,7 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
                 maxLines: null,
                 scrollPhysics: const NeverScrollableScrollPhysics(),
                 decoration: const InputDecoration.collapsed(hintText: ''),
-                style: textTheme.bodyLarge?.copyWith(height: 1.75),
+                style: _readerTextStyle(textTheme, widget.settings),
               ),
             ),
           ),
@@ -529,6 +857,155 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
       ),
     );
   }
+}
+
+TextStyle _readerTextStyle(TextTheme textTheme, ReaderSettings settings) {
+  final base = textTheme.bodyLarge ?? const TextStyle(fontSize: 18);
+  final baseSize = base.fontSize ?? 18;
+  final (fontFamily, fallbacks) = switch (settings.fontFamily) {
+    ReaderFontFamily.system => (null, null),
+    ReaderFontFamily.serif => (
+        'Noto Serif CJK SC',
+        const <String>['Songti SC', 'SimSun', 'Georgia'],
+      ),
+    ReaderFontFamily.sansSerif => (
+        'Noto Sans CJK SC',
+        const <String>['Microsoft YaHei', 'Arial'],
+      ),
+  };
+  return base.copyWith(
+    fontFamily: fontFamily,
+    fontFamilyFallback: fallbacks,
+    fontSize: baseSize * settings.fontScale,
+    height: settings.lineHeight,
+  );
+}
+
+Future<void> _showReaderSettings(
+  BuildContext context,
+  ReaderSettings initial,
+  ArticleReaderController controller,
+) async {
+  var working = initial;
+  final result = await showDialog<ReaderSettings>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setLocalState) => AlertDialog(
+        title: const Text('阅读排版'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                DropdownButtonFormField<ReaderFontFamily>(
+                  initialValue: working.fontFamily,
+                  decoration: const InputDecoration(labelText: '字体'),
+                  items: const <DropdownMenuItem<ReaderFontFamily>>[
+                    DropdownMenuItem(
+                      value: ReaderFontFamily.system,
+                      child: Text('系统字体'),
+                    ),
+                    DropdownMenuItem(
+                      value: ReaderFontFamily.serif,
+                      child: Text('衬线字体'),
+                    ),
+                    DropdownMenuItem(
+                      value: ReaderFontFamily.sansSerif,
+                      child: Text('无衬线字体'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setLocalState(
+                        () => working = working.copyWith(fontFamily: value),
+                      );
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text('字号 ${(working.fontScale * 100).round()}%'),
+                Slider(
+                  value: working.fontScale,
+                  min: 0.8,
+                  max: 1.6,
+                  divisions: 8,
+                  label: '${(working.fontScale * 100).round()}%',
+                  onChanged: (value) => setLocalState(
+                    () => working = working.copyWith(fontScale: value),
+                  ),
+                ),
+                Text('行距 ${working.lineHeight.toStringAsFixed(2)}'),
+                Slider(
+                  value: working.lineHeight,
+                  min: 1.3,
+                  max: 2.2,
+                  divisions: 9,
+                  label: working.lineHeight.toStringAsFixed(2),
+                  onChanged: (value) => setLocalState(
+                    () => working = working.copyWith(lineHeight: value),
+                  ),
+                ),
+                Text('页面宽度 ${working.contentWidth.round()} px'),
+                Slider(
+                  value: working.contentWidth,
+                  min: 480,
+                  max: 1000,
+                  divisions: 13,
+                  label: '${working.contentWidth.round()} px',
+                  onChanged: (value) => setLocalState(
+                    () => working = working.copyWith(contentWidth: value),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SegmentedButton<ReaderThemePreference>(
+                  segments: const <ButtonSegment<ReaderThemePreference>>[
+                    ButtonSegment(
+                      value: ReaderThemePreference.system,
+                      label: Text('跟随系统'),
+                      icon: Icon(Icons.brightness_auto_outlined),
+                    ),
+                    ButtonSegment(
+                      value: ReaderThemePreference.light,
+                      label: Text('浅色'),
+                      icon: Icon(Icons.light_mode_outlined),
+                    ),
+                    ButtonSegment(
+                      value: ReaderThemePreference.dark,
+                      label: Text('深色'),
+                      icon: Icon(Icons.dark_mode_outlined),
+                    ),
+                  ],
+                  selected: <ReaderThemePreference>{working.theme},
+                  onSelectionChanged: (selection) => setLocalState(
+                    () => working = working.copyWith(theme: selection.single),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => setLocalState(
+              () => working = const ReaderSettings(),
+            ),
+            child: const Text('恢复默认'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(working),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (result != null) await controller.saveSettings(result);
 }
 
 TextSelection? _mapSelection(

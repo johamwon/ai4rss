@@ -239,6 +239,86 @@ final class ReadingEvent {
   final double completionRatio;
 }
 
+enum ReaderFontFamily { system, serif, sansSerif }
+
+enum ReaderThemePreference { system, light, dark }
+
+final class ReaderSettings {
+  const ReaderSettings({
+    this.fontFamily = ReaderFontFamily.system,
+    this.fontScale = 1,
+    this.lineHeight = 1.75,
+    this.contentWidth = 760,
+    this.theme = ReaderThemePreference.system,
+  })  : assert(fontScale >= 0.8 && fontScale <= 1.6),
+        assert(lineHeight >= 1.3 && lineHeight <= 2.2),
+        assert(contentWidth >= 480 && contentWidth <= 1000);
+
+  final ReaderFontFamily fontFamily;
+  final double fontScale;
+  final double lineHeight;
+  final double contentWidth;
+  final ReaderThemePreference theme;
+
+  ReaderSettings copyWith({
+    ReaderFontFamily? fontFamily,
+    double? fontScale,
+    double? lineHeight,
+    double? contentWidth,
+    ReaderThemePreference? theme,
+  }) =>
+      ReaderSettings(
+        fontFamily: fontFamily ?? this.fontFamily,
+        fontScale: fontScale ?? this.fontScale,
+        lineHeight: lineHeight ?? this.lineHeight,
+        contentWidth: contentWidth ?? this.contentWidth,
+        theme: theme ?? this.theme,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      other is ReaderSettings &&
+      other.fontFamily == fontFamily &&
+      other.fontScale == fontScale &&
+      other.lineHeight == lineHeight &&
+      other.contentWidth == contentWidth &&
+      other.theme == theme;
+
+  @override
+  int get hashCode =>
+      Object.hash(fontFamily, fontScale, lineHeight, contentWidth, theme);
+}
+
+final class ShareAnchor {
+  const ShareAnchor({
+    required this.left,
+    required this.top,
+    required this.width,
+    required this.height,
+  });
+
+  final double left;
+  final double top;
+  final double width;
+  final double height;
+}
+
+final class ShareRequest {
+  const ShareRequest({
+    required this.text,
+    this.title,
+    this.subject,
+    this.anchor,
+  });
+
+  final String text;
+  final String? title;
+  final String? subject;
+  final ShareAnchor? anchor;
+}
+
+enum ShareOutcome { completed, dismissed, unavailable }
+
 enum AudioKind { articleTts, podcastEpisode }
 
 final class AudioItem {

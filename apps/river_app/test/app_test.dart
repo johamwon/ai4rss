@@ -26,6 +26,12 @@ final class _FakePlatform implements RiverPlatformBridge {
   Future<String> platformVersion() async => 'test';
 }
 
+final class _FakeShare implements ShareGateway {
+  @override
+  Future<ShareOutcome> share(ShareRequest request) async =>
+      ShareOutcome.completed;
+}
+
 final class _FakeHttp implements HttpPort {
   final List<Uri> requests = <Uri>[];
   Completer<void>? _nextFeedGate;
@@ -111,6 +117,7 @@ void main() {
       ids: _FixedIds(),
       fullTextExtractor: const LayeredFullTextExtractor(),
       platform: _FakePlatform(),
+      share: _FakeShare(),
       http: http,
       opmlFiles: opmlFiles,
       database: RiverDatabase.inMemory(),
@@ -147,6 +154,19 @@ void main() {
 
     expect(find.textContaining('操作失败'), findsNothing);
     expect(find.text('Test Feed'), findsWidgets);
+    expect(find.text('First article'), findsOneWidget);
+
+    await tester.tap(find.text('First article'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('收藏'), findsOneWidget);
+    await tester.tap(find.byTooltip('收藏'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('取消收藏'), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(ChoiceChip).at(2));
+    await tester.pumpAndSettle();
     expect(find.text('First article'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
