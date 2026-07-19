@@ -56,11 +56,13 @@ final class ArticleListPane extends StatefulWidget {
   const ArticleListPane({
     required this.controller,
     required this.folders,
+    required this.onOpenArticle,
     super.key,
   });
 
   final ArticleListController controller;
   final List<FeedFolderRecord> folders;
+  final ValueChanged<FeedArticleRecord> onOpenArticle;
 
   @override
   State<ArticleListPane> createState() => _ArticleListPaneState();
@@ -114,6 +116,7 @@ final class _ArticleListPaneState extends State<ArticleListPane> {
                       itemBuilder: (context, index) => ArticleListTile(
                         key: ValueKey<String>(articles[index].id),
                         article: articles[index],
+                        onOpen: () => widget.onOpenArticle(articles[index]),
                       ),
                       separatorBuilder: (context, index) =>
                           const Divider(height: 1, indent: 72),
@@ -248,9 +251,14 @@ final class _ViewChip extends StatelessWidget {
 }
 
 final class ArticleListTile extends StatelessWidget {
-  const ArticleListTile({required this.article, super.key});
+  const ArticleListTile({
+    required this.article,
+    required this.onOpen,
+    super.key,
+  });
 
   final FeedArticleRecord article;
+  final VoidCallback onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -269,6 +277,7 @@ final class ArticleListTile extends StatelessWidget {
       container: true,
       label: '${article.title}，$metadata，${states.join('，')}',
       child: ListTile(
+        onTap: onOpen,
         leading: CircleAvatar(
           child: Icon(
             article.read ? Icons.done : Icons.article_outlined,

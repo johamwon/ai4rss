@@ -28,14 +28,27 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator migrator) => migrator.createAll(),
+    onUpgrade: (Migrator migrator, int from, int to) async {
+      if (from < 2 && !await _hasColumn('articles', 'feed_content_html')) {
+        await migrator.addColumn(articles, articles.feedContentHtml);
+      }
+    },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
       await customStatement('PRAGMA journal_mode = WAL');
     },
   );
+
+  Future<bool> _hasColumn(String tableName, String columnName) async {
+    final columns = await customSelect(
+      'PRAGMA table_info($tableName)',
+      readsFrom: <ResultSetImplementation<Table, Object?>>{articles},
+    ).get();
+    return columns.any((row) => row.read<String>('name') == columnName);
+  }
 }

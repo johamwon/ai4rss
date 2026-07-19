@@ -7,6 +7,7 @@ import 'package:river_feed/river_feed.dart';
 
 import 'app_dependencies.dart';
 import 'article_list.dart';
+import 'article_reader.dart';
 import 'dependency_scope.dart';
 
 final class RiverApp extends StatelessWidget {
@@ -129,6 +130,19 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
 
   Future<void> _cancelRefresh() async {
     await RiverDependenciesScope.of(context).feedRefreshCoordinator.cancel();
+  }
+
+  Future<void> _openArticle(FeedArticleRecord article) async {
+    final dependencies = RiverDependenciesScope.of(context);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => ArticleReaderPage(
+          articleId: article.id,
+          watch: dependencies.feeds.watchArticle,
+          extract: dependencies.fullTextExtractor.extract,
+        ),
+      ),
+    );
   }
 
   Future<void> _run(Future<String?> Function() operation) async {
@@ -362,6 +376,8 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
                           ),
                           onFolderAction: (folder, action) =>
                               unawaited(_handleFolderAction(folder, action)),
+                          onOpenArticle: (article) =>
+                              unawaited(_openArticle(article)),
                         ),
                       ),
                     ],
@@ -414,6 +430,7 @@ final class _Inbox extends StatelessWidget {
     required this.articleListController,
     required this.onFeedAction,
     required this.onFolderAction,
+    required this.onOpenArticle,
   });
 
   final List<FeedSubscriptionRecord> subscriptions;
@@ -421,6 +438,7 @@ final class _Inbox extends StatelessWidget {
   final ArticleListController articleListController;
   final void Function(FeedSubscriptionRecord, _FeedAction) onFeedAction;
   final void Function(FeedFolderRecord, _FolderAction) onFolderAction;
+  final ValueChanged<FeedArticleRecord> onOpenArticle;
 
   @override
   Widget build(BuildContext context) {
@@ -441,6 +459,7 @@ final class _Inbox extends StatelessWidget {
           child: ArticleListPane(
             controller: articleListController,
             folders: folders,
+            onOpenArticle: onOpenArticle,
           ),
         ),
       ],

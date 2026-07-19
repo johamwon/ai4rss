@@ -43,6 +43,14 @@
     {
       "path": "fixtures/ai/article_001.json",
       "contains": ["River"]
+    },
+    {
+      "path": "fixtures/migrations/v001_populated.sql",
+      "contains": ["PRAGMA user_version = 1", "River v1 migration fixture"]
+    },
+    {
+      "path": "fixtures/migrations/v002_populated.sql",
+      "contains": ["feed_content_html", "PRAGMA user_version = 2"]
     }
   ]
 }

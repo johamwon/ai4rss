@@ -60,7 +60,10 @@ final class AppDependencies {
       clock: clock,
       ids: SecureIdGenerator(),
       fullTextExtractor: CachedFullTextExtractor(
-        delegate: layeredExtractor,
+        delegate: HttpLoadingFullTextExtractor(
+          http: http,
+          delegate: layeredExtractor,
+        ),
         cache: DriftExtractionCache(database),
         clock: clock,
         extractorVersions: layeredExtractor.extractorVersions,

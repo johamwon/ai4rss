@@ -142,6 +142,34 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets('article row delegates opening to the reader route', (
+    tester,
+  ) async {
+    FeedArticleRecord? opened;
+    final controller = ArticleListController(
+      load: (query) => Stream<List<FeedArticleRecord>>.value(
+        <FeedArticleRecord>[_article(id: 'open-me', title: 'Open article')],
+      ),
+    );
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ArticleListPane(
+            controller: controller,
+            folders: const <FeedFolderRecord>[],
+            onOpenArticle: (article) => opened = article,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Open article'));
+
+    expect(opened?.id, 'open-me');
+  });
+
   testWidgets('loading and failure states are safe and retryable', (
     tester,
   ) async {
@@ -192,7 +220,11 @@ final class _TestHost extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
-        body: ArticleListPane(controller: controller, folders: folders),
+        body: ArticleListPane(
+          controller: controller,
+          folders: folders,
+          onOpenArticle: (_) {},
+        ),
       ),
     );
   }

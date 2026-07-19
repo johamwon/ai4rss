@@ -173,6 +173,33 @@ void main() {
     expect(repository.notModifiedAt, DateTime.utc(2026, 7, 16));
   });
 
+  test('preserves feed content for progressive reading', () async {
+    const body = '''
+      <rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+        <channel><title>Example</title><item>
+          <guid>one</guid><title>First</title><link>/one</link>
+          <description>Preview</description>
+          <content:encoded><![CDATA[<p>Immediate feed body</p>]]></content:encoded>
+        </item></channel>
+      </rss>
+    ''';
+    final repository = _Repository();
+    final service = FeedRefreshService(
+      http: _Http(const PortHttpResponse(statusCode: 200, body: body)),
+      repository: repository,
+      clock: _Clock(DateTime.utc(2026, 7, 19)),
+      ids: _Ids(),
+    );
+
+    await service.subscribeOrRefresh(Uri.parse('https://example.test/rss'));
+
+    expect(repository.articles.single.summary, 'Preview');
+    expect(
+      repository.articles.single.contentHtml,
+      '<p>Immediate feed body</p>',
+    );
+  });
+
   test('canonical URL rejects embedded credentials', () {
     expect(
       () =>

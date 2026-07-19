@@ -7,7 +7,10 @@ import 'package:river_feed/river_feed.dart' as feed;
 import 'database.dart';
 
 final class DriftFeedRepository
-    implements feed.FeedRepository, feed.SubscriptionOrganizerRepository {
+    implements
+        feed.FeedRepository,
+        feed.SubscriptionOrganizerRepository,
+        feed.ArticleReaderRepository {
   const DriftFeedRepository(this.database);
 
   final RiverDatabase database;
@@ -338,6 +341,29 @@ final class DriftFeedRepository
   }
 
   @override
+  Stream<feed.FeedArticleDetailRecord?> watchArticle(String articleId) {
+    final statement = database.select(database.articles).join(<Join>[
+      innerJoin(
+        database.feedSubscriptions,
+        database.feedSubscriptions.id.equalsExp(database.articles.feedId),
+      ),
+      leftOuterJoin(
+        database.articleContents,
+        database.articleContents.articleId.equalsExp(database.articles.id),
+      ),
+    ])..where(database.articles.id.equals(articleId));
+    return statement.watchSingleOrNull().map((row) {
+      if (row == null) return null;
+      final article = row.readTable(database.articles);
+      return _articleDetail(
+        article,
+        subscription: row.readTable(database.feedSubscriptions),
+        content: row.readTableOrNull(database.articleContents),
+      );
+    });
+  }
+
+  @override
   Future<void> applyRefresh({
     required String feedId,
     required Uri canonicalUrl,
@@ -417,6 +443,7 @@ final class DriftFeedRepository
               author: Value<String?>(article.author),
               publishedAt: Value<DateTime?>(article.publishedAt),
               feedSummary: Value<String?>(article.summary),
+              feedContentHtml: Value<String?>(article.contentHtml),
               createdAt: refreshedAt,
               updatedAt: refreshedAt,
             ),
@@ -431,6 +458,7 @@ final class DriftFeedRepository
         author: Value<String?>(article.author),
         publishedAt: Value<DateTime?>(article.publishedAt),
         feedSummary: Value<String?>(article.summary),
+        feedContentHtml: Value<String?>(article.contentHtml),
         updatedAt: Value<DateTime>(refreshedAt),
       ),
     );
@@ -514,6 +542,37 @@ feed.FeedArticleRecord _article(
   estimatedReadingMinutes:
       feed.estimateReadingMinutesFromCharacterCount(cachedTextLength) ??
       feed.estimateReadingMinutes(row.feedSummary),
+);
+
+feed.FeedArticleDetailRecord _articleDetail(
+  Article row, {
+  required FeedSubscription subscription,
+  required ArticleContent? content,
+}) => feed.FeedArticleDetailRecord(
+  id: row.id,
+  feedId: row.feedId,
+  feedTitle: subscription.title,
+  canonicalUrl: Uri.parse(row.canonicalUrl),
+  title: row.title,
+  author: row.author,
+  publishedAt: row.publishedAt,
+  summary: row.feedSummary,
+  feedContentHtml: row.feedContentHtml,
+  read: row.readState != 'unread',
+  starred: row.starred,
+  readLater: row.readLater,
+  content: content == null
+      ? null
+      : feed.FeedArticleContentRecord(
+          sanitizedHtml: content.sanitizedHtml,
+          markdown: content.markdown,
+          plainText: content.plainText,
+          extractorName: content.extractorName,
+          extractorVersion: content.extractorVersion,
+          extractedAt: content.extractedAt,
+          contentHash: row.contentHash,
+          failureCode: content.failureCode,
+        ),
 );
 
 String _limited(String value, int maxLength) =>

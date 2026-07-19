@@ -1130,6 +1130,17 @@ class $ArticlesTable extends Articles with TableInfo<$ArticlesTable, Article> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _feedContentHtmlMeta = const VerificationMeta(
+    'feedContentHtml',
+  );
+  @override
+  late final GeneratedColumn<String> feedContentHtml = GeneratedColumn<String>(
+    'feed_content_html',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _readStateMeta = const VerificationMeta(
     'readState',
   );
@@ -1249,6 +1260,7 @@ class $ArticlesTable extends Articles with TableInfo<$ArticlesTable, Article> {
     author,
     publishedAt,
     feedSummary,
+    feedContentHtml,
     readState,
     starred,
     readLater,
@@ -1324,6 +1336,15 @@ class $ArticlesTable extends Articles with TableInfo<$ArticlesTable, Article> {
         feedSummary.isAcceptableOrUnknown(
           data['feed_summary']!,
           _feedSummaryMeta,
+        ),
+      );
+    }
+    if (data.containsKey('feed_content_html')) {
+      context.handle(
+        _feedContentHtmlMeta,
+        feedContentHtml.isAcceptableOrUnknown(
+          data['feed_content_html']!,
+          _feedContentHtmlMeta,
         ),
       );
     }
@@ -1438,6 +1459,10 @@ class $ArticlesTable extends Articles with TableInfo<$ArticlesTable, Article> {
         DriftSqlType.string,
         data['${effectivePrefix}feed_summary'],
       ),
+      feedContentHtml: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}feed_content_html'],
+      ),
       readState: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}read_state'],
@@ -1491,6 +1516,7 @@ class Article extends DataClass implements Insertable<Article> {
   final String? author;
   final DateTime? publishedAt;
   final String? feedSummary;
+  final String? feedContentHtml;
   final String readState;
   final bool starred;
   final bool readLater;
@@ -1508,6 +1534,7 @@ class Article extends DataClass implements Insertable<Article> {
     this.author,
     this.publishedAt,
     this.feedSummary,
+    this.feedContentHtml,
     required this.readState,
     required this.starred,
     required this.readLater,
@@ -1533,6 +1560,9 @@ class Article extends DataClass implements Insertable<Article> {
     }
     if (!nullToAbsent || feedSummary != null) {
       map['feed_summary'] = Variable<String>(feedSummary);
+    }
+    if (!nullToAbsent || feedContentHtml != null) {
+      map['feed_content_html'] = Variable<String>(feedContentHtml);
     }
     map['read_state'] = Variable<String>(readState);
     map['starred'] = Variable<bool>(starred);
@@ -1565,6 +1595,9 @@ class Article extends DataClass implements Insertable<Article> {
       feedSummary: feedSummary == null && nullToAbsent
           ? const Value.absent()
           : Value(feedSummary),
+      feedContentHtml: feedContentHtml == null && nullToAbsent
+          ? const Value.absent()
+          : Value(feedContentHtml),
       readState: Value(readState),
       starred: Value(starred),
       readLater: Value(readLater),
@@ -1594,6 +1627,7 @@ class Article extends DataClass implements Insertable<Article> {
       author: serializer.fromJson<String?>(json['author']),
       publishedAt: serializer.fromJson<DateTime?>(json['publishedAt']),
       feedSummary: serializer.fromJson<String?>(json['feedSummary']),
+      feedContentHtml: serializer.fromJson<String?>(json['feedContentHtml']),
       readState: serializer.fromJson<String>(json['readState']),
       starred: serializer.fromJson<bool>(json['starred']),
       readLater: serializer.fromJson<bool>(json['readLater']),
@@ -1616,6 +1650,7 @@ class Article extends DataClass implements Insertable<Article> {
       'author': serializer.toJson<String?>(author),
       'publishedAt': serializer.toJson<DateTime?>(publishedAt),
       'feedSummary': serializer.toJson<String?>(feedSummary),
+      'feedContentHtml': serializer.toJson<String?>(feedContentHtml),
       'readState': serializer.toJson<String>(readState),
       'starred': serializer.toJson<bool>(starred),
       'readLater': serializer.toJson<bool>(readLater),
@@ -1636,6 +1671,7 @@ class Article extends DataClass implements Insertable<Article> {
     Value<String?> author = const Value.absent(),
     Value<DateTime?> publishedAt = const Value.absent(),
     Value<String?> feedSummary = const Value.absent(),
+    Value<String?> feedContentHtml = const Value.absent(),
     String? readState,
     bool? starred,
     bool? readLater,
@@ -1653,6 +1689,9 @@ class Article extends DataClass implements Insertable<Article> {
     author: author.present ? author.value : this.author,
     publishedAt: publishedAt.present ? publishedAt.value : this.publishedAt,
     feedSummary: feedSummary.present ? feedSummary.value : this.feedSummary,
+    feedContentHtml: feedContentHtml.present
+        ? feedContentHtml.value
+        : this.feedContentHtml,
     readState: readState ?? this.readState,
     starred: starred ?? this.starred,
     readLater: readLater ?? this.readLater,
@@ -1678,6 +1717,9 @@ class Article extends DataClass implements Insertable<Article> {
       feedSummary: data.feedSummary.present
           ? data.feedSummary.value
           : this.feedSummary,
+      feedContentHtml: data.feedContentHtml.present
+          ? data.feedContentHtml.value
+          : this.feedContentHtml,
       readState: data.readState.present ? data.readState.value : this.readState,
       starred: data.starred.present ? data.starred.value : this.starred,
       readLater: data.readLater.present ? data.readLater.value : this.readLater,
@@ -1708,6 +1750,7 @@ class Article extends DataClass implements Insertable<Article> {
           ..write('author: $author, ')
           ..write('publishedAt: $publishedAt, ')
           ..write('feedSummary: $feedSummary, ')
+          ..write('feedContentHtml: $feedContentHtml, ')
           ..write('readState: $readState, ')
           ..write('starred: $starred, ')
           ..write('readLater: $readLater, ')
@@ -1730,6 +1773,7 @@ class Article extends DataClass implements Insertable<Article> {
     author,
     publishedAt,
     feedSummary,
+    feedContentHtml,
     readState,
     starred,
     readLater,
@@ -1751,6 +1795,7 @@ class Article extends DataClass implements Insertable<Article> {
           other.author == this.author &&
           other.publishedAt == this.publishedAt &&
           other.feedSummary == this.feedSummary &&
+          other.feedContentHtml == this.feedContentHtml &&
           other.readState == this.readState &&
           other.starred == this.starred &&
           other.readLater == this.readLater &&
@@ -1770,6 +1815,7 @@ class ArticlesCompanion extends UpdateCompanion<Article> {
   final Value<String?> author;
   final Value<DateTime?> publishedAt;
   final Value<String?> feedSummary;
+  final Value<String?> feedContentHtml;
   final Value<String> readState;
   final Value<bool> starred;
   final Value<bool> readLater;
@@ -1788,6 +1834,7 @@ class ArticlesCompanion extends UpdateCompanion<Article> {
     this.author = const Value.absent(),
     this.publishedAt = const Value.absent(),
     this.feedSummary = const Value.absent(),
+    this.feedContentHtml = const Value.absent(),
     this.readState = const Value.absent(),
     this.starred = const Value.absent(),
     this.readLater = const Value.absent(),
@@ -1807,6 +1854,7 @@ class ArticlesCompanion extends UpdateCompanion<Article> {
     this.author = const Value.absent(),
     this.publishedAt = const Value.absent(),
     this.feedSummary = const Value.absent(),
+    this.feedContentHtml = const Value.absent(),
     this.readState = const Value.absent(),
     this.starred = const Value.absent(),
     this.readLater = const Value.absent(),
@@ -1831,6 +1879,7 @@ class ArticlesCompanion extends UpdateCompanion<Article> {
     Expression<String>? author,
     Expression<DateTime>? publishedAt,
     Expression<String>? feedSummary,
+    Expression<String>? feedContentHtml,
     Expression<String>? readState,
     Expression<bool>? starred,
     Expression<bool>? readLater,
@@ -1850,6 +1899,7 @@ class ArticlesCompanion extends UpdateCompanion<Article> {
       if (author != null) 'author': author,
       if (publishedAt != null) 'published_at': publishedAt,
       if (feedSummary != null) 'feed_summary': feedSummary,
+      if (feedContentHtml != null) 'feed_content_html': feedContentHtml,
       if (readState != null) 'read_state': readState,
       if (starred != null) 'starred': starred,
       if (readLater != null) 'read_later': readLater,
@@ -1871,6 +1921,7 @@ class ArticlesCompanion extends UpdateCompanion<Article> {
     Value<String?>? author,
     Value<DateTime?>? publishedAt,
     Value<String?>? feedSummary,
+    Value<String?>? feedContentHtml,
     Value<String>? readState,
     Value<bool>? starred,
     Value<bool>? readLater,
@@ -1890,6 +1941,7 @@ class ArticlesCompanion extends UpdateCompanion<Article> {
       author: author ?? this.author,
       publishedAt: publishedAt ?? this.publishedAt,
       feedSummary: feedSummary ?? this.feedSummary,
+      feedContentHtml: feedContentHtml ?? this.feedContentHtml,
       readState: readState ?? this.readState,
       starred: starred ?? this.starred,
       readLater: readLater ?? this.readLater,
@@ -1926,6 +1978,9 @@ class ArticlesCompanion extends UpdateCompanion<Article> {
     }
     if (feedSummary.present) {
       map['feed_summary'] = Variable<String>(feedSummary.value);
+    }
+    if (feedContentHtml.present) {
+      map['feed_content_html'] = Variable<String>(feedContentHtml.value);
     }
     if (readState.present) {
       map['read_state'] = Variable<String>(readState.value);
@@ -1970,6 +2025,7 @@ class ArticlesCompanion extends UpdateCompanion<Article> {
           ..write('author: $author, ')
           ..write('publishedAt: $publishedAt, ')
           ..write('feedSummary: $feedSummary, ')
+          ..write('feedContentHtml: $feedContentHtml, ')
           ..write('readState: $readState, ')
           ..write('starred: $starred, ')
           ..write('readLater: $readLater, ')
@@ -5547,10 +5603,7 @@ final class $$FoldersTableReferences
   _feedSubscriptionsRefsTable(_$RiverDatabase db) =>
       MultiTypedResultKey.fromTable(
         db.feedSubscriptions,
-        aliasName: $_aliasNameGenerator(
-          db.folders.id,
-          db.feedSubscriptions.folderId,
-        ),
+        aliasName: 'folders__id__feed_subscriptions__folder_id',
       );
 
   $$FeedSubscriptionsTableProcessedTableManager get feedSubscriptionsRefs {
@@ -5874,9 +5927,7 @@ final class $$FeedSubscriptionsTableReferences
   );
 
   static $FoldersTable _folderIdTable(_$RiverDatabase db) =>
-      db.folders.createAlias(
-        $_aliasNameGenerator(db.feedSubscriptions.folderId, db.folders.id),
-      );
+      db.folders.createAlias('feed_subscriptions__folder_id__folders__id');
 
   $$FoldersTableProcessedTableManager? get folderId {
     final $_column = $_itemColumn<String>('folder_id');
@@ -5896,10 +5947,7 @@ final class $$FeedSubscriptionsTableReferences
     _$RiverDatabase db,
   ) => MultiTypedResultKey.fromTable(
     db.articles,
-    aliasName: $_aliasNameGenerator(
-      db.feedSubscriptions.id,
-      db.articles.feedId,
-    ),
+    aliasName: 'feed_subscriptions__id__articles__feed_id',
   );
 
   $$ArticlesTableProcessedTableManager get articlesRefs {
@@ -6385,6 +6433,7 @@ typedef $$ArticlesTableCreateCompanionBuilder =
       Value<String?> author,
       Value<DateTime?> publishedAt,
       Value<String?> feedSummary,
+      Value<String?> feedContentHtml,
       Value<String> readState,
       Value<bool> starred,
       Value<bool> readLater,
@@ -6405,6 +6454,7 @@ typedef $$ArticlesTableUpdateCompanionBuilder =
       Value<String?> author,
       Value<DateTime?> publishedAt,
       Value<String?> feedSummary,
+      Value<String?> feedContentHtml,
       Value<String> readState,
       Value<bool> starred,
       Value<bool> readLater,
@@ -6421,10 +6471,9 @@ final class $$ArticlesTableReferences
     extends BaseReferences<_$RiverDatabase, $ArticlesTable, Article> {
   $$ArticlesTableReferences(super.$_db, super.$_table, super.$_typedResult);
 
-  static $FeedSubscriptionsTable _feedIdTable(_$RiverDatabase db) =>
-      db.feedSubscriptions.createAlias(
-        $_aliasNameGenerator(db.articles.feedId, db.feedSubscriptions.id),
-      );
+  static $FeedSubscriptionsTable _feedIdTable(_$RiverDatabase db) => db
+      .feedSubscriptions
+      .createAlias('articles__feed_id__feed_subscriptions__id');
 
   $$FeedSubscriptionsTableProcessedTableManager get feedId {
     final $_column = $_itemColumn<String>('feed_id')!;
@@ -6444,10 +6493,7 @@ final class $$ArticlesTableReferences
   _articleContentsRefsTable(_$RiverDatabase db) =>
       MultiTypedResultKey.fromTable(
         db.articleContents,
-        aliasName: $_aliasNameGenerator(
-          db.articles.id,
-          db.articleContents.articleId,
-        ),
+        aliasName: 'articles__id__article_contents__article_id',
       );
 
   $$ArticleContentsTableProcessedTableManager get articleContentsRefs {
@@ -6467,7 +6513,7 @@ final class $$ArticlesTableReferences
   static MultiTypedResultKey<$ReadingEventsTable, List<ReadingEvent>>
   _readingEventsRefsTable(_$RiverDatabase db) => MultiTypedResultKey.fromTable(
     db.readingEvents,
-    aliasName: $_aliasNameGenerator(db.articles.id, db.readingEvents.articleId),
+    aliasName: 'articles__id__reading_events__article_id',
   );
 
   $$ReadingEventsTableProcessedTableManager get readingEventsRefs {
@@ -6485,10 +6531,7 @@ final class $$ArticlesTableReferences
   static MultiTypedResultKey<$KnowledgeItemsTable, List<KnowledgeItem>>
   _knowledgeItemsRefsTable(_$RiverDatabase db) => MultiTypedResultKey.fromTable(
     db.knowledgeItems,
-    aliasName: $_aliasNameGenerator(
-      db.articles.id,
-      db.knowledgeItems.articleId,
-    ),
+    aliasName: 'articles__id__knowledge_items__article_id',
   );
 
   $$KnowledgeItemsTableProcessedTableManager get knowledgeItemsRefs {
@@ -6540,6 +6583,11 @@ class $$ArticlesTableFilterComposer
 
   ColumnFilters<String> get feedSummary => $composableBuilder(
     column: $table.feedSummary,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get feedContentHtml => $composableBuilder(
+    column: $table.feedContentHtml,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6726,6 +6774,11 @@ class $$ArticlesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get feedContentHtml => $composableBuilder(
+    column: $table.feedContentHtml,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get readState => $composableBuilder(
     column: $table.readState,
     builder: (column) => ColumnOrderings(column),
@@ -6825,6 +6878,11 @@ class $$ArticlesTableAnnotationComposer
 
   GeneratedColumn<String> get feedSummary => $composableBuilder(
     column: $table.feedSummary,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get feedContentHtml => $composableBuilder(
+    column: $table.feedContentHtml,
     builder: (column) => column,
   );
 
@@ -7003,6 +7061,7 @@ class $$ArticlesTableTableManager
                 Value<String?> author = const Value.absent(),
                 Value<DateTime?> publishedAt = const Value.absent(),
                 Value<String?> feedSummary = const Value.absent(),
+                Value<String?> feedContentHtml = const Value.absent(),
                 Value<String> readState = const Value.absent(),
                 Value<bool> starred = const Value.absent(),
                 Value<bool> readLater = const Value.absent(),
@@ -7021,6 +7080,7 @@ class $$ArticlesTableTableManager
                 author: author,
                 publishedAt: publishedAt,
                 feedSummary: feedSummary,
+                feedContentHtml: feedContentHtml,
                 readState: readState,
                 starred: starred,
                 readLater: readLater,
@@ -7041,6 +7101,7 @@ class $$ArticlesTableTableManager
                 Value<String?> author = const Value.absent(),
                 Value<DateTime?> publishedAt = const Value.absent(),
                 Value<String?> feedSummary = const Value.absent(),
+                Value<String?> feedContentHtml = const Value.absent(),
                 Value<String> readState = const Value.absent(),
                 Value<bool> starred = const Value.absent(),
                 Value<bool> readLater = const Value.absent(),
@@ -7059,6 +7120,7 @@ class $$ArticlesTableTableManager
                 author: author,
                 publishedAt: publishedAt,
                 feedSummary: feedSummary,
+                feedContentHtml: feedContentHtml,
                 readState: readState,
                 starred: starred,
                 readLater: readLater,
@@ -7255,9 +7317,7 @@ final class $$ArticleContentsTableReferences
   );
 
   static $ArticlesTable _articleIdTable(_$RiverDatabase db) =>
-      db.articles.createAlias(
-        $_aliasNameGenerator(db.articleContents.articleId, db.articles.id),
-      );
+      db.articles.createAlias('article_contents__article_id__articles__id');
 
   $$ArticlesTableProcessedTableManager get articleId {
     final $_column = $_itemColumn<String>('article_id')!;
@@ -7683,9 +7743,7 @@ final class $$ReadingEventsTableReferences
   );
 
   static $ArticlesTable _articleIdTable(_$RiverDatabase db) =>
-      db.articles.createAlias(
-        $_aliasNameGenerator(db.readingEvents.articleId, db.articles.id),
-      );
+      db.articles.createAlias('reading_events__article_id__articles__id');
 
   $$ArticlesTableProcessedTableManager get articleId {
     final $_column = $_itemColumn<String>('article_id')!;
@@ -8059,9 +8117,7 @@ final class $$KnowledgeItemsTableReferences
   );
 
   static $ArticlesTable _articleIdTable(_$RiverDatabase db) =>
-      db.articles.createAlias(
-        $_aliasNameGenerator(db.knowledgeItems.articleId, db.articles.id),
-      );
+      db.articles.createAlias('knowledge_items__article_id__articles__id');
 
   $$ArticlesTableProcessedTableManager? get articleId {
     final $_column = $_itemColumn<String>('article_id');
