@@ -28,17 +28,22 @@ final class FeedArticleRecord {
   const FeedArticleRecord({
     required this.id,
     required this.feedId,
+    required this.feedTitle,
     required this.canonicalUrl,
     required this.title,
     required this.read,
     required this.starred,
+    required this.readLater,
     this.author,
     this.publishedAt,
     this.summary,
+    this.folderId,
+    this.estimatedReadingMinutes,
   });
 
   final String id;
   final String feedId;
+  final String feedTitle;
   final Uri canonicalUrl;
   final String title;
   final String? author;
@@ -46,6 +51,71 @@ final class FeedArticleRecord {
   final String? summary;
   final bool read;
   final bool starred;
+  final bool readLater;
+  final String? folderId;
+  final int? estimatedReadingMinutes;
+}
+
+enum FeedArticleView { inbox, unread, starred, readLater, folder }
+
+enum FeedArticleSort { newest, oldest }
+
+final class FeedArticleQuery {
+  const FeedArticleQuery({
+    this.view = FeedArticleView.inbox,
+    this.sort = FeedArticleSort.newest,
+    this.feedId,
+    this.folderId,
+  }) : assert(
+          view != FeedArticleView.folder || folderId != null,
+          'Folder view requires a folderId.',
+        );
+
+  final FeedArticleView view;
+  final FeedArticleSort sort;
+  final String? feedId;
+  final String? folderId;
+
+  FeedArticleQuery copyWith({
+    FeedArticleView? view,
+    FeedArticleSort? sort,
+    String? feedId,
+    String? folderId,
+    bool clearFeedId = false,
+    bool clearFolderId = false,
+  }) =>
+      FeedArticleQuery(
+        view: view ?? this.view,
+        sort: sort ?? this.sort,
+        feedId: clearFeedId ? null : feedId ?? this.feedId,
+        folderId: clearFolderId ? null : folderId ?? this.folderId,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      other is FeedArticleQuery &&
+      other.view == view &&
+      other.sort == sort &&
+      other.feedId == feedId &&
+      other.folderId == folderId;
+
+  @override
+  int get hashCode => Object.hash(view, sort, feedId, folderId);
+}
+
+int? estimateReadingMinutes(String? text) {
+  if (text == null || text.trim().isEmpty) return null;
+  final hanCharacters =
+      RegExp(r'[\u3400-\u4dbf\u4e00-\u9fff]').allMatches(text).length;
+  final latinWords =
+      RegExp(r"[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*").allMatches(text).length;
+  final minutes = (hanCharacters / 400) + (latinWords / 220);
+  return minutes.ceil().clamp(1, 999);
+}
+
+int? estimateReadingMinutesFromCharacterCount(int? characterCount) {
+  if (characterCount == null || characterCount <= 0) return null;
+  return (characterCount / 400).ceil().clamp(1, 999);
 }
 
 final class FeedArticleDraft {
@@ -71,7 +141,9 @@ abstract interface class FeedRepository {
 
   Stream<List<FeedSubscriptionRecord>> watchSubscriptions();
 
-  Stream<List<FeedArticleRecord>> watchArticles({String? feedId});
+  Stream<List<FeedArticleRecord>> watchArticles({
+    FeedArticleQuery query = const FeedArticleQuery(),
+  });
 
   Future<void> applyRefresh({
     required String feedId,

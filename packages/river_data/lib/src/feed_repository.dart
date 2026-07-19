@@ -277,17 +277,63 @@ final class DriftFeedRepository
   }
 
   @override
-  Stream<List<feed.FeedArticleRecord>> watchArticles({String? feedId}) {
-    final query = database.select(database.articles);
-    if (feedId != null) {
-      query.where((table) => table.feedId.equals(feedId));
-    }
-    query.orderBy(<OrderingTerm Function($ArticlesTable)>[
-      (table) => OrderingTerm.desc(table.publishedAt),
-      (table) => OrderingTerm.desc(table.createdAt),
+  Stream<List<feed.FeedArticleRecord>> watchArticles({
+    feed.FeedArticleQuery query = const feed.FeedArticleQuery(),
+  }) {
+    final cachedTextLength = ifNull<int>(
+      database.articleContents.plainText.length,
+      const Constant<int>(0),
+    );
+    final effectivePublishedAt = coalesce<DateTime>(<Expression<DateTime>>[
+      database.articles.publishedAt,
+      database.articles.createdAt,
     ]);
-    return query.watch().map(
-      (rows) => rows.map(_article).toList(growable: false),
+    final statement = database.select(database.articles).join(<Join>[
+      innerJoin(
+        database.feedSubscriptions,
+        database.feedSubscriptions.id.equalsExp(database.articles.feedId),
+      ),
+      leftOuterJoin(
+        database.articleContents,
+        database.articleContents.articleId.equalsExp(database.articles.id),
+        useColumns: false,
+      ),
+    ]);
+    statement.addColumns(<Expression<Object>>[cachedTextLength]);
+    if (query.feedId case final feedId?) {
+      statement.where(database.articles.feedId.equals(feedId));
+    }
+    switch (query.view) {
+      case feed.FeedArticleView.inbox:
+        break;
+      case feed.FeedArticleView.unread:
+        statement.where(database.articles.readState.equals('unread'));
+      case feed.FeedArticleView.starred:
+        statement.where(database.articles.starred.equals(true));
+      case feed.FeedArticleView.readLater:
+        statement.where(database.articles.readLater.equals(true));
+      case feed.FeedArticleView.folder:
+        statement.where(
+          database.feedSubscriptions.folderId.equals(query.folderId!),
+        );
+    }
+    final descending = query.sort == feed.FeedArticleSort.newest;
+    statement.orderBy(<OrderingTerm>[
+      descending
+          ? OrderingTerm.desc(effectivePublishedAt)
+          : OrderingTerm.asc(effectivePublishedAt),
+      OrderingTerm.asc(database.articles.id),
+    ]);
+    return statement.watch().map(
+      (rows) => rows
+          .map(
+            (row) => _article(
+              row.readTable(database.articles),
+              subscription: row.readTable(database.feedSubscriptions),
+              cachedTextLength: row.read(cachedTextLength),
+            ),
+          )
+          .toList(growable: false),
     );
   }
 
@@ -448,9 +494,14 @@ feed.FeedFolderRecord _folder(Folder row) => feed.FeedFolderRecord(
   position: row.position,
 );
 
-feed.FeedArticleRecord _article(Article row) => feed.FeedArticleRecord(
+feed.FeedArticleRecord _article(
+  Article row, {
+  required FeedSubscription subscription,
+  required int? cachedTextLength,
+}) => feed.FeedArticleRecord(
   id: row.id,
   feedId: row.feedId,
+  feedTitle: subscription.title,
   canonicalUrl: Uri.parse(row.canonicalUrl),
   title: row.title,
   author: row.author,
@@ -458,6 +509,11 @@ feed.FeedArticleRecord _article(Article row) => feed.FeedArticleRecord(
   summary: row.feedSummary,
   read: row.readState != 'unread',
   starred: row.starred,
+  readLater: row.readLater,
+  folderId: subscription.folderId,
+  estimatedReadingMinutes:
+      feed.estimateReadingMinutesFromCharacterCount(cachedTextLength) ??
+      feed.estimateReadingMinutes(row.feedSummary),
 );
 
 String _limited(String value, int maxLength) =>

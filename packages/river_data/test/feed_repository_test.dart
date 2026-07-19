@@ -250,4 +250,156 @@ void main() {
       expect(await repository.watchFolders().first, isEmpty);
     },
   );
+
+  test(
+    'article views project source state and deterministic time order',
+    () async {
+      final now = DateTime.utc(2026, 7, 15);
+      final folder = await repository.createFolder(
+        id: 'folder-1',
+        path: const <String>['技术'],
+        createdAt: now,
+      );
+      await repository.applyRefresh(
+        feedId: 'feed-1',
+        canonicalUrl: Uri.parse('https://one.test/feed.xml'),
+        feed: const feed.ParsedFeed(
+          kind: feed.FeedDocumentKind.rss,
+          title: 'One Feed',
+          items: <feed.ParsedFeedItem>[],
+        ),
+        articles: <feed.FeedArticleDraft>[
+          feed.FeedArticleDraft(
+            id: 'article-1',
+            canonicalUrl: Uri.parse('https://one.test/1'),
+            title: 'Oldest',
+            publishedAt: now,
+          ),
+          feed.FeedArticleDraft(
+            id: 'article-2',
+            canonicalUrl: Uri.parse('https://one.test/2'),
+            title: 'Middle',
+            publishedAt: now.add(const Duration(days: 1)),
+          ),
+        ],
+        refreshedAt: now,
+      );
+      await repository.moveFeed(
+        feedId: 'feed-1',
+        folderId: folder.id,
+        updatedAt: now,
+      );
+      await repository.applyRefresh(
+        feedId: 'feed-2',
+        canonicalUrl: Uri.parse('https://two.test/feed.xml'),
+        feed: const feed.ParsedFeed(
+          kind: feed.FeedDocumentKind.atom,
+          title: 'Two Feed',
+          items: <feed.ParsedFeedItem>[],
+        ),
+        articles: <feed.FeedArticleDraft>[
+          feed.FeedArticleDraft(
+            id: 'article-3',
+            canonicalUrl: Uri.parse('https://two.test/3'),
+            title: 'Newest',
+            publishedAt: now.add(const Duration(days: 2)),
+          ),
+        ],
+        refreshedAt: now,
+      );
+      await (database.update(database.articles)
+            ..where((table) => table.id.equals('article-1')))
+          .write(const ArticlesCompanion(starred: Value<bool>(true)));
+      await (database.update(
+        database.articles,
+      )..where((table) => table.id.equals('article-2'))).write(
+        const ArticlesCompanion(
+          readState: Value<String>('read'),
+          readLater: Value<bool>(true),
+        ),
+      );
+      await database
+          .into(database.articleContents)
+          .insert(
+            ArticleContentsCompanion.insert(
+              articleId: 'article-1',
+              sanitizedHtml: '<p>cached</p>',
+              markdown: 'cached',
+              plainText: '中' * 401,
+              extractorName: 'fixture',
+              extractorVersion: '1',
+              extractedAt: now,
+            ),
+          );
+
+      final inbox = await repository.watchArticles().first;
+      expect(inbox.map((article) => article.id), <String>[
+        'article-3',
+        'article-2',
+        'article-1',
+      ]);
+      expect(inbox.last.feedTitle, 'One Feed');
+      expect(inbox.last.folderId, folder.id);
+      expect(inbox.last.estimatedReadingMinutes, 2);
+
+      final unread = await repository
+          .watchArticles(
+            query: const feed.FeedArticleQuery(
+              view: feed.FeedArticleView.unread,
+            ),
+          )
+          .first;
+      expect(unread.map((article) => article.id), <String>[
+        'article-3',
+        'article-1',
+      ]);
+      expect(unread.every((article) => !article.read), isTrue);
+
+      final starred = await repository
+          .watchArticles(
+            query: const feed.FeedArticleQuery(
+              view: feed.FeedArticleView.starred,
+            ),
+          )
+          .first;
+      expect(starred.single.id, 'article-1');
+      expect(starred.single.starred, isTrue);
+
+      final readLater = await repository
+          .watchArticles(
+            query: const feed.FeedArticleQuery(
+              view: feed.FeedArticleView.readLater,
+            ),
+          )
+          .first;
+      expect(readLater.single.id, 'article-2');
+      expect(readLater.single.readLater, isTrue);
+
+      final inFolder = await repository
+          .watchArticles(
+            query: feed.FeedArticleQuery(
+              view: feed.FeedArticleView.folder,
+              folderId: folder.id,
+            ),
+          )
+          .first;
+      expect(inFolder.map((article) => article.id), <String>[
+        'article-2',
+        'article-1',
+      ]);
+
+      final oldestFirst = await repository
+          .watchArticles(
+            query: const feed.FeedArticleQuery(
+              sort: feed.FeedArticleSort.oldest,
+            ),
+          )
+          .first;
+      expect(oldestFirst.map((article) => article.id), <String>[
+        'article-1',
+        'article-2',
+        'article-3',
+      ]);
+    },
+  );
 }
