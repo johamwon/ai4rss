@@ -70,6 +70,11 @@ jobs:
       - name: Resolve workspace
         run: flutter pub get
 
+      - name: Run progressive reader integration
+        if: matrix.target == 'windows'
+        run: flutter test integration_test/progressive_reader_test.dart -d windows
+        working-directory: apps/river_app
+
       - name: Build ${{ matrix.target }}
         run: ${{ matrix.command }}
         working-directory: apps/river_app

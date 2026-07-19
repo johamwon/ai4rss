@@ -56,6 +56,63 @@ final class FeedArticleRecord {
   final int? estimatedReadingMinutes;
 }
 
+final class FeedArticleContentRecord {
+  const FeedArticleContentRecord({
+    required this.sanitizedHtml,
+    required this.markdown,
+    required this.plainText,
+    required this.extractorName,
+    required this.extractorVersion,
+    required this.extractedAt,
+    this.contentHash,
+    this.failureCode,
+  });
+
+  final String sanitizedHtml;
+  final String markdown;
+  final String plainText;
+  final String extractorName;
+  final String extractorVersion;
+  final DateTime extractedAt;
+  final String? contentHash;
+  final String? failureCode;
+
+  bool get isReadable =>
+      sanitizedHtml.trim().isNotEmpty && plainText.trim().isNotEmpty;
+}
+
+final class FeedArticleDetailRecord {
+  const FeedArticleDetailRecord({
+    required this.id,
+    required this.feedId,
+    required this.feedTitle,
+    required this.canonicalUrl,
+    required this.title,
+    required this.read,
+    required this.starred,
+    required this.readLater,
+    this.author,
+    this.publishedAt,
+    this.summary,
+    this.feedContentHtml,
+    this.content,
+  });
+
+  final String id;
+  final String feedId;
+  final String feedTitle;
+  final Uri canonicalUrl;
+  final String title;
+  final String? author;
+  final DateTime? publishedAt;
+  final String? summary;
+  final String? feedContentHtml;
+  final bool read;
+  final bool starred;
+  final bool readLater;
+  final FeedArticleContentRecord? content;
+}
+
 enum FeedArticleView { inbox, unread, starred, readLater, folder }
 
 enum FeedArticleSort { newest, oldest }
@@ -126,6 +183,7 @@ final class FeedArticleDraft {
     this.author,
     this.publishedAt,
     this.summary,
+    this.contentHtml,
   });
 
   final String id;
@@ -134,6 +192,11 @@ final class FeedArticleDraft {
   final String? author;
   final DateTime? publishedAt;
   final String? summary;
+  final String? contentHtml;
+}
+
+abstract interface class ArticleReaderRepository {
+  Stream<FeedArticleDetailRecord?> watchArticle(String articleId);
 }
 
 abstract interface class FeedRepository {

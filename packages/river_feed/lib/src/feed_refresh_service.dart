@@ -71,6 +71,7 @@ final class FeedRefreshService {
             author: item.author,
             publishedAt: item.publishedAt ?? item.updatedAt,
             summary: item.summary,
+            contentHtml: item.contentHtml,
           ),
         )
         .toList(growable: false);

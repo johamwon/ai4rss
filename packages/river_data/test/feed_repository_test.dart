@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:drift/drift.dart' hide isNull;
+import 'package:drift/drift.dart' hide isNotNull, isNull;
 import 'package:drift/native.dart';
 import 'package:river_data/river_data.dart';
 import 'package:river_domain/river_domain.dart' as domain;
@@ -402,4 +402,56 @@ void main() {
       ]);
     },
   );
+
+  test('article detail streams feed content then cached extraction', () async {
+    final now = DateTime.utc(2026, 7, 19);
+    await repository.applyRefresh(
+      feedId: 'feed-1',
+      canonicalUrl: Uri.parse('https://example.test/feed.xml'),
+      feed: const feed.ParsedFeed(
+        kind: feed.FeedDocumentKind.rss,
+        title: 'Example Feed',
+        items: <feed.ParsedFeedItem>[],
+      ),
+      articles: <feed.FeedArticleDraft>[
+        feed.FeedArticleDraft(
+          id: 'article-1',
+          canonicalUrl: Uri.parse('https://example.test/article'),
+          title: 'Progressive reader',
+          summary: 'Immediate preview',
+          contentHtml: '<p>Immediate feed body</p>',
+        ),
+      ],
+      refreshedAt: now,
+    );
+
+    final initial = await repository.watchArticle('article-1').first;
+    expect(initial, isNotNull);
+    expect(initial!.feedTitle, 'Example Feed');
+    expect(initial.feedContentHtml, '<p>Immediate feed body</p>');
+    expect(initial.content, isNull);
+
+    await database
+        .into(database.articleContents)
+        .insert(
+          ArticleContentsCompanion.insert(
+            articleId: 'article-1',
+            sanitizedHtml: '<p>Complete cached body</p>',
+            markdown: 'Complete cached body',
+            plainText: 'Complete cached body',
+            extractorName: 'readability',
+            extractorVersion: '1',
+            extractedAt: now,
+          ),
+        );
+    await (database.update(database.articles)
+          ..where((table) => table.id.equals('article-1')))
+        .write(const ArticlesCompanion(contentHash: Value<String>('hash-1')));
+
+    final enhanced = await repository
+        .watchArticle('article-1')
+        .firstWhere((article) => article?.content?.isReadable ?? false);
+    expect(enhanced!.content!.plainText, 'Complete cached body');
+    expect(enhanced.content!.contentHash, 'hash-1');
+  });
 }

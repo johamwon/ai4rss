@@ -42,6 +42,7 @@ class Articles extends Table {
   TextColumn get author => text().nullable()();
   DateTimeColumn get publishedAt => dateTime().nullable()();
   TextColumn get feedSummary => text().nullable()();
+  TextColumn get feedContentHtml => text().nullable()();
   TextColumn get readState => text().withDefault(const Constant('unread'))();
   BoolColumn get starred => boolean().withDefault(const Constant(false))();
   BoolColumn get readLater => boolean().withDefault(const Constant(false))();
