@@ -121,6 +121,7 @@ void main() {
       http: http,
       opmlFiles: opmlFiles,
       database: RiverDatabase.inMemory(),
+      automaticRefreshEnabled: false,
     );
   });
 

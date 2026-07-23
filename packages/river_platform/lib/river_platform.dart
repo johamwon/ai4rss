@@ -2,6 +2,7 @@ library;
 
 import 'package:flutter/services.dart';
 
+export 'src/background_refresh_scheduler.dart';
 export 'src/dynamic_page_renderer.dart';
 export 'src/opml_file_gateway.dart';
 export 'src/share_gateway.dart';

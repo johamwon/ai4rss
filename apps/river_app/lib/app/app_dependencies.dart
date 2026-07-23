@@ -16,8 +16,12 @@ final class AppDependencies {
     required this.share,
     required this.http,
     required RiverDatabase database,
+    this.automaticRefreshEnabled = true,
+    BackgroundRefreshScheduler? backgroundRefresh,
     OpmlFileGateway? opmlFiles,
   })  : opmlFiles = opmlFiles ?? const PlatformOpmlFileGateway(),
+        backgroundRefresh =
+            backgroundRefresh ?? PlatformBackgroundRefreshScheduler(),
         _database = database {
     jobs = PersistentJobQueue(database);
     feeds = DriftFeedRepository(database);
@@ -45,7 +49,9 @@ final class AppDependencies {
     readerSettings = DriftReaderSettingsRepository(database);
   }
 
-  static Future<AppDependencies> production() async {
+  static Future<AppDependencies> production({
+    bool backgroundExecution = false,
+  }) async {
     final database = RiverDatabase(
       driftDatabase(
         name: 'river',
@@ -55,9 +61,11 @@ final class AppDependencies {
     await database.verifyReady();
     final http = BoundedHttpPort.standard();
     const clock = SystemClock();
-    final layeredExtractor = LayeredFullTextExtractor.withDynamicPageRenderer(
-      InAppWebViewDynamicPageRenderer(),
-    );
+    final layeredExtractor = backgroundExecution
+        ? const LayeredFullTextExtractor()
+        : LayeredFullTextExtractor.withDynamicPageRenderer(
+            InAppWebViewDynamicPageRenderer(),
+          );
     return AppDependencies(
       clock: clock,
       ids: SecureIdGenerator(),
@@ -81,8 +89,10 @@ final class AppDependencies {
   final IdGenerator ids;
   final FullTextExtractor fullTextExtractor;
   final RiverPlatformBridge platform;
+  final BackgroundRefreshScheduler backgroundRefresh;
   final ShareGateway share;
   final HttpPort http;
+  final bool automaticRefreshEnabled;
   final OpmlFileGateway opmlFiles;
   late final PersistentJobQueue jobs;
   late final DriftFeedRepository feeds;

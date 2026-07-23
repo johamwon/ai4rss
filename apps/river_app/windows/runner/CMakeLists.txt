@@ -7,10 +7,12 @@ project(runner LANGUAGES CXX)
 #
 # Any new source files that you add to the application should be added here.
 add_executable(${BINARY_NAME} WIN32
+  "background_refresh_scheduler.cpp"
   "flutter_window.cpp"
   "main.cpp"
   "utils.cpp"
   "win32_window.cpp"
+  "windows_command_line.cpp"
   "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc"
   "Runner.rc"
   "runner.exe.manifest"
@@ -38,3 +40,19 @@ target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.
 add_dependencies(${BINARY_NAME} flutter_assemble)
+
+enable_testing()
+add_executable(river_windows_command_line_tests
+  "windows_command_line.cpp"
+  "windows_command_line_test.cpp"
+)
+apply_standard_settings(river_windows_command_line_tests)
+set_target_properties(
+  river_windows_command_line_tests
+  PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests"
+)
+add_dependencies(${BINARY_NAME} river_windows_command_line_tests)
+add_test(
+  NAME river_windows_command_line_tests
+  COMMAND river_windows_command_line_tests
+)
