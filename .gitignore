@@ -6,6 +6,7 @@ coverage/
 .flutter-plugins
 .flutter-plugins-dependencies
 *.iml
+*.obj
 .idea/
 .vscode/
 **/generated/

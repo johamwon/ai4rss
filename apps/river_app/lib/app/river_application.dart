@@ -9,6 +9,7 @@ import 'app_dependencies.dart';
 import 'article_list.dart';
 import 'article_reader.dart';
 import 'article_search.dart';
+import 'automatic_feed_refresh_controller.dart';
 import 'dependency_scope.dart';
 
 final class RiverApp extends StatelessWidget {
@@ -38,14 +39,22 @@ final class RiverHomeScreen extends StatefulWidget {
   State<RiverHomeScreen> createState() => _RiverHomeScreenState();
 }
 
-final class _RiverHomeScreenState extends State<RiverHomeScreen> {
+final class _RiverHomeScreenState extends State<RiverHomeScreen>
+    with WidgetsBindingObserver {
   var _busy = false;
   AppDependencies? _dependencies;
+  AutomaticFeedRefreshController? _automaticRefresh;
   StreamSubscription<FeedRefreshBatchState>? _refreshStates;
   FeedRefreshBatchState _refreshState = const FeedRefreshBatchState.idle();
   late Stream<List<FeedSubscriptionRecord>> _subscriptions;
   late Stream<List<FeedFolderRecord>> _folders;
   ArticleListController? _articleListController;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void didChangeDependencies() {
@@ -66,15 +75,46 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
       _articleListController = ArticleListController(
         load: (query) => dependencies.feeds.watchArticles(query: query),
       );
-      unawaited(dependencies.feedRefreshCoordinator.resumePending());
+      _automaticRefresh = AutomaticFeedRefreshController(
+        clock: dependencies.clock,
+        currentState: () => dependencies.feedRefreshCoordinator.state,
+        resumePending: dependencies.feedRefreshCoordinator.resumePending,
+        loadSubscriptions: () => dependencies.feeds.watchSubscriptions().first,
+        start: dependencies.feedRefreshCoordinator.start,
+      );
+      if (dependencies.automaticRefreshEnabled) {
+        unawaited(_runAutomaticRefresh());
+      } else {
+        unawaited(dependencies.feedRefreshCoordinator.resumePending());
+      }
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final dependencies = _dependencies;
+    if (state == AppLifecycleState.resumed && dependencies != null) {
+      if (dependencies.automaticRefreshEnabled) {
+        unawaited(_runAutomaticRefresh());
+      }
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     unawaited(_refreshStates?.cancel());
     _articleListController?.dispose();
     super.dispose();
+  }
+
+  Future<void> _runAutomaticRefresh() async {
+    try {
+      await _automaticRefresh?.run();
+    } catch (_) {
+      // Automatic refresh is best-effort; the visible manual action remains
+      // the recovery path and reports failures to the reader.
+    }
   }
 
   Future<void> _addFeed() async {

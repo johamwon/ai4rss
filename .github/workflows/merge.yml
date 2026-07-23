@@ -72,11 +72,18 @@ jobs:
 
       - name: Run progressive reader integration
         if: matrix.target == 'windows'
-        run: flutter test integration_test/progressive_reader_test.dart -d windows
+        run: |
+          flutter test integration_test/progressive_reader_test.dart -d windows
+          flutter test integration_test/background_refresh_scheduler_test.dart -d windows
         working-directory: apps/river_app
 
       - name: Build ${{ matrix.target }}
         run: ${{ matrix.command }}
+        working-directory: apps/river_app
+
+      - name: Run Windows native contract tests
+        if: matrix.target == 'windows'
+        run: ctest --test-dir build/windows/x64/runner -C Debug --output-on-failure
         working-directory: apps/river_app
 
       - name: Upload ${{ matrix.target }} build

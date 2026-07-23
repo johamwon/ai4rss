@@ -15,6 +15,7 @@
 - FEED-004：文件夹创建、改名、折叠、删除和来源移动，以及暂停、恢复、删除与规范化 URL 去重。
 - FEED-005：OPML 文件导入导出、嵌套文件夹往返、事务写入、重复/非法项报告和输入安全上限。
 - FEED-006：前台增量刷新、条件请求、持久批次、全局/同域并发限制、可观察状态、协作式取消和启动恢复。
+- FEED-007：启动及回到前台时按冷却窗口增量刷新；Android WorkManager、iOS BGTaskScheduler 与 Windows 计划任务共用机会性后台刷新契约、持久批次恢复和失败回传。Windows 真实任务创建/查询/删除 Smoke、原生参数转义测试及三端适配器契约测试已进入 CI；可通过 `RIVER_BACKGROUND_REFRESH_ENABLED=false` 回滚。
 - EXT-001：统一正文提取请求、规范化成功结果、稳定失败码、阶段尝试记录、Extractor 版本和质量评分。
 - EXT-002：Feed 全文可信度判定，可区分完整正文、短摘要、显式截断和空内容，并在可信时停止后续提取。
 - EXT-003 核心：纯 Dart Readability 候选评分、链接密度、正文兄弟合并、中文标点、多栏噪声清理、元数据归一化与输入规模上限。
@@ -39,20 +40,20 @@
 
 ## 下一批
 
-1. FEED-007：接入三端平台后台刷新契约与 Smoke Test。
-2. FEED-008：离线提示和断网重试体验。
-3. EXT-008：全文失败恢复 UX 与原文/重试入口。
-4. READ-006/007：批量文章操作与键盘快捷键。
+1. FEED-008：离线提示和断网重试体验。
+2. EXT-008：全文失败恢复 UX 与原文/重试入口。
+3. READ-006/007：批量文章操作与键盘快捷键。
+4. TTS-001：文章分段、队列与播放状态机。
 
 ## 最近验证
 
 - Fast Lane：通过，静态分析 0 问题。
 - `river_feed`：27 个测试通过，新增搜索查询约束、大小写无关字面量高亮与 Unicode 索引安全覆盖。
-- `river_domain`：3 个测试通过，覆盖阅读设置默认值、不可变更新与边界约束。
-- `river_data`：37 个测试通过，新增中文/英文/特殊字符搜索、状态过滤、索引触发器、v1/v2/v3→v4、中断恢复、当前库打开及 10,000 篇文章 P95 1.4ms 基准。
-- `river_app`：27 个测试通过，新增搜索防抖、筛选排序、结果高亮、失败重试和过期查询替换，并继续覆盖五组跨尺寸/主题 Golden。
+- `river_domain`：6 个测试通过，新增后台刷新默认策略、15 分钟下限和非精确调度语义覆盖。
+- `river_data`：37 个测试通过，新增中文/英文/特殊字符搜索、状态过滤、索引触发器、v1/v2/v3→v4、中断恢复、当前库打开及 10,000 篇文章 P95 1.2ms 基准。
+- `river_app`：35 个测试通过，新增后台持久批次恢复、失败回传、启动/前台冷却刷新、手动刷新互斥及平台配置覆盖，并继续覆盖五组跨尺寸/主题 Golden。
 - `river_extract`：29 个测试通过，新增完整 Feed 零网页请求、摘要静态下载和失败后平台回退编排覆盖。
-- `river_platform`：7 个测试通过，覆盖动态页面边界以及系统分享请求和结果映射。
+- `river_platform`：12 个测试通过，新增 Android、iOS、Windows 后台调度契约、关闭策略和非精确状态映射。
 - Harness：fixtures 15/15、feeds 3/3、extraction 7/7、AI replay 1/1、ranking 2/2。
 - 本机 Windows Runner 验证受环境缺少 NuGet 阻断在插件构建阶段；同一集成旅程由安装 NuGet 的 Merge/Nightly Windows CI 执行。
-- 三端构建：最近一次 Android/iOS/Windows 主分支 Debug 构建及产物上传均已通过；READ-002 的 Windows 原生滚动/选区旅程已加入 Merge 与 Nightly CI。
+- 三端构建：最近一次 Android/iOS/Windows 主分支 Debug 构建及产物上传均已通过；READ-002 的 Windows 原生滚动/选区旅程和 FEED-007 计划任务 Smoke 已加入 Merge 与 Nightly CI。
