@@ -19,6 +19,7 @@ dependencies:
     path: ../river_domain
   river_feed:
     path: ../river_feed
+  share_plus: 12.0.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

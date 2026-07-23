@@ -12,6 +12,7 @@ part 'database.g.dart';
     Articles,
     ArticleContents,
     ReadingEvents,
+    ReaderSettingsRows,
     KnowledgeItems,
     AudioItems,
     BackgroundJobs,
@@ -28,7 +29,7 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -36,6 +37,9 @@ final class RiverDatabase extends _$RiverDatabase {
     onUpgrade: (Migrator migrator, int from, int to) async {
       if (from < 2 && !await _hasColumn('articles', 'feed_content_html')) {
         await migrator.addColumn(articles, articles.feedContentHtml);
+      }
+      if (from < 3 && !await _hasTable('reader_settings_rows')) {
+        await migrator.createTable(readerSettingsRows);
       }
     },
     beforeOpen: (OpeningDetails details) async {
@@ -50,5 +54,13 @@ final class RiverDatabase extends _$RiverDatabase {
       readsFrom: <ResultSetImplementation<Table, Object?>>{articles},
     ).get();
     return columns.any((row) => row.read<String>('name') == columnName);
+  }
+
+  Future<bool> _hasTable(String tableName) async {
+    final row = await customSelect(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1",
+      variables: <Variable<Object>>[Variable<String>(tableName)],
+    ).getSingleOrNull();
+    return row != null;
   }
 }

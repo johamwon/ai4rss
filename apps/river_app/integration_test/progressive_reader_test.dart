@@ -7,6 +7,8 @@ import 'package:river_app/app/article_reader.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
 
+import '../test_support/article_reader_fakes.dart';
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -23,9 +25,11 @@ void main() {
     final complete = 'New full-text introduction.\n$preview\nComplete ending.';
     final details = StreamController<FeedArticleDetailRecord?>();
     final extraction = Completer<ExtractionResult>();
-    final controller = ArticleReaderController(
+    final repository = FakeArticleReaderRepository((_) => details.stream);
+    final controller = buildReaderController(
       articleId: 'article-1',
-      watch: (_) => details.stream,
+      watch: repository.watch,
+      repository: repository,
       extract: (_) => extraction.future,
     );
     addTearDown(() async {
@@ -45,6 +49,8 @@ void main() {
         read: false,
         starred: false,
         readLater: false,
+        scrollDepth: 0,
+        activeReadSeconds: 0,
         summary: preview,
       ),
     );
@@ -84,6 +90,12 @@ void main() {
     expect(document.documentText, complete);
     expect(document.selectedText, selected);
     expect(document.scrollOffset, greaterThan(0));
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(repository.readWrites, <bool>[true]);
+    expect(repository.progressWrites, isNotEmpty);
+    await tester.tap(find.byTooltip('收藏'));
+    await tester.pump();
+    expect(repository.starredWrites, <bool>[true]);
     expect(find.text('完整正文已就绪'), findsOneWidget);
   });
 }

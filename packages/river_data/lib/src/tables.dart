@@ -98,6 +98,19 @@ class ReadingEvents extends Table {
   ];
 }
 
+class ReaderSettingsRows extends Table {
+  TextColumn get id => text()();
+  TextColumn get fontFamily => text().withDefault(const Constant('system'))();
+  RealColumn get fontScale => real().withDefault(const Constant(1))();
+  RealColumn get lineHeight => real().withDefault(const Constant(1.75))();
+  RealColumn get contentWidth => real().withDefault(const Constant(760))();
+  TextColumn get theme => text().withDefault(const Constant('system'))();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
 class KnowledgeItems extends Table {
   TextColumn get id => text()();
   TextColumn get articleId => text().nullable().references(

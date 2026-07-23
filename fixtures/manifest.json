@@ -51,6 +51,10 @@
     {
       "path": "fixtures/migrations/v002_populated.sql",
       "contains": ["feed_content_html", "PRAGMA user_version = 2"]
+    },
+    {
+      "path": "fixtures/migrations/v003_populated.sql",
+      "contains": ["reader_settings_rows", "PRAGMA user_version = 3"]
     }
   ]
 }

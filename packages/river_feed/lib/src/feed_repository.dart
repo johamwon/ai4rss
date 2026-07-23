@@ -91,11 +91,14 @@ final class FeedArticleDetailRecord {
     required this.read,
     required this.starred,
     required this.readLater,
+    required this.scrollDepth,
+    required this.activeReadSeconds,
     this.author,
     this.publishedAt,
     this.summary,
     this.feedContentHtml,
     this.content,
+    this.completedAt,
   });
 
   final String id;
@@ -110,6 +113,9 @@ final class FeedArticleDetailRecord {
   final bool read;
   final bool starred;
   final bool readLater;
+  final double scrollDepth;
+  final int activeReadSeconds;
+  final DateTime? completedAt;
   final FeedArticleContentRecord? content;
 }
 
@@ -197,6 +203,36 @@ final class FeedArticleDraft {
 
 abstract interface class ArticleReaderRepository {
   Stream<FeedArticleDetailRecord?> watchArticle(String articleId);
+
+  Future<void> setRead(
+    String articleId, {
+    required bool read,
+    required DateTime updatedAt,
+  });
+
+  Future<void> setStarred(
+    String articleId, {
+    required bool starred,
+    required DateTime updatedAt,
+  });
+
+  Future<void> setReadLater(
+    String articleId, {
+    required bool readLater,
+    required DateTime updatedAt,
+  });
+
+  Future<void> saveReadingProgress(
+    String articleId, {
+    required double scrollDepth,
+    required DateTime updatedAt,
+  });
+}
+
+final class ArticleReaderException implements Exception {
+  const ArticleReaderException(this.code);
+
+  final String code;
 }
 
 abstract interface class FeedRepository {
