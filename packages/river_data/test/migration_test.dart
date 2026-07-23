@@ -3,11 +3,12 @@ import 'dart:io';
 import 'package:drift/native.dart';
 import 'package:river_data/river_data.dart';
 import 'package:river_domain/river_domain.dart';
+import 'package:river_feed/river_feed.dart';
 import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:test/test.dart';
 
 void main() {
-  test('v1 fixture migrates to v3 without losing article state', () async {
+  test('v1 fixture migrates to v4 without losing article state', () async {
     final fixture = await _materializeFixture('v001_populated.sql');
     final migrated = await _openFixture(fixture);
 
@@ -16,7 +17,7 @@ void main() {
     expect(article.feedSummary, 'Existing preview survives migration');
     expect(article.starred, isTrue);
     expect(article.feedContentHtml, isNull);
-    expect(await _userVersion(migrated), 3);
+    expect(await _userVersion(migrated), 4);
     expect(
       await DriftReaderSettingsRepository(migrated).watchSettings().first,
       const ReaderSettings(),
@@ -36,7 +37,7 @@ void main() {
 
     final article = await recovered.select(recovered.articles).getSingle();
     expect(article.feedContentHtml, '<p>Recovered body</p>');
-    expect(await _userVersion(recovered), 3);
+    expect(await _userVersion(recovered), 4);
   });
 
   test('v2 fixture creates the settings table and preserves article', () async {
@@ -45,7 +46,7 @@ void main() {
 
     final article = await migrated.select(migrated.articles).getSingle();
     expect(article.feedContentHtml, '<p>Current immediate body</p>');
-    expect(await _userVersion(migrated), 3);
+    expect(await _userVersion(migrated), 4);
     expect(
       await DriftReaderSettingsRepository(migrated).watchSettings().first,
       const ReaderSettings(),
@@ -80,10 +81,10 @@ void main() {
     expect(settings.fontFamily, ReaderFontFamily.serif);
     expect(settings.fontScale, 1.3);
     expect(settings.theme, ReaderThemePreference.dark);
-    expect(await _userVersion(recovered), 3);
+    expect(await _userVersion(recovered), 4);
   });
 
-  test('current v3 fixture opens with article and settings intact', () async {
+  test('v3 fixture creates a searchable index without data loss', () async {
     final fixture = await _materializeFixture('v003_populated.sql');
     final current = await _openFixture(fixture);
 
@@ -96,7 +97,66 @@ void main() {
     expect(settings.fontFamily, ReaderFontFamily.serif);
     expect(settings.contentWidth, 680);
     expect(settings.theme, ReaderThemePreference.dark);
-    expect(await _userVersion(current), 3);
+    expect(
+      (await DriftFeedRepository(current)
+              .watchSearch(
+                const ArticleSearchQuery(text: 'Saved reading state'),
+              )
+              .first)
+          .single
+          .article
+          .id,
+      'article-1',
+    );
+    expect(await _userVersion(current), 4);
+  });
+
+  test('interrupted v4 index creation rebuilds and creates triggers', () async {
+    final fixture = await _materializeFixture('v003_populated.sql');
+    final raw = sqlite.sqlite3.open(fixture.path);
+    raw
+      ..execute('''
+        CREATE VIRTUAL TABLE article_search_index USING fts5(
+          article_id UNINDEXED, title, author, source, summary, body,
+          tags, notes, tokenize='trigram'
+        )
+      ''')
+      ..execute('''
+        INSERT INTO article_search_index VALUES
+        ('stale', 'partial row', '', '', '', '', '', '')
+      ''')
+      ..close();
+    final recovered = await _openFixture(fixture);
+
+    final rows = await recovered
+        .customSelect('SELECT article_id FROM article_search_index')
+        .get();
+    expect(rows.map((row) => row.read<String>('article_id')), <String>[
+      'article-1',
+    ]);
+    expect(await _searchTriggerCount(recovered), 10);
+    expect(await _userVersion(recovered), 4);
+  });
+
+  test('current v4 fixture opens with index and triggers intact', () async {
+    final fixture = await _materializeFixture('v004_populated.sql');
+    final current = await _openFixture(fixture);
+
+    expect(
+      (await current.select(current.articles).getSingle()).starred,
+      isTrue,
+    );
+    expect(
+      (await DriftFeedRepository(
+            current,
+          ).watchSearch(const ArticleSearchQuery(text: 'River v4')).first)
+          .single
+          .article
+          .id,
+      'article-1',
+    );
+    expect(await _searchTriggerCount(current), 10);
+    expect(await _userVersion(current), 4);
   });
 }
 
@@ -129,3 +189,10 @@ Future<int> _userVersion(RiverDatabase database) async =>
     (await database.customSelect('PRAGMA user_version').getSingle()).read<int>(
       'user_version',
     );
+
+Future<int> _searchTriggerCount(RiverDatabase database) async =>
+    (await database.customSelect('''
+      SELECT count(*) AS trigger_count
+      FROM sqlite_master
+      WHERE type = 'trigger' AND name LIKE 'article_search_%'
+      ''').getSingle()).read<int>('trigger_count');

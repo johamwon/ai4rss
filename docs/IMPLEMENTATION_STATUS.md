@@ -1,13 +1,13 @@
 # River 实施状态
 
-更新时间：2026-07-19
+更新时间：2026-07-23
 
 ## 已完成
 
 - FND-002：Composition Root，Clock、ID、HTTP、SQLite、全文提取和平台桥均可注入。
 - FND-004：`dart run tool/ci.dart fast` 可在 Windows 独立运行；GitHub 已配置 PR Fast、Merge、Nightly、Release 四条 CI/CD Lane 与 Dependabot。
-- DATA-001：Drift/SQLite v3 十张核心表、外键、唯一键和级联规则；v2 新增可空 Feed 正文字段，v3 新增阅读设置单例表，并保留 v1/v2 升级兼容。
-- DATA-003：v0、v1、v2、v3 Fixture 与 N-2 升级演练已完成；覆盖 v1→v3、v2→v3、迁移中断后的幂等恢复和当前 v3 打开。
+- DATA-001：Drift/SQLite v4 十张核心表及本地 FTS5 索引、外键、唯一键和级联规则；v2 新增可空 Feed 正文字段，v3 新增阅读设置单例表，v4 新增文章与知识库全文索引，并保留 v1/v2/v3 升级兼容。
+- DATA-003：v0、v1、v2、v3、v4 Fixture 与 N-2 升级演练已完成；覆盖 v1/v2/v3→v4、各阶段迁移中断后的幂等恢复和当前 v4 打开。
 - DATA-004：持久任务队列，支持幂等入队、租约、失败重试和中断恢复。
 - FEED-001 核心：受限 HTTP(S)、超时、手动重定向、循环检测、响应体上限、User-Agent、编码、ETag 与 Last-Modified 条件请求。
 - FEED-002 核心：RSS 2.0、Atom、JSON Feed 统一模型和固定离线语料。
@@ -24,6 +24,7 @@
 - READ-002：渐进阅读页即时展示已净化的 Feed/缓存内容；摘要或截断 Feed 才下载静态网页并依次回退 Readability/WebView，完整正文在同一文档控件内替换，保留视口文本锚点和可映射选区；缓存/失败不阻断阅读。
 - READ-003：阅读页支持系统/衬线/无衬线字体、字号、行高、内容宽度与系统/浅色/深色主题；设置持久化并保留系统字体缩放，手机、平板和 Windows 宽/窄窗口 Golden 矩阵已覆盖。
 - READ-004：已读、收藏、稍后读和阅读进度支持幂等持久写入及重启恢复；阅读 90% 自动完成，系统分享仅发送标题与 Canonical URL，不发送正文。
+- READ-005：本地全文搜索覆盖标题、作者、来源、摘要、正文、知识库标签和笔记；支持中文/英文/特殊字符、未读/收藏/稍后读/文件夹/来源过滤、相关性或时间排序、安全文本高亮、防抖、过期查询替换以及加载/空/失败/重试状态。10,000 篇文章搜索 P95 设有小于 500ms 的自动门槛。
 - 首个纵向切片：添加 Feed URL → 下载 → 解析 → SQLite 幂等写入 → 订阅及文章列表。
 - Windows Debug 构建和真实 Runner Integration Test。
 
@@ -38,21 +39,20 @@
 
 ## 下一批
 
-1. READ-005：本地全文搜索、过滤与结果高亮。
-2. FEED-007：接入三端平台后台刷新契约与 Smoke Test。
-3. FEED-008：离线提示和断网重试体验。
-4. EXT-008：全文失败恢复 UX 与原文/重试入口。
-5. READ-006/007：批量文章操作与键盘快捷键。
+1. FEED-007：接入三端平台后台刷新契约与 Smoke Test。
+2. FEED-008：离线提示和断网重试体验。
+3. EXT-008：全文失败恢复 UX 与原文/重试入口。
+4. READ-006/007：批量文章操作与键盘快捷键。
 
 ## 最近验证
 
 - Fast Lane：通过，静态分析 0 问题。
-- `river_feed`：25 个测试通过，覆盖文章视图查询、阅读时长估算及 Feed 正文向详情链路的无损传递。
+- `river_feed`：27 个测试通过，新增搜索查询约束、大小写无关字面量高亮与 Unicode 索引安全覆盖。
 - `river_domain`：3 个测试通过，覆盖阅读设置默认值、不可变更新与边界约束。
-- `river_data`：31 个测试通过，覆盖文章状态双向幂等写入、阅读进度、设置重启恢复、v1/v2→v3 迁移、中断恢复和当前库打开。
-- `river_app`：24 个测试通过，覆盖刷新、文章列表、渐进正文、排版设置、阅读状态、系统字体缩放、安全分享与五组跨尺寸/主题 Golden。
+- `river_data`：37 个测试通过，新增中文/英文/特殊字符搜索、状态过滤、索引触发器、v1/v2/v3→v4、中断恢复、当前库打开及 10,000 篇文章 P95 1.4ms 基准。
+- `river_app`：27 个测试通过，新增搜索防抖、筛选排序、结果高亮、失败重试和过期查询替换，并继续覆盖五组跨尺寸/主题 Golden。
 - `river_extract`：29 个测试通过，新增完整 Feed 零网页请求、摘要静态下载和失败后平台回退编排覆盖。
 - `river_platform`：7 个测试通过，覆盖动态页面边界以及系统分享请求和结果映射。
-- Harness：fixtures 14/14、feeds 3/3、extraction 7/7、AI replay 1/1、ranking 2/2。
+- Harness：fixtures 15/15、feeds 3/3、extraction 7/7、AI replay 1/1、ranking 2/2。
 - 本机 Windows Runner 验证受环境缺少 NuGet 阻断在插件构建阶段；同一集成旅程由安装 NuGet 的 Merge/Nightly Windows CI 执行。
 - 三端构建：最近一次 Android/iOS/Windows 主分支 Debug 构建及产物上传均已通过；READ-002 的 Windows 原生滚动/选区旅程已加入 Merge 与 Nightly CI。

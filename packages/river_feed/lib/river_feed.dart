@@ -1,5 +1,6 @@
 library;
 
+export 'src/article_search.dart';
 export 'src/feed_discovery_service.dart';
 export 'src/feed_models.dart';
 export 'src/feed_parser.dart';
