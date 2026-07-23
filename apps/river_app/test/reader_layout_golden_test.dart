@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:river_app/app/article_reader.dart';
@@ -7,6 +9,24 @@ import 'package:river_feed/river_feed.dart';
 import '../test_support/article_reader_fakes.dart';
 
 void main() {
+  const goldenDiffTolerance = 0.025;
+  late GoldenFileComparator originalComparator;
+
+  setUpAll(() {
+    originalComparator = goldenFileComparator;
+    final localComparator = originalComparator;
+    if (localComparator is LocalFileComparator) {
+      goldenFileComparator = _CrossPlatformGoldenComparator(
+        localComparator.basedir.resolve('reader_layout_golden_test.dart'),
+        tolerance: goldenDiffTolerance,
+      );
+    }
+  });
+
+  tearDownAll(() {
+    goldenFileComparator = originalComparator;
+  });
+
   final cases = <({
     String name,
     Size size,
@@ -107,11 +127,98 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      _expectExactReaderLayout(tester, scenario.size, scenario.settings);
       await expectLater(
         find.byType(ArticleReaderScreen),
         matchesGoldenFile(scenario.golden),
       );
     });
+  }
+}
+
+void _expectExactReaderLayout(
+  WidgetTester tester,
+  Size surfaceSize,
+  ReaderSettings settings,
+) {
+  expect(tester.takeException(), isNull);
+  expect(find.byType(ArticleReaderScreen), findsOneWidget);
+  expect(find.byType(ArticleDocumentView), findsOneWidget);
+  expect(find.byTooltip('标记已读'), findsOneWidget);
+  expect(find.byTooltip('取消收藏'), findsOneWidget);
+  expect(find.byTooltip('移出稍后读'), findsOneWidget);
+  expect(find.byTooltip('分享'), findsOneWidget);
+  expect(find.byTooltip('阅读排版'), findsOneWidget);
+
+  final documentSize = tester.getSize(find.byType(ArticleDocumentView));
+  final textFieldFinder = find.byType(TextField);
+  final textFieldSize = tester.getSize(textFieldFinder);
+  expect(documentSize.width, closeTo(surfaceSize.width, 0.01));
+  expect(textFieldSize.width, greaterThan(0));
+  expect(
+    textFieldSize.width,
+    lessThanOrEqualTo(settings.contentWidth + 0.01),
+  );
+  expect(
+    textFieldSize.width,
+    lessThanOrEqualTo(documentSize.width - 40 + 0.01),
+  );
+
+  final textField = tester.widget<TextField>(textFieldFinder);
+  final context = tester.element(textFieldFinder);
+  final baseFontSize = Theme.of(context).textTheme.bodyLarge!.fontSize!;
+  expect(
+    textField.style!.fontSize,
+    closeTo(baseFontSize * settings.fontScale, 0.01),
+  );
+  expect(textField.style!.height, settings.lineHeight);
+  expect(
+    textField.style!.fontFamily,
+    switch (settings.fontFamily) {
+      ReaderFontFamily.system =>
+        Theme.of(context).textTheme.bodyLarge!.fontFamily,
+      ReaderFontFamily.serif => 'Noto Serif CJK SC',
+      ReaderFontFamily.sansSerif => 'Noto Sans CJK SC',
+    },
+  );
+  expect(
+    Theme.of(context).brightness,
+    switch (settings.theme) {
+      ReaderThemePreference.system => Theme.of(context).brightness,
+      ReaderThemePreference.light => Brightness.light,
+      ReaderThemePreference.dark => Brightness.dark,
+    },
+  );
+}
+
+final class _CrossPlatformGoldenComparator extends LocalFileComparator {
+  _CrossPlatformGoldenComparator(
+    super.testFile, {
+    required this.tolerance,
+  });
+
+  final double tolerance;
+
+  @override
+  Future<bool> compare(Uint8List imageBytes, Uri golden) async {
+    final result = await GoldenFileComparator.compareLists(
+      imageBytes,
+      await getGoldenBytes(golden),
+    );
+    if (result.passed || result.diffPercent <= tolerance) {
+      result.dispose();
+      return true;
+    }
+
+    final feedback = await generateFailureOutput(result, golden, basedir);
+    final actual = (result.diffPercent * 100).toStringAsFixed(2);
+    final allowed = (tolerance * 100).toStringAsFixed(2);
+    result.dispose();
+    throw FlutterError(
+      '$feedback\n'
+      'Cross-platform golden difference was $actual%; '
+      'the allowed maximum is $allowed%.',
+    );
   }
 }
 
