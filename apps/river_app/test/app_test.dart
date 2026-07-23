@@ -32,8 +32,31 @@ final class _FakeShare implements ShareGateway {
       ShareOutcome.completed;
 }
 
+final class _FakeNetworkMonitor implements NetworkMonitor {
+  _FakeNetworkMonitor() : current = NetworkAvailability.online;
+
+  final StreamController<NetworkAvailability> _changes =
+      StreamController<NetworkAvailability>.broadcast();
+  NetworkAvailability current;
+
+  @override
+  Future<NetworkAvailability> check() async => current;
+
+  @override
+  Stream<NetworkAvailability> get changes => _changes.stream;
+
+  void set(NetworkAvailability value) {
+    current = value;
+    _changes.add(value);
+  }
+
+  Future<void> close() => _changes.close();
+}
+
 final class _FakeHttp implements HttpPort {
   final List<Uri> requests = <Uri>[];
+  bool unavailable = false;
+  bool multipleFeeds = false;
   Completer<void>? _nextFeedGate;
   Completer<void>? _activeFeedGate;
   Completer<void>? _nextFeedStarted;
@@ -56,10 +79,22 @@ final class _FakeHttp implements HttpPort {
     Map<String, String> headers = const <String, String>{},
   }) async {
     requests.add(uri);
+    if (unavailable) {
+      throw StateError('private transport failure');
+    }
     if (uri.path == '/') {
       return PortHttpResponse(
         statusCode: 200,
-        body: '''
+        body: multipleFeeds
+            ? '''
+          <!doctype html><html><head>
+            <link rel="alternate" type="application/rss+xml"
+              title="Technology" href="/tech.xml">
+            <link rel="alternate" type="application/atom+xml"
+              title="News" href="/news.xml">
+          </head></html>
+        '''
+            : '''
           <!doctype html><html><head>
             <link rel="alternate" type="application/rss+xml" href="/feed.xml">
           </head></html>
@@ -76,10 +111,15 @@ final class _FakeHttp implements HttpPort {
       await gate.future;
       _activeFeedGate = null;
     }
+    final title = switch (uri.path) {
+      '/tech.xml' => 'Technology Feed',
+      '/news.xml' => 'News Feed',
+      _ => 'Test Feed',
+    };
     return PortHttpResponse(
       statusCode: 200,
       body: '''
-      <rss version="2.0"><channel><title>Test Feed</title>
+      <rss version="2.0"><channel><title>$title</title>
         <item><guid>one</guid><title>First article</title>
         <link>https://example.test/one</link></item>
       </channel></rss>
@@ -107,10 +147,12 @@ final class _FakeOpmlFiles implements OpmlFileGateway {
 void main() {
   late AppDependencies dependencies;
   late _FakeHttp http;
+  late _FakeNetworkMonitor network;
   late _FakeOpmlFiles opmlFiles;
 
   setUp(() {
     http = _FakeHttp();
+    network = _FakeNetworkMonitor();
     opmlFiles = _FakeOpmlFiles();
     dependencies = AppDependencies(
       clock: _FixedClock(),
@@ -118,6 +160,7 @@ void main() {
       fullTextExtractor: const LayeredFullTextExtractor(),
       platform: _FakePlatform(),
       share: _FakeShare(),
+      network: network,
       http: http,
       opmlFiles: opmlFiles,
       database: RiverDatabase.inMemory(),
@@ -125,7 +168,10 @@ void main() {
     );
   });
 
-  tearDown(() => dependencies.close());
+  tearDown(() async {
+    await network.close();
+    await dependencies.close();
+  });
 
   testWidgets('empty inbox is accessible', (tester) async {
     await tester.pumpWidget(RiverApp(dependencies: dependencies));
@@ -211,6 +257,99 @@ void main() {
       Uri.parse('https://example.test/'),
       Uri.parse('https://example.test/feed.xml'),
     ]);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('keeps an address offline and retries it after reconnection',
+      (tester) async {
+    network.current = NetworkAvailability.offline;
+    await tester.pumpWidget(RiverApp(dependencies: dependencies));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('当前离线，仍可阅读已保存内容'),
+      findsOneWidget,
+    );
+    await tester.tap(find.byTooltip('添加订阅源'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextField),
+      'https://example.test/feed.xml',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, '添加'));
+    await tester.pumpAndSettle();
+
+    expect(http.requests, isEmpty);
+    expect(find.textContaining('当前离线，地址已保留'), findsOneWidget);
+    expect(
+      find.text('当前离线，仍可阅读已保存内容；添加地址已保留'),
+      findsOneWidget,
+    );
+
+    network.set(NetworkAvailability.online);
+    await tester.pumpAndSettle();
+    expect(find.text('网络已恢复，可以继续添加订阅源'), findsOneWidget);
+    await tester.tap(find.text('重试添加'));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(http.requests, <Uri>[
+      Uri.parse('https://example.test/feed.xml'),
+    ]);
+    expect(find.text('Test Feed'), findsWidgets);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('selects one of multiple discovered feeds', (tester) async {
+    http.multipleFeeds = true;
+    await tester.pumpWidget(RiverApp(dependencies: dependencies));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('添加订阅源'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'https://example.test');
+    await tester.tap(find.widgetWithText(FilledButton, '添加'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('选择订阅源'), findsOneWidget);
+    expect(find.text('Technology Feed'), findsOneWidget);
+    expect(find.text('News Feed'), findsOneWidget);
+    await tester.tap(find.text('Technology Feed'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Technology Feed'), findsWidgets);
+    expect(find.text('News Feed'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('keeps unavailable addresses retryable without leaking errors',
+      (tester) async {
+    http.unavailable = true;
+    await tester.pumpWidget(RiverApp(dependencies: dependencies));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('添加订阅源'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextField),
+      'https://example.test/feed.xml',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, '添加'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('暂时无法连接，地址已保留'), findsOneWidget);
+    expect(find.textContaining('private transport failure'), findsNothing);
+    http.unavailable = false;
+    await tester.tap(find.text('重试'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Test Feed'), findsWidgets);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));
