@@ -8,6 +8,7 @@ import 'package:river_feed/river_feed.dart';
 import 'app_dependencies.dart';
 import 'article_list.dart';
 import 'article_reader.dart';
+import 'article_search.dart';
 import 'dependency_scope.dart';
 
 final class RiverApp extends StatelessWidget {
@@ -143,6 +144,23 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
           readerSettings: dependencies.readerSettings,
           share: dependencies.share,
           clock: dependencies.clock,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openSearch(
+    List<FeedSubscriptionRecord> subscriptions,
+    List<FeedFolderRecord> folders,
+  ) async {
+    final dependencies = RiverDependenciesScope.of(context);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => ArticleSearchPage(
+          load: dependencies.feeds.watchSearch,
+          folders: folders,
+          subscriptions: subscriptions,
+          onOpenArticle: (article) => unawaited(_openArticle(article)),
         ),
       ),
     );
@@ -319,6 +337,13 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen> {
             appBar: AppBar(
               title: const Text('River'),
               actions: <Widget>[
+                IconButton(
+                  onPressed: () => unawaited(
+                    _openSearch(subscriptions, folders),
+                  ),
+                  icon: const Icon(Icons.search),
+                  tooltip: '搜索文章',
+                ),
                 IconButton(
                   onPressed: refreshing
                       ? _refreshState.phase == FeedRefreshBatchPhase.running

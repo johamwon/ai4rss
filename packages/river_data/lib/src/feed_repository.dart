@@ -10,7 +10,8 @@ final class DriftFeedRepository
     implements
         feed.FeedRepository,
         feed.SubscriptionOrganizerRepository,
-        feed.ArticleReaderRepository {
+        feed.ArticleReaderRepository,
+        feed.ArticleSearchRepository {
   const DriftFeedRepository(this.database);
 
   final RiverDatabase database;
@@ -341,6 +342,147 @@ final class DriftFeedRepository
   }
 
   @override
+  Stream<List<feed.ArticleSearchResult>> watchSearch(
+    feed.ArticleSearchQuery query,
+  ) {
+    final text = query.normalizedText;
+    if (text.isEmpty) {
+      return Stream<List<feed.ArticleSearchResult>>.value(
+        const <feed.ArticleSearchResult>[],
+      );
+    }
+
+    final variables = <Variable<Object>>[];
+    final filters = <String>[];
+    final useFts = _supportsTrigramQuery(text);
+    if (useFts) {
+      filters.add('article_search_index MATCH ?');
+      variables.add(Variable<String>(_literalFtsPhrase(text)));
+    } else {
+      const searchableColumns = <String>[
+        'article_search_index.title',
+        'article_search_index.author',
+        'article_search_index.source',
+        'article_search_index.summary',
+        'article_search_index.body',
+        'article_search_index.tags',
+        'article_search_index.notes',
+      ];
+      final pattern = '%${_escapeLike(text)}%';
+      filters.add(
+        '(${searchableColumns.map((column) => "$column LIKE ? ESCAPE '\\' COLLATE NOCASE").join(' OR ')})',
+      );
+      for (var index = 0; index < searchableColumns.length; index += 1) {
+        variables.add(Variable<String>(pattern));
+      }
+    }
+    if (query.feedId case final feedId?) {
+      filters.add('a.feed_id = ?');
+      variables.add(Variable<String>(feedId));
+    }
+    switch (query.view) {
+      case feed.FeedArticleView.inbox:
+        break;
+      case feed.FeedArticleView.unread:
+        filters.add("a.read_state = 'unread'");
+      case feed.FeedArticleView.starred:
+        filters.add('a.starred = 1');
+      case feed.FeedArticleView.readLater:
+        filters.add('a.read_later = 1');
+      case feed.FeedArticleView.folder:
+        filters.add('f.folder_id = ?');
+        variables.add(Variable<String>(query.folderId!));
+    }
+    final orderBy = switch (query.sort) {
+      feed.ArticleSearchSort.relevance when useFts =>
+        'bm25(article_search_index, 0, 8, 3, 4, 2, 1, 2, 1) ASC, '
+            'COALESCE(a.published_at, a.created_at) DESC, a.id ASC',
+      feed.ArticleSearchSort.relevance =>
+        'COALESCE(a.published_at, a.created_at) DESC, a.id ASC',
+      feed.ArticleSearchSort.newest =>
+        'COALESCE(a.published_at, a.created_at) DESC, a.id ASC',
+      feed.ArticleSearchSort.oldest =>
+        'COALESCE(a.published_at, a.created_at) ASC, a.id ASC',
+    };
+    variables.add(Variable<int>(query.limit));
+    final search = database.customSelect(
+      '''
+      SELECT
+        article_search_index.article_id,
+        article_search_index.title AS indexed_title,
+        article_search_index.author AS indexed_author,
+        article_search_index.source AS indexed_source,
+        article_search_index.summary AS indexed_summary,
+        article_search_index.body AS indexed_body,
+        article_search_index.notes AS indexed_notes
+      FROM article_search_index
+      INNER JOIN articles a ON a.id = article_search_index.article_id
+      INNER JOIN feed_subscriptions f ON f.id = a.feed_id
+      WHERE ${filters.join(' AND ')}
+      ORDER BY $orderBy
+      LIMIT ?
+      ''',
+      variables: variables,
+      readsFrom: <ResultSetImplementation<Table, Object?>>{
+        database.articles,
+        database.articleContents,
+        database.feedSubscriptions,
+        database.knowledgeItems,
+      },
+    );
+    return search.watch().asyncMap((matches) async {
+      if (matches.isEmpty) return const <feed.ArticleSearchResult>[];
+      final ids = matches
+          .map((row) => row.read<String>('article_id'))
+          .toList(growable: false);
+      final cachedTextLength = ifNull<int>(
+        database.articleContents.plainText.length,
+        const Constant<int>(0),
+      );
+      final statement = database.select(database.articles).join(<Join>[
+        innerJoin(
+          database.feedSubscriptions,
+          database.feedSubscriptions.id.equalsExp(database.articles.feedId),
+        ),
+        leftOuterJoin(
+          database.articleContents,
+          database.articleContents.articleId.equalsExp(database.articles.id),
+          useColumns: false,
+        ),
+      ])..where(database.articles.id.isIn(ids));
+      statement.addColumns(<Expression<Object>>[cachedTextLength]);
+      final records = <String, feed.FeedArticleRecord>{};
+      for (final row in await statement.get()) {
+        final article = row.readTable(database.articles);
+        records[article.id] = _article(
+          article,
+          subscription: row.readTable(database.feedSubscriptions),
+          cachedTextLength: row.read(cachedTextLength),
+        );
+      }
+      return matches
+          .map((match) {
+            final id = match.read<String>('article_id');
+            final article = records[id];
+            if (article == null) return null;
+            return feed.ArticleSearchResult(
+              article: article,
+              excerpt: _searchExcerpt(text, <String>[
+                match.read<String>('indexed_summary'),
+                match.read<String>('indexed_body'),
+                match.read<String>('indexed_notes'),
+                match.read<String>('indexed_author'),
+                match.read<String>('indexed_source'),
+                match.read<String>('indexed_title'),
+              ]),
+            );
+          })
+          .whereType<feed.ArticleSearchResult>()
+          .toList(growable: false);
+    });
+  }
+
+  @override
   Stream<feed.FeedArticleDetailRecord?> watchArticle(String articleId) {
     final statement = database.select(database.articles).join(<Join>[
       innerJoin(
@@ -574,6 +716,42 @@ final class DriftFeedRepository
       database.feedSubscriptions,
     )..where((table) => table.id.equals(feedId))).go();
   }
+}
+
+bool _supportsTrigramQuery(String value) =>
+    RegExp(r'[A-Za-z0-9\u3400-\u4dbf\u4e00-\u9fff]{3}').hasMatch(value);
+
+String _literalFtsPhrase(String value) => '"${value.replaceAll('"', '""')}"';
+
+String _escapeLike(String value) =>
+    value.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_');
+
+String _searchExcerpt(String query, List<String> candidates) {
+  final lowerQuery = query.toLowerCase();
+  String? selected;
+  var match = -1;
+  for (final candidate in candidates) {
+    final trimmed = candidate.trim();
+    if (trimmed.isEmpty) continue;
+    final candidateMatch = trimmed.toLowerCase().indexOf(lowerQuery);
+    if (candidateMatch >= 0) {
+      selected = trimmed;
+      match = candidateMatch;
+      break;
+    }
+    selected ??= trimmed;
+  }
+  if (selected == null) return '';
+  if (selected.length <= 220) return selected;
+  final center = match < 0 ? 0 : match;
+  var start = (center - 70).clamp(0, selected.length);
+  final end = (start + 220).clamp(0, selected.length);
+  if (end == selected.length) {
+    start = (end - 220).clamp(0, selected.length);
+  }
+  return '${start > 0 ? '…' : ''}'
+      '${selected.substring(start, end)}'
+      '${end < selected.length ? '…' : ''}';
 }
 
 feed.FeedSubscriptionRecord _subscription(FeedSubscription row) =>
