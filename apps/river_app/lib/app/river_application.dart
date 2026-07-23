@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:river_data/river_data.dart';
 import 'package:river_design_system/river_design_system.dart';
+import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
 
 import 'app_dependencies.dart';
@@ -45,7 +46,11 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
   AppDependencies? _dependencies;
   AutomaticFeedRefreshController? _automaticRefresh;
   StreamSubscription<FeedRefreshBatchState>? _refreshStates;
+  StreamSubscription<NetworkAvailability>? _networkStates;
   FeedRefreshBatchState _refreshState = const FeedRefreshBatchState.idle();
+  NetworkAvailability _networkAvailability = NetworkAvailability.unknown;
+  Uri? _pendingFeedUri;
+  List<FeedSubscriptionRecord>? _pendingRefreshFeeds;
   late Stream<List<FeedSubscriptionRecord>> _subscriptions;
   late Stream<List<FeedFolderRecord>> _folders;
   ArticleListController? _articleListController;
@@ -62,6 +67,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
     final dependencies = RiverDependenciesScope.of(context);
     if (!identical(dependencies, _dependencies)) {
       unawaited(_refreshStates?.cancel());
+      unawaited(_networkStates?.cancel());
       _dependencies = dependencies;
       _refreshState = dependencies.feedRefreshCoordinator.state;
       _refreshStates = dependencies.feedRefreshCoordinator.states.listen(
@@ -71,6 +77,11 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
       );
       _subscriptions = dependencies.feeds.watchSubscriptions();
       _folders = dependencies.subscriptionOrganizer.watchFolders();
+      _networkStates = dependencies.network.changes.listen(
+        _acceptNetworkAvailability,
+        onError: (_) => _acceptNetworkAvailability(NetworkAvailability.unknown),
+      );
+      unawaited(_checkNetworkAvailability());
       _articleListController?.dispose();
       _articleListController = ArticleListController(
         load: (query) => dependencies.feeds.watchArticles(query: query),
@@ -94,6 +105,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final dependencies = _dependencies;
     if (state == AppLifecycleState.resumed && dependencies != null) {
+      unawaited(_checkNetworkAvailability());
       if (dependencies.automaticRefreshEnabled) {
         unawaited(_runAutomaticRefresh());
       }
@@ -104,12 +116,14 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_refreshStates?.cancel());
+    unawaited(_networkStates?.cancel());
     _articleListController?.dispose();
     super.dispose();
   }
 
   Future<void> _runAutomaticRefresh() async {
     try {
+      if (!await _mayAttemptNetwork()) return;
       await _automaticRefresh?.run();
     } catch (_) {
       // Automatic refresh is best-effort; the visible manual action remains
@@ -117,40 +131,148 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
     }
   }
 
-  Future<void> _addFeed() async {
-    final uri = await showDialog<Uri>(
+  Future<void> _checkNetworkAvailability() async {
+    final dependencies = _dependencies;
+    if (dependencies == null) return;
+    final availability = await dependencies.network.check();
+    if (mounted && identical(dependencies, _dependencies)) {
+      _acceptNetworkAvailability(availability);
+    }
+  }
+
+  void _acceptNetworkAvailability(NetworkAvailability availability) {
+    if (!mounted || availability == _networkAvailability) return;
+    final previous = _networkAvailability;
+    setState(() => _networkAvailability = availability);
+    if (previous.isOffline && availability == NetworkAvailability.online) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _offerPendingNetworkRetry();
+        final dependencies = _dependencies;
+        if (_pendingRefreshFeeds == null &&
+            dependencies?.automaticRefreshEnabled == true) {
+          unawaited(_runAutomaticRefresh());
+        }
+      });
+    }
+  }
+
+  Future<bool> _mayAttemptNetwork() async {
+    final dependencies = _dependencies;
+    if (dependencies == null) return false;
+    final availability = await dependencies.network.check();
+    if (mounted) _acceptNetworkAvailability(availability);
+    return availability.mayAttemptRequest;
+  }
+
+  void _offerPendingNetworkRetry() {
+    if (_pendingFeedUri != null) {
+      _showMessage(
+        '网络已恢复，可以继续添加订阅源',
+        actionLabel: '重试添加',
+        onAction: () => unawaited(_retryPendingFeed()),
+      );
+      return;
+    }
+    if (_pendingRefreshFeeds != null) {
+      _showMessage(
+        '网络已恢复，可以继续刷新订阅源',
+        actionLabel: '重试刷新',
+        onAction: () => unawaited(_retryPendingRefresh()),
+      );
+    }
+  }
+
+  Future<void> _retryPendingFeed() async {
+    final uri = _pendingFeedUri;
+    if (uri != null) await _addFeed(uri: uri);
+  }
+
+  Future<void> _retryPendingRefresh() async {
+    final feeds = _pendingRefreshFeeds;
+    if (feeds != null) await _refreshAll(feeds);
+  }
+
+  Future<void> _addFeed({Uri? uri}) async {
+    uri ??= await showDialog<Uri>(
       context: context,
       builder: (context) => const _AddFeedDialog(),
     );
     if (uri == null || !mounted) {
       return;
     }
-    await _run(
-      () async {
-        final discovery = RiverDependenciesScope.of(context).feedDiscovery;
-        final candidates = await discovery.discover(uri);
-        if (!mounted) {
-          return null;
-        }
-        final selected = candidates.length == 1
-            ? candidates.single
-            : await showDialog<FeedDiscoveryCandidate>(
-                context: context,
-                builder: (context) => _FeedCandidateDialog(
-                  candidates: candidates,
-                ),
-              );
-        if (selected == null) {
-          return null;
-        }
-        await discovery.subscribe(selected);
-        return '订阅源已添加';
-      },
-    );
+    if (!await _mayAttemptNetwork()) {
+      setState(() => _pendingFeedUri = uri);
+      if (mounted) {
+        _showMessage('当前离线，地址已保留；联网后可以直接重试');
+      }
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final discovery = RiverDependenciesScope.of(context).feedDiscovery;
+      final candidates = await discovery.discover(uri);
+      if (!mounted) return;
+      FeedDiscoveryCandidate? selected;
+      if (candidates.length == 1) {
+        selected = candidates.single;
+      } else {
+        setState(() => _busy = false);
+        selected = await showDialog<FeedDiscoveryCandidate>(
+          context: context,
+          builder: (context) => _FeedCandidateDialog(
+            candidates: candidates,
+          ),
+        );
+        if (selected != null && mounted) setState(() => _busy = true);
+      }
+      if (selected == null) return;
+      await discovery.subscribe(selected);
+      _pendingFeedUri = null;
+      if (mounted) _showMessage('订阅源已添加');
+    } on FeedDiscoveryException catch (error) {
+      if (!mounted) return;
+      switch (error.failure) {
+        case FeedDiscoveryFailure.invalidAddress:
+        case FeedDiscoveryFailure.notFound:
+          _showMessage(error.message);
+          break;
+        case FeedDiscoveryFailure.unavailable:
+          setState(() => _pendingFeedUri = uri);
+          _showMessage(
+            '暂时无法连接，地址已保留',
+            actionLabel: '重试',
+            onAction: () => unawaited(_retryPendingFeed()),
+          );
+          break;
+      }
+    } on Object {
+      if (mounted) {
+        setState(() => _pendingFeedUri = uri);
+        _showMessage(
+          '添加订阅源失败，请稍后重试',
+          actionLabel: '重试',
+          onAction: () => unawaited(_retryPendingFeed()),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _refreshAll(List<FeedSubscriptionRecord> feeds) async {
+    if (!await _mayAttemptNetwork()) {
+      setState(
+        () => _pendingRefreshFeeds =
+            List<FeedSubscriptionRecord>.unmodifiable(feeds),
+      );
+      if (mounted) {
+        _showMessage('当前离线，刷新任务已保留；联网后可以重试');
+      }
+      return;
+    }
     try {
+      _pendingRefreshFeeds = null;
       final result = await RiverDependenciesScope.of(context)
           .feedRefreshCoordinator
           .start(feeds);
@@ -158,14 +280,24 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
       if (result.phase == FeedRefreshBatchPhase.cancelled) {
         _showMessage('刷新已取消：完成 ${result.succeeded}/${result.total}');
       } else if (result.failed > 0) {
+        _pendingRefreshFeeds = List<FeedSubscriptionRecord>.unmodifiable(feeds);
         _showMessage(
           '刷新完成：成功 ${result.succeeded}，失败 ${result.failed}',
+          actionLabel: '重试',
+          onAction: () => unawaited(_retryPendingRefresh()),
         );
       } else {
         _showMessage('刷新完成：${result.succeeded} 个来源');
       }
-    } catch (error) {
-      if (mounted) _showMessage('操作失败：$error');
+    } on Object {
+      _pendingRefreshFeeds = List<FeedSubscriptionRecord>.unmodifiable(feeds);
+      if (mounted) {
+        _showMessage(
+          '刷新失败，请稍后重试',
+          actionLabel: '重试',
+          onAction: () => unawaited(_retryPendingRefresh()),
+        );
+      }
     }
   }
 
@@ -213,9 +345,9 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
       if (successMessage != null && mounted) {
         _showMessage(successMessage);
       }
-    } catch (error) {
+    } on Object {
       if (mounted) {
-        _showMessage('操作失败：$error');
+        _showMessage('操作失败，请稍后重试');
       }
     } finally {
       if (mounted) {
@@ -224,10 +356,22 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
     }
   }
 
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+  void _showMessage(
+    String message, {
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          action: actionLabel == null || onAction == null
+              ? null
+              : SnackBarAction(label: actionLabel, onPressed: onAction),
+        ),
+      );
   }
 
   Future<void> _handleFeedAction(
@@ -433,6 +577,11 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
                 ? const Center(child: CircularProgressIndicator())
                 : Column(
                     children: <Widget>[
+                      if (_networkAvailability.isOffline)
+                        _OfflineStatusBar(
+                          hasPendingFeed: _pendingFeedUri != null,
+                          hasPendingRefresh: _pendingRefreshFeeds != null,
+                        ),
                       if (refreshing) _RefreshStatusBar(state: _refreshState),
                       Expanded(
                         child: _Inbox(
@@ -462,6 +611,53 @@ enum _FeedAction { toggle, move, delete }
 enum _FolderAction { rename, delete }
 
 enum _SubscriptionAction { createFolder, importOpml, exportOpml }
+
+final class _OfflineStatusBar extends StatelessWidget {
+  const _OfflineStatusBar({
+    required this.hasPendingFeed,
+    required this.hasPendingRefresh,
+  });
+
+  final bool hasPendingFeed;
+  final bool hasPendingRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    final pending = switch ((hasPendingFeed, hasPendingRefresh)) {
+      (true, true) => '；添加与刷新操作已保留',
+      (true, false) => '；添加地址已保留',
+      (false, true) => '；刷新任务已保留',
+      (false, false) => '',
+    };
+    final label = '当前离线，仍可阅读已保存内容$pending';
+    final colors = Theme.of(context).colorScheme;
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: label,
+      child: ColoredBox(
+        color: colors.surfaceContainerHighest,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: <Widget>[
+              Icon(Icons.cloud_off_outlined, color: colors.onSurfaceVariant),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 final class _RefreshStatusBar extends StatelessWidget {
   const _RefreshStatusBar({required this.state});
