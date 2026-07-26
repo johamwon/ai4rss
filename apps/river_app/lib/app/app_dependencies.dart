@@ -25,6 +25,7 @@ final class AppDependencies {
     AudioPlaybackRepository? audioPlayback,
     AudioSystemSession? audioSystemSession,
     AudioSegmentPrefetcher? audioSegmentPrefetcher,
+    PodcastTransferBackend? podcastTransfer,
     NetworkMonitor? network,
     OpmlFileGateway? opmlFiles,
     this.syncAccount,
@@ -34,12 +35,25 @@ final class AppDependencies {
         audioSystemSession =
             audioSystemSession ?? const UnavailableAudioSystemSession(),
         network = network ?? const UnknownNetworkMonitor(),
+        podcastTransfer =
+            podcastTransfer ?? const UnavailablePodcastTransferBackend(),
         externalUri = externalUri ?? const UnavailableExternalUriGateway(),
         backgroundRefresh =
             backgroundRefresh ?? PlatformBackgroundRefreshScheduler(),
         _database = database {
     jobs = PersistentJobQueue(database);
     feeds = DriftFeedRepository(database);
+    podcasts = DriftPodcastRepository(database);
+    podcastDownloadStore = DriftPodcastDownloadStore(database);
+    podcastDownloads = DurablePodcastDownloadManager(
+      jobs: jobs,
+      store: podcastDownloadStore,
+      loadEpisode: podcasts.findEpisodeById,
+      backend: this.podcastTransfer,
+      network: this.network,
+      clock: clock,
+      ids: ids,
+    );
     offlineArticles = DurableOfflineArticleManager(
       jobs: jobs,
       loadArticle: (articleId) => feeds.watchArticle(articleId).first,
@@ -124,6 +138,7 @@ final class AppDependencies {
       audioSystemSession: audioSystemSession,
       externalUri: UrlLauncherExternalUriGateway(),
       network: ConnectivityNetworkMonitor(),
+      podcastTransfer: IoPodcastTransferBackend(),
       http: http,
       database: database,
     );
@@ -140,12 +155,16 @@ final class AppDependencies {
   final AudioSystemSession audioSystemSession;
   final ExternalUriGateway externalUri;
   final NetworkMonitor network;
+  final PodcastTransferBackend podcastTransfer;
   final HttpPort http;
   final bool automaticRefreshEnabled;
   final OpmlFileGateway opmlFiles;
   final SyncAccountExperience? syncAccount;
   late final PersistentJobQueue jobs;
   late final DriftFeedRepository feeds;
+  late final DriftPodcastRepository podcasts;
+  late final DriftPodcastDownloadStore podcastDownloadStore;
+  late final DurablePodcastDownloadManager podcastDownloads;
   late final DurableOfflineArticleManager offlineArticles;
   late final FeedRefreshService feedRefresh;
   late final FeedRefreshCoordinator feedRefreshCoordinator;
@@ -159,6 +178,7 @@ final class AppDependencies {
     await audioController.dispose();
     await audioSystemSession.dispose();
     await audio.dispose();
+    await podcastDownloads.close();
     await offlineArticles.close();
     await feedRefreshCoordinator.close();
     final httpPort = http;

@@ -321,6 +321,7 @@ class PodcastDownloads extends Table {
   TextColumn get episodeId =>
       text().references(PodcastEpisodes, #id, onDelete: KeyAction.cascade)();
   TextColumn get state => text().withDefault(const Constant('notDownloaded'))();
+  TextColumn get sourceUrl => text().nullable()();
   TextColumn get partialPath => text().nullable()();
   TextColumn get availablePath => text().nullable()();
   IntColumn get downloadedBytes => integer().withDefault(const Constant(0))();

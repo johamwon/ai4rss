@@ -10595,6 +10595,17 @@ class $PodcastDownloadsTable extends PodcastDownloads
     requiredDuringInsert: false,
     defaultValue: const Constant('notDownloaded'),
   );
+  static const VerificationMeta _sourceUrlMeta = const VerificationMeta(
+    'sourceUrl',
+  );
+  @override
+  late final GeneratedColumn<String> sourceUrl = GeneratedColumn<String>(
+    'source_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _partialPathMeta = const VerificationMeta(
     'partialPath',
   );
@@ -10675,6 +10686,7 @@ class $PodcastDownloadsTable extends PodcastDownloads
   List<GeneratedColumn> get $columns => [
     episodeId,
     state,
+    sourceUrl,
     partialPath,
     availablePath,
     downloadedBytes,
@@ -10707,6 +10719,12 @@ class $PodcastDownloadsTable extends PodcastDownloads
       context.handle(
         _stateMeta,
         state.isAcceptableOrUnknown(data['state']!, _stateMeta),
+      );
+    }
+    if (data.containsKey('source_url')) {
+      context.handle(
+        _sourceUrlMeta,
+        sourceUrl.isAcceptableOrUnknown(data['source_url']!, _sourceUrlMeta),
       );
     }
     if (data.containsKey('partial_path')) {
@@ -10782,6 +10800,10 @@ class $PodcastDownloadsTable extends PodcastDownloads
         DriftSqlType.string,
         data['${effectivePrefix}state'],
       )!,
+      sourceUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_url'],
+      ),
       partialPath: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}partial_path'],
@@ -10822,6 +10844,7 @@ class $PodcastDownloadsTable extends PodcastDownloads
 class PodcastDownload extends DataClass implements Insertable<PodcastDownload> {
   final String episodeId;
   final String state;
+  final String? sourceUrl;
   final String? partialPath;
   final String? availablePath;
   final int downloadedBytes;
@@ -10832,6 +10855,7 @@ class PodcastDownload extends DataClass implements Insertable<PodcastDownload> {
   const PodcastDownload({
     required this.episodeId,
     required this.state,
+    this.sourceUrl,
     this.partialPath,
     this.availablePath,
     required this.downloadedBytes,
@@ -10845,6 +10869,9 @@ class PodcastDownload extends DataClass implements Insertable<PodcastDownload> {
     final map = <String, Expression>{};
     map['episode_id'] = Variable<String>(episodeId);
     map['state'] = Variable<String>(state);
+    if (!nullToAbsent || sourceUrl != null) {
+      map['source_url'] = Variable<String>(sourceUrl);
+    }
     if (!nullToAbsent || partialPath != null) {
       map['partial_path'] = Variable<String>(partialPath);
     }
@@ -10869,6 +10896,9 @@ class PodcastDownload extends DataClass implements Insertable<PodcastDownload> {
     return PodcastDownloadsCompanion(
       episodeId: Value(episodeId),
       state: Value(state),
+      sourceUrl: sourceUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceUrl),
       partialPath: partialPath == null && nullToAbsent
           ? const Value.absent()
           : Value(partialPath),
@@ -10895,6 +10925,7 @@ class PodcastDownload extends DataClass implements Insertable<PodcastDownload> {
     return PodcastDownload(
       episodeId: serializer.fromJson<String>(json['episodeId']),
       state: serializer.fromJson<String>(json['state']),
+      sourceUrl: serializer.fromJson<String?>(json['sourceUrl']),
       partialPath: serializer.fromJson<String?>(json['partialPath']),
       availablePath: serializer.fromJson<String?>(json['availablePath']),
       downloadedBytes: serializer.fromJson<int>(json['downloadedBytes']),
@@ -10910,6 +10941,7 @@ class PodcastDownload extends DataClass implements Insertable<PodcastDownload> {
     return <String, dynamic>{
       'episodeId': serializer.toJson<String>(episodeId),
       'state': serializer.toJson<String>(state),
+      'sourceUrl': serializer.toJson<String?>(sourceUrl),
       'partialPath': serializer.toJson<String?>(partialPath),
       'availablePath': serializer.toJson<String?>(availablePath),
       'downloadedBytes': serializer.toJson<int>(downloadedBytes),
@@ -10923,6 +10955,7 @@ class PodcastDownload extends DataClass implements Insertable<PodcastDownload> {
   PodcastDownload copyWith({
     String? episodeId,
     String? state,
+    Value<String?> sourceUrl = const Value.absent(),
     Value<String?> partialPath = const Value.absent(),
     Value<String?> availablePath = const Value.absent(),
     int? downloadedBytes,
@@ -10933,6 +10966,7 @@ class PodcastDownload extends DataClass implements Insertable<PodcastDownload> {
   }) => PodcastDownload(
     episodeId: episodeId ?? this.episodeId,
     state: state ?? this.state,
+    sourceUrl: sourceUrl.present ? sourceUrl.value : this.sourceUrl,
     partialPath: partialPath.present ? partialPath.value : this.partialPath,
     availablePath: availablePath.present
         ? availablePath.value
@@ -10947,6 +10981,7 @@ class PodcastDownload extends DataClass implements Insertable<PodcastDownload> {
     return PodcastDownload(
       episodeId: data.episodeId.present ? data.episodeId.value : this.episodeId,
       state: data.state.present ? data.state.value : this.state,
+      sourceUrl: data.sourceUrl.present ? data.sourceUrl.value : this.sourceUrl,
       partialPath: data.partialPath.present
           ? data.partialPath.value
           : this.partialPath,
@@ -10972,6 +11007,7 @@ class PodcastDownload extends DataClass implements Insertable<PodcastDownload> {
     return (StringBuffer('PodcastDownload(')
           ..write('episodeId: $episodeId, ')
           ..write('state: $state, ')
+          ..write('sourceUrl: $sourceUrl, ')
           ..write('partialPath: $partialPath, ')
           ..write('availablePath: $availablePath, ')
           ..write('downloadedBytes: $downloadedBytes, ')
@@ -10987,6 +11023,7 @@ class PodcastDownload extends DataClass implements Insertable<PodcastDownload> {
   int get hashCode => Object.hash(
     episodeId,
     state,
+    sourceUrl,
     partialPath,
     availablePath,
     downloadedBytes,
@@ -11001,6 +11038,7 @@ class PodcastDownload extends DataClass implements Insertable<PodcastDownload> {
       (other is PodcastDownload &&
           other.episodeId == this.episodeId &&
           other.state == this.state &&
+          other.sourceUrl == this.sourceUrl &&
           other.partialPath == this.partialPath &&
           other.availablePath == this.availablePath &&
           other.downloadedBytes == this.downloadedBytes &&
@@ -11013,6 +11051,7 @@ class PodcastDownload extends DataClass implements Insertable<PodcastDownload> {
 class PodcastDownloadsCompanion extends UpdateCompanion<PodcastDownload> {
   final Value<String> episodeId;
   final Value<String> state;
+  final Value<String?> sourceUrl;
   final Value<String?> partialPath;
   final Value<String?> availablePath;
   final Value<int> downloadedBytes;
@@ -11024,6 +11063,7 @@ class PodcastDownloadsCompanion extends UpdateCompanion<PodcastDownload> {
   const PodcastDownloadsCompanion({
     this.episodeId = const Value.absent(),
     this.state = const Value.absent(),
+    this.sourceUrl = const Value.absent(),
     this.partialPath = const Value.absent(),
     this.availablePath = const Value.absent(),
     this.downloadedBytes = const Value.absent(),
@@ -11036,6 +11076,7 @@ class PodcastDownloadsCompanion extends UpdateCompanion<PodcastDownload> {
   PodcastDownloadsCompanion.insert({
     required String episodeId,
     this.state = const Value.absent(),
+    this.sourceUrl = const Value.absent(),
     this.partialPath = const Value.absent(),
     this.availablePath = const Value.absent(),
     this.downloadedBytes = const Value.absent(),
@@ -11049,6 +11090,7 @@ class PodcastDownloadsCompanion extends UpdateCompanion<PodcastDownload> {
   static Insertable<PodcastDownload> custom({
     Expression<String>? episodeId,
     Expression<String>? state,
+    Expression<String>? sourceUrl,
     Expression<String>? partialPath,
     Expression<String>? availablePath,
     Expression<int>? downloadedBytes,
@@ -11061,6 +11103,7 @@ class PodcastDownloadsCompanion extends UpdateCompanion<PodcastDownload> {
     return RawValuesInsertable({
       if (episodeId != null) 'episode_id': episodeId,
       if (state != null) 'state': state,
+      if (sourceUrl != null) 'source_url': sourceUrl,
       if (partialPath != null) 'partial_path': partialPath,
       if (availablePath != null) 'available_path': availablePath,
       if (downloadedBytes != null) 'downloaded_bytes': downloadedBytes,
@@ -11075,6 +11118,7 @@ class PodcastDownloadsCompanion extends UpdateCompanion<PodcastDownload> {
   PodcastDownloadsCompanion copyWith({
     Value<String>? episodeId,
     Value<String>? state,
+    Value<String?>? sourceUrl,
     Value<String?>? partialPath,
     Value<String?>? availablePath,
     Value<int>? downloadedBytes,
@@ -11087,6 +11131,7 @@ class PodcastDownloadsCompanion extends UpdateCompanion<PodcastDownload> {
     return PodcastDownloadsCompanion(
       episodeId: episodeId ?? this.episodeId,
       state: state ?? this.state,
+      sourceUrl: sourceUrl ?? this.sourceUrl,
       partialPath: partialPath ?? this.partialPath,
       availablePath: availablePath ?? this.availablePath,
       downloadedBytes: downloadedBytes ?? this.downloadedBytes,
@@ -11106,6 +11151,9 @@ class PodcastDownloadsCompanion extends UpdateCompanion<PodcastDownload> {
     }
     if (state.present) {
       map['state'] = Variable<String>(state.value);
+    }
+    if (sourceUrl.present) {
+      map['source_url'] = Variable<String>(sourceUrl.value);
     }
     if (partialPath.present) {
       map['partial_path'] = Variable<String>(partialPath.value);
@@ -11139,6 +11187,7 @@ class PodcastDownloadsCompanion extends UpdateCompanion<PodcastDownload> {
     return (StringBuffer('PodcastDownloadsCompanion(')
           ..write('episodeId: $episodeId, ')
           ..write('state: $state, ')
+          ..write('sourceUrl: $sourceUrl, ')
           ..write('partialPath: $partialPath, ')
           ..write('availablePath: $availablePath, ')
           ..write('downloadedBytes: $downloadedBytes, ')
@@ -17870,6 +17919,7 @@ typedef $$PodcastDownloadsTableCreateCompanionBuilder =
     PodcastDownloadsCompanion Function({
       required String episodeId,
       Value<String> state,
+      Value<String?> sourceUrl,
       Value<String?> partialPath,
       Value<String?> availablePath,
       Value<int> downloadedBytes,
@@ -17883,6 +17933,7 @@ typedef $$PodcastDownloadsTableUpdateCompanionBuilder =
     PodcastDownloadsCompanion Function({
       Value<String> episodeId,
       Value<String> state,
+      Value<String?> sourceUrl,
       Value<String?> partialPath,
       Value<String?> availablePath,
       Value<int> downloadedBytes,
@@ -17936,6 +17987,11 @@ class $$PodcastDownloadsTableFilterComposer
   });
   ColumnFilters<String> get state => $composableBuilder(
     column: $table.state,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceUrl => $composableBuilder(
+    column: $table.sourceUrl,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18012,6 +18068,11 @@ class $$PodcastDownloadsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get sourceUrl => $composableBuilder(
+    column: $table.sourceUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get partialPath => $composableBuilder(
     column: $table.partialPath,
     builder: (column) => ColumnOrderings(column),
@@ -18082,6 +18143,9 @@ class $$PodcastDownloadsTableAnnotationComposer
   });
   GeneratedColumn<String> get state =>
       $composableBuilder(column: $table.state, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceUrl =>
+      $composableBuilder(column: $table.sourceUrl, builder: (column) => column);
 
   GeneratedColumn<String> get partialPath => $composableBuilder(
     column: $table.partialPath,
@@ -18170,6 +18234,7 @@ class $$PodcastDownloadsTableTableManager
               ({
                 Value<String> episodeId = const Value.absent(),
                 Value<String> state = const Value.absent(),
+                Value<String?> sourceUrl = const Value.absent(),
                 Value<String?> partialPath = const Value.absent(),
                 Value<String?> availablePath = const Value.absent(),
                 Value<int> downloadedBytes = const Value.absent(),
@@ -18181,6 +18246,7 @@ class $$PodcastDownloadsTableTableManager
               }) => PodcastDownloadsCompanion(
                 episodeId: episodeId,
                 state: state,
+                sourceUrl: sourceUrl,
                 partialPath: partialPath,
                 availablePath: availablePath,
                 downloadedBytes: downloadedBytes,
@@ -18194,6 +18260,7 @@ class $$PodcastDownloadsTableTableManager
               ({
                 required String episodeId,
                 Value<String> state = const Value.absent(),
+                Value<String?> sourceUrl = const Value.absent(),
                 Value<String?> partialPath = const Value.absent(),
                 Value<String?> availablePath = const Value.absent(),
                 Value<int> downloadedBytes = const Value.absent(),
@@ -18205,6 +18272,7 @@ class $$PodcastDownloadsTableTableManager
               }) => PodcastDownloadsCompanion.insert(
                 episodeId: episodeId,
                 state: state,
+                sourceUrl: sourceUrl,
                 partialPath: partialPath,
                 availablePath: availablePath,
                 downloadedBytes: downloadedBytes,

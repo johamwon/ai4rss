@@ -6,8 +6,8 @@
 
 - FND-002：Composition Root，Clock、ID、HTTP、SQLite、全文提取和平台桥均可注入。
 - FND-004：`dart run tool/ci.dart fast` 可在 Windows 独立运行；GitHub 已配置 PR Fast、Merge、Nightly、Release 四条 CI/CD Lane 与 Dependabot。
-- DATA-001：Drift/SQLite v8 本地数据库及 FTS5 索引、外键、唯一键和级联规则；v2～v5 依次增加 Feed 正文、阅读设置、全文索引和音频断点，v6～v7 增加同步副本/冲突历史，v8 分离 Podcast 节目、分集和下载状态，并保留旧版本升级兼容。
-- DATA-003：v0、v1、v2、v3、v4 Fixture 与 N-2 升级演练已完成；覆盖 v1/v2/v3/v4→v8、各阶段迁移中断后的幂等恢复和当前 v8 打开。
+- DATA-001：Drift/SQLite v9 本地数据库及 FTS5 索引、外键、唯一键和级联规则；v2～v5 依次增加 Feed 正文、阅读设置、全文索引和音频断点，v6～v7 增加同步副本/冲突历史，v8 分离 Podcast 节目、分集和下载状态，v9 将下载文件绑定到来源 URL，并保留旧版本升级兼容。
+- DATA-003：v0、v1、v2、v3、v4 Fixture 与 N-2 升级演练已完成；覆盖 v1/v2/v3/v4→v9、各阶段迁移中断后的幂等恢复、v8→v9 及当前 v9 打开。
 - DATA-004：持久任务队列，支持幂等入队、租约、失败重试和中断恢复。
 - FEED-001 核心：受限 HTTP(S)、超时、手动重定向、循环检测、响应体上限、User-Agent、编码、ETag 与 Last-Modified 条件请求。
 - FEED-002 核心：RSS 2.0、Atom、JSON Feed 统一模型和固定离线语料。
@@ -43,8 +43,9 @@
 - SYNC-006 核心：纯 Dart 账号体验控制器统一会话恢复、持久同步状态、失败分类、显式重试与有界冲突历史；Drift 仓库按设备统计 outbox/cursor、按账号统计未决冲突并返回最新决议记录。Flutter 三端共用同步与账号页，展示状态、待上传数、冲突历史和游标。退出仅清安全会话并保留全部本地内容；云端删除是独立网关操作，必须收到同账号完成回执才清会话，UI 还要求输入精确确认短语。云适配器通过可选依赖注入启用入口，本地版不受云不可用影响。
 - SYNC-007 核心：服务端内核仅接收 E2EE 信封与有界路由元数据，不持有数据密钥或明文解码入口；活跃设备授权、多租户隔离、逐设备 UTC 窗口限流、原子字节/条目配额、精确幂等与 mutation 碰撞拒绝均在存储前后封闭。管理员只可读取条目数、编码字节和最新序号，审计不含信封、密文、令牌或密钥。备份以账号绑定的 SHA-256 校验保护有序密文，恢复校验账号与 mutation 唯一性；灾演在隔离仓库恢复并只报告计数/字节/序号。云删除仅删除密文账号记录并返回同账号完成回执。
 - POD-001 核心：纯 Dart Podcast RSS 解析器提取节目/分集、enclosure、相对 URL、封面、作者、日期、时长、季/集号、类型和显式标记；只接受无凭据的 HTTP(S) 音频，异常可选字段安全降级。刷新服务使用 ETag/Last-Modified 增量请求，同一文档按外部身份去重；GUID 是首选稳定身份，同 GUID 换媒体 URL 时保留 River ID 并只 upsert 变化分集，完全相同的分集不重写。节目级默认倍速与下载策略作为后续播放/持久化的稳定契约。
-- POD-002 流式播放核心：纯 Dart 路由引擎让文章继续使用系统 TTS、Podcast Episode 使用独立媒体引擎，并在切换类型前停止旧引擎；Android/iOS 通过固定 `just_audio`、Windows 通过固定 WinRT MediaPlayer 实现支持 HTTP(S)/本地文件流式播放、暂停、恢复、跳转和 0.5x～3x 倍速。插件错误只映射稳定失败码，媒体 URL 不进入日志；现有统一控制器、进度仓库、后台焦点、锁屏/通知和 Windows SMTC 链路保持复用。耐久下载与断点续传仍在 POD-002 后续切片。
+- POD-002 流式播放核心：纯 Dart 路由引擎让文章继续使用系统 TTS、Podcast Episode 使用独立媒体引擎，并在切换类型前停止旧引擎；Android/iOS 通过固定 `just_audio`、Windows 通过固定 WinRT MediaPlayer 实现支持 HTTP(S)/本地文件流式播放、暂停、恢复、跳转和 0.5x～3x 倍速。插件错误只映射稳定失败码，媒体 URL 不进入日志；现有统一控制器、进度仓库、后台焦点、锁屏/通知和 Windows SMTC 链路保持复用。
 - POD-002 持久化核心：Drift v8 将 Podcast Show、Episode 和 Download 状态分表；节目/变化分集在同一事务 upsert，跨节目分集整笔回滚，Feed 省略的历史分集不删除。节目默认倍速和下载策略由用户写入并在刷新后保留；`showId + externalId` 唯一键固化 GUID 优先身份，下载状态与媒体 URL、播放断点解耦。v1～v4 旧库升级及只创建节目表后中断的 v8 恢复已覆盖。
+- POD-002 耐久下载核心：Android/iOS/Windows 共用持久任务状态机和真实 I/O 后端；支持 Range/If-Range 断点续传、忽略 Range 时安全重下、ETag/字节进度、应用支持目录、两 GiB 上限和常见音频签名校验。v9 以来源 URL 绑定文件，enclosure 换址不会复用旧文件；网络恢复只加速网络类失败，冷启动收回遗留租约，磁盘满保留断点，损坏文件删除，用户删除后可重新下载。HTTP(S) 重定向拒绝凭据和 HTTPS 降级，错误码不泄露媒体 URL 或原生细节。
 - 首个纵向切片：添加 Feed URL → 下载 → 解析 → SQLite 幂等写入 → 订阅及文章列表。
 - Windows Debug 构建和真实 Runner Integration Test。
 
@@ -59,20 +60,21 @@
 ## 下一批
 
 1. TTS-004 真机验收：Android/iOS 锁屏、来电/其他音频中断、蓝牙和进程后台矩阵。
-2. 阶段 7 POD-002：继续实现 Podcast 耐久下载、断点续传、节目级策略和异常恢复。
+2. 阶段 7 POD-002：实现 Podcast 节目/分集界面、自动下载策略、已下载文件优先播放及三端真实网络/存储验收。
+3. 阶段 7 POD-003：完善文章与 Podcast 统一队列的持久化、跨来源排序和消费入口。
 
 ## 最近验证
 
 - Fast Lane：通过，静态分析 0 问题。
 - `river_feed`：33 个测试通过，新增 Podcast RSS 节目/分集模型、音频 enclosure 安全筛选、iTunes 元数据、重复 GUID、同 GUID 换媒体 URL、无变化零写入和条件刷新覆盖；继续覆盖搜索、RSS/Atom/JSON Feed、发现、文章刷新、OPML、解析安全与 HTTP 边界。
 - `river_domain`：11 个测试通过，新增系统中断自动恢复授权边界，并继续覆盖统一音频快照的正文/播客位置约束、来源载荷、正文版本/分段索引、播放参数边界、后台刷新策略与核心模型。
-- `river_data`：59 个测试通过，新增 Podcast 节目/分集事务持久化、策略保留、跨节目回滚及 v8 中断迁移恢复；继续覆盖同步状态、seen-mutation、防碰撞、v1→v8 幂等迁移、持久任务、文章与播客断点及 10,000 篇文章 P95 <500ms 自动门槛。
+- `river_data`：66 个测试通过，新增 Podcast 网络切换、磁盘满、损坏媒体、冷启动租约恢复、删除重下、v8→v9 和 v9 中断迁移；继续覆盖节目/分集事务、同步状态、seen-mutation、防碰撞、v1→v9 幂等迁移、持久任务、文章与播客断点及 10,000 篇文章 P95 <500ms 自动门槛。
 - `river_app`：55 个测试通过，新增同步状态/冲突历史/重试/安全退出与云端删除确认的 Widget 覆盖，并继续覆盖安全仓库恢复码、后台媒体、Windows SMTC、阅读器控制链路与五组跨尺寸 Golden。
 - `river_design_system`：2 个测试通过，浅色与深色高对比主题的关键文字组合均达到 WCAG AA 4.5:1。
 - `river_audio`：31 个测试通过，新增文章/Podcast 引擎能力合并、类型路由、切换清理和事件转发；继续覆盖两小时长文预算、有界预取、焦点拒绝、系统媒体命令、中断恢复、进度写入、定时暂停、统一队列与跨语言分句。
 - `river_sync`：75 个测试通过，新增密文服务多租户隔离、授权、原子配额、限流、备份校验、灾演恢复、删除和不可读管理员指标；继续覆盖账号体验、字段/语义合并、幂等重复、墓碑压缩、双设备分页、AES/X25519/HKDF、恢复和设备生命周期。
 - `river_extract`：29 个测试通过，新增完整 Feed 零网页请求、摘要静态下载和失败后平台回退编排覆盖。
-- `river_platform`：36 个测试通过，新增 Podcast 远程/本地媒体加载、播放控制、倍速/跳转、位置事件与危险来源拒绝；继续覆盖安全仓库、系统音频会话、系统 TTS、外部原文、链路状态、后台调度及动态渲染契约。
+- `river_platform`：40 个测试通过，新增真实 HTTP Range/If-Range 续传、服务端忽略 Range 回退、损坏音频拒绝和凭据重定向拒绝；继续覆盖 Podcast 远程/本地媒体播放、安全仓库、系统音频会话、系统 TTS、外部原文、链路状态、后台调度及动态渲染契约。
 - Harness：fixtures 16/16、feeds 3/3、extraction 7/7、AI replay 1/1、ranking 2/2。
 - 本机 Windows Debug 构建通过；原生命令行测试 1/1、隐藏启动 Smoke 与真实 SMTC MethodChannel Integration Test 均通过。Windows 统一启用 `/utf-8` 并保留 `/WX`，避免非英文系统代码页造成第三方插件误失败。
 - Windows 真实 DPAPI 安全仓库 Integration Test 1/1 通过，测试会写入、读回并清理会话、X25519 私钥和账户数据密钥；已加入 Merge/Nightly CI。

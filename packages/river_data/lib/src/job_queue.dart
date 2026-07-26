@@ -233,6 +233,76 @@ final class PersistentJobQueue {
     return updated == 1;
   }
 
+  Future<bool> requeue({
+    required String idempotencyKey,
+    required DateTime now,
+  }) async {
+    final updated =
+        await (_database.update(_database.backgroundJobs)..where(
+              (BackgroundJobs table) =>
+                  table.idempotencyKey.equals(idempotencyKey) &
+                  table.status.isIn(<String>[
+                    DurableJobStatus.failed.name,
+                    DurableJobStatus.cancelled.name,
+                    DurableJobStatus.completed.name,
+                  ]),
+            ))
+            .write(
+              BackgroundJobsCompanion(
+                status: Value<String>(DurableJobStatus.queued.name),
+                attempt: const Value<int>(0),
+                availableAt: Value<DateTime>(now),
+                leaseUntil: const Value<DateTime?>(null),
+                lastErrorCode: const Value<String?>(null),
+                updatedAt: Value<DateTime>(now),
+              ),
+            );
+    return updated == 1;
+  }
+
+  Future<bool> cancelByIdempotencyKey({
+    required String idempotencyKey,
+    required DateTime now,
+  }) async {
+    final updated =
+        await (_database.update(_database.backgroundJobs)..where(
+              (BackgroundJobs table) =>
+                  table.idempotencyKey.equals(idempotencyKey) &
+                  table.status.isIn(<String>[
+                    DurableJobStatus.queued.name,
+                    DurableJobStatus.running.name,
+                  ]),
+            ))
+            .write(
+              BackgroundJobsCompanion(
+                status: Value<String>(DurableJobStatus.cancelled.name),
+                leaseUntil: const Value<DateTime?>(null),
+                updatedAt: Value<DateTime>(now),
+              ),
+            );
+    return updated == 1;
+  }
+
+  Future<int> expediteQueued({
+    required String type,
+    required Set<String> errorCodes,
+    required DateTime now,
+  }) {
+    if (errorCodes.isEmpty) return Future<int>.value(0);
+    return (_database.update(_database.backgroundJobs)..where(
+          (BackgroundJobs table) =>
+              table.type.equals(type) &
+              table.status.equals(DurableJobStatus.queued.name) &
+              table.lastErrorCode.isIn(errorCodes),
+        ))
+        .write(
+          BackgroundJobsCompanion(
+            availableAt: Value<DateTime>(now),
+            updatedAt: Value<DateTime>(now),
+          ),
+        );
+  }
+
   Future<DurableJobRecord?> findByIdempotencyKey(String key) async {
     final row =
         await (_database.select(_database.backgroundJobs)..where(
