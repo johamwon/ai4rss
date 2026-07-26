@@ -67,7 +67,7 @@ jobs:
 
       - name: Set up NuGet for WebView2
         if: matrix.target == 'windows'
-        uses: NuGet/setup-nuget@v2
+        uses: NuGet/setup-nuget@v4
 
       - name: Resolve workspace
         run: flutter pub get
