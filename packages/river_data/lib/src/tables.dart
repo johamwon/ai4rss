@@ -257,3 +257,78 @@ class SyncSeenMutationRows extends Table {
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{mutationId};
 }
+
+class PodcastShows extends Table {
+  TextColumn get id => text()();
+  TextColumn get canonicalFeedUrl => text()();
+  TextColumn get title => text().withLength(min: 1, max: 2048)();
+  TextColumn get description => text().nullable()();
+  TextColumn get author => text().nullable()();
+  TextColumn get websiteUrl => text().nullable()();
+  TextColumn get imageUrl => text().nullable()();
+  TextColumn get language => text().nullable()();
+  TextColumn get explicitRating => text()();
+  RealColumn get defaultPlaybackRate => real().withDefault(const Constant(1))();
+  TextColumn get downloadPolicy =>
+      text().withDefault(const Constant('manual'))();
+  TextColumn get etag => text().nullable()();
+  TextColumn get lastModified => text().nullable()();
+  DateTimeColumn get lastRefreshedAt => dateTime()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => <Set<Column<Object>>>[
+    <Column<Object>>{canonicalFeedUrl},
+  ];
+}
+
+class PodcastEpisodes extends Table {
+  TextColumn get id => text()();
+  TextColumn get showId =>
+      text().references(PodcastShows, #id, onDelete: KeyAction.cascade)();
+  TextColumn get externalId => text()();
+  TextColumn get title => text().withLength(min: 1, max: 2048)();
+  TextColumn get description => text().nullable()();
+  TextColumn get author => text().nullable()();
+  TextColumn get episodeUrl => text().nullable()();
+  TextColumn get mediaUrl => text()();
+  TextColumn get imageUrl => text().nullable()();
+  TextColumn get mediaMimeType => text().nullable()();
+  IntColumn get mediaLengthBytes => integer().nullable()();
+  DateTimeColumn get publishedAt => dateTime().nullable()();
+  IntColumn get durationMs => integer().nullable()();
+  IntColumn get episodeNumber => integer().nullable()();
+  IntColumn get seasonNumber => integer().nullable()();
+  TextColumn get explicitRating => text()();
+  TextColumn get episodeType => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+
+  @override
+  List<Set<Column<Object>>> get uniqueKeys => <Set<Column<Object>>>[
+    <Column<Object>>{showId, externalId},
+  ];
+}
+
+class PodcastDownloads extends Table {
+  TextColumn get episodeId =>
+      text().references(PodcastEpisodes, #id, onDelete: KeyAction.cascade)();
+  TextColumn get state => text().withDefault(const Constant('notDownloaded'))();
+  TextColumn get partialPath => text().nullable()();
+  TextColumn get availablePath => text().nullable()();
+  IntColumn get downloadedBytes => integer().withDefault(const Constant(0))();
+  IntColumn get totalBytes => integer().nullable()();
+  TextColumn get etag => text().nullable()();
+  TextColumn get failureCode => text().nullable()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{episodeId};
+}

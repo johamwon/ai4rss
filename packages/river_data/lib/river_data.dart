@@ -7,6 +7,7 @@ export 'src/feed_refresh_coordinator.dart';
 export 'src/feed_repository.dart';
 export 'src/job_queue.dart';
 export 'src/offline_article_coordinator.dart';
+export 'src/podcast_repository.dart';
 export 'src/reader_settings_repository.dart';
 export 'src/sync_replica_store.dart';
 export 'src/sync_status_repository.dart';

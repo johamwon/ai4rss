@@ -169,6 +169,19 @@ abstract interface class PodcastRepository {
   });
 }
 
+abstract interface class PodcastCatalogRepository implements PodcastRepository {
+  Future<PodcastShowRecord?> findShowById(String showId);
+
+  Future<PodcastEpisodeRecord?> findEpisodeById(String episodeId);
+
+  Future<void> updateShowPolicy({
+    required String showId,
+    required double defaultPlaybackRate,
+    required PodcastDownloadPolicy downloadPolicy,
+    required DateTime updatedAt,
+  });
+}
+
 final class PodcastFeedParser {
   const PodcastFeedParser();
 
