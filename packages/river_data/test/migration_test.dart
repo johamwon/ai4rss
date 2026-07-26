@@ -8,7 +8,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:test/test.dart';
 
 void main() {
-  test('v1 fixture migrates to v5 without losing article state', () async {
+  test('v1 fixture migrates to v6 without losing article state', () async {
     final fixture = await _materializeFixture('v001_populated.sql');
     final migrated = await _openFixture(fixture);
 
@@ -17,7 +17,16 @@ void main() {
     expect(article.feedSummary, 'Existing preview survives migration');
     expect(article.starred, isTrue);
     expect(article.feedContentHtml, isNull);
-    expect(await _userVersion(migrated), 5);
+    expect(await _userVersion(migrated), 6);
+    expect(
+      await _syncTableNames(migrated),
+      containsAll(<String>[
+        'sync_replica_entries',
+        'sync_outbox_rows',
+        'sync_cursor_rows',
+        'sync_conflict_rows',
+      ]),
+    );
     expect(
       await DriftReaderSettingsRepository(migrated).watchSettings().first,
       const ReaderSettings(),
@@ -37,7 +46,7 @@ void main() {
 
     final article = await recovered.select(recovered.articles).getSingle();
     expect(article.feedContentHtml, '<p>Recovered body</p>');
-    expect(await _userVersion(recovered), 5);
+    expect(await _userVersion(recovered), 6);
   });
 
   test('v2 fixture creates the settings table and preserves article', () async {
@@ -46,7 +55,7 @@ void main() {
 
     final article = await migrated.select(migrated.articles).getSingle();
     expect(article.feedContentHtml, '<p>Current immediate body</p>');
-    expect(await _userVersion(migrated), 5);
+    expect(await _userVersion(migrated), 6);
     expect(
       await DriftReaderSettingsRepository(migrated).watchSettings().first,
       const ReaderSettings(),
@@ -81,7 +90,7 @@ void main() {
     expect(settings.fontFamily, ReaderFontFamily.serif);
     expect(settings.fontScale, 1.3);
     expect(settings.theme, ReaderThemePreference.dark);
-    expect(await _userVersion(recovered), 5);
+    expect(await _userVersion(recovered), 6);
   });
 
   test('v3 fixture creates a searchable index without data loss', () async {
@@ -108,7 +117,7 @@ void main() {
           .id,
       'article-1',
     );
-    expect(await _userVersion(current), 5);
+    expect(await _userVersion(current), 6);
   });
 
   test('interrupted v4 index creation rebuilds and creates triggers', () async {
@@ -135,7 +144,7 @@ void main() {
       'article-1',
     ]);
     expect(await _searchTriggerCount(recovered), 10);
-    expect(await _userVersion(recovered), 5);
+    expect(await _userVersion(recovered), 6);
   });
 
   test('v4 fixture adds restartable audio state with index intact', () async {
@@ -167,7 +176,7 @@ void main() {
         'language_tag',
       ]),
     );
-    expect(await _userVersion(current), 5);
+    expect(await _userVersion(current), 6);
   });
 
   test('interrupted v5 audio column additions retry idempotently', () async {
@@ -192,7 +201,48 @@ void main() {
         'language_tag',
       ]),
     );
-    expect(await _userVersion(recovered), 5);
+    expect(await _userVersion(recovered), 6);
+  });
+
+  test('interrupted v6 sync table creation retries idempotently', () async {
+    final fixture = await _materializeFixture('v004_populated.sql');
+    final raw = sqlite.sqlite3.open(fixture.path);
+    raw
+      ..execute('ALTER TABLE audio_items ADD COLUMN segment_index INTEGER NULL')
+      ..execute(
+        'ALTER TABLE audio_items ADD COLUMN character_offset INTEGER NULL',
+      )
+      ..execute('ALTER TABLE audio_items ADD COLUMN content_revision TEXT NULL')
+      ..execute(
+        'ALTER TABLE audio_items ADD COLUMN pitch REAL NOT NULL DEFAULT 1',
+      )
+      ..execute('ALTER TABLE audio_items ADD COLUMN voice_id TEXT NULL')
+      ..execute('ALTER TABLE audio_items ADD COLUMN language_tag TEXT NULL')
+      ..execute('''
+        CREATE TABLE sync_replica_entries (
+          account_id TEXT NOT NULL,
+          object_kind TEXT NOT NULL,
+          object_id TEXT NOT NULL,
+          envelope_json TEXT NOT NULL,
+          clear_payload_json TEXT NOT NULL,
+          updated_at INTEGER NOT NULL,
+          PRIMARY KEY (account_id, object_kind, object_id)
+        )
+      ''')
+      ..execute('PRAGMA user_version = 5')
+      ..close();
+    final recovered = await _openFixture(fixture);
+
+    expect(
+      await _syncTableNames(recovered),
+      containsAll(<String>[
+        'sync_replica_entries',
+        'sync_outbox_rows',
+        'sync_cursor_rows',
+        'sync_conflict_rows',
+      ]),
+    );
+    expect(await _userVersion(recovered), 6);
   });
 }
 
@@ -237,3 +287,13 @@ Future<List<String>> _audioColumnNames(RiverDatabase database) async =>
     (await database.customSelect('PRAGMA table_info(audio_items)').get())
         .map((row) => row.read<String>('name'))
         .toList(growable: false);
+
+Future<List<String>> _syncTableNames(RiverDatabase database) async =>
+    (await database.customSelect(
+      '''
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'table' AND name LIKE 'sync_%'
+      ORDER BY name
+      ''',
+    ).get()).map((row) => row.read<String>('name')).toList(growable: false);

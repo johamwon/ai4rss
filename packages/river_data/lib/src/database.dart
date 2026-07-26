@@ -17,6 +17,10 @@ part 'database.g.dart';
     AudioItems,
     BackgroundJobs,
     SyncTombstones,
+    SyncReplicaEntries,
+    SyncOutboxRows,
+    SyncCursorRows,
+    SyncConflictRows,
   ],
 )
 final class RiverDatabase extends _$RiverDatabase {
@@ -29,7 +33,7 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -76,6 +80,20 @@ final class RiverDatabase extends _$RiverDatabase {
           'language_tag',
           audioItems.languageTag,
         );
+      }
+      if (from < 6) {
+        if (!await _hasTable('sync_replica_entries')) {
+          await migrator.createTable(syncReplicaEntries);
+        }
+        if (!await _hasTable('sync_outbox_rows')) {
+          await migrator.createTable(syncOutboxRows);
+        }
+        if (!await _hasTable('sync_cursor_rows')) {
+          await migrator.createTable(syncCursorRows);
+        }
+        if (!await _hasTable('sync_conflict_rows')) {
+          await migrator.createTable(syncConflictRows);
+        }
       }
     },
     beforeOpen: (OpeningDetails details) async {
