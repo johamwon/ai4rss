@@ -115,6 +115,38 @@ abstract interface class AudioPlaybackRepository {
   Future<void> clear(String itemId);
 }
 
+abstract interface class AudioSystemSession {
+  Stream<AudioSystemEvent> get events;
+
+  Future<bool> activate();
+  Future<void> deactivate();
+  Future<void> publish(AudioSystemPlaybackState state);
+  Future<void> clear();
+  Future<void> dispose();
+}
+
+final class UnavailableAudioSystemSession implements AudioSystemSession {
+  const UnavailableAudioSystemSession();
+
+  @override
+  Stream<AudioSystemEvent> get events => const Stream<AudioSystemEvent>.empty();
+
+  @override
+  Future<bool> activate() async => true;
+
+  @override
+  Future<void> clear() async {}
+
+  @override
+  Future<void> deactivate() async {}
+
+  @override
+  Future<void> dispose() async {}
+
+  @override
+  Future<void> publish(AudioSystemPlaybackState state) async {}
+}
+
 final class UnavailableAudioPlaybackRepository
     implements AudioPlaybackRepository {
   const UnavailableAudioPlaybackRepository();

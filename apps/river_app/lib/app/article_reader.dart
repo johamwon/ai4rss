@@ -123,6 +123,7 @@ final class ArticleReaderController extends ChangeNotifier {
     AudioEngine audio = const UnavailableAudioEngine(),
     AudioPlaybackRepository audioPlayback =
         const UnavailableAudioPlaybackRepository(),
+    AudioPlaybackController? audioController,
   })  : _repository = repository,
         _extractor = extractor,
         _readerSettings = readerSettings,
@@ -130,11 +131,13 @@ final class ArticleReaderController extends ChangeNotifier {
         _externalUri = externalUri,
         _offlineArticles = offlineArticles,
         _clock = clock,
-        _audioController = AudioPlaybackController(
-          engine: audio,
-          repository: audioPlayback,
-          clock: clock,
-        ) {
+        _audioController = audioController ??
+            AudioPlaybackController(
+              engine: audio,
+              repository: audioPlayback,
+              clock: clock,
+            ),
+        _ownsAudioController = audioController == null {
     _subscribeArticle();
     _subscribeSettings();
     _subscribeOfflineArticle();
@@ -150,6 +153,7 @@ final class ArticleReaderController extends ChangeNotifier {
   final OfflineArticleManager _offlineArticles;
   final Clock _clock;
   final AudioPlaybackController _audioController;
+  final bool _ownsAudioController;
   StreamSubscription<FeedArticleDetailRecord?>? _articleSubscription;
   StreamSubscription<ReaderSettings>? _settingsSubscription;
   StreamSubscription<OfflineArticleState>? _offlineArticleSubscription;
@@ -744,7 +748,9 @@ final class ArticleReaderController extends ChangeNotifier {
     unawaited(_settingsSubscription?.cancel());
     unawaited(_offlineArticleSubscription?.cancel());
     unawaited(_audioSubscription?.cancel());
-    unawaited(_audioController.dispose());
+    if (_ownsAudioController) {
+      unawaited(_audioController.dispose());
+    }
     super.dispose();
   }
 }
@@ -761,6 +767,7 @@ final class ArticleReaderPage extends StatefulWidget {
     required this.clock,
     this.audio = const UnavailableAudioEngine(),
     this.audioPlayback = const UnavailableAudioPlaybackRepository(),
+    this.audioController,
     super.key,
   });
 
@@ -774,6 +781,7 @@ final class ArticleReaderPage extends StatefulWidget {
   final Clock clock;
   final AudioEngine audio;
   final AudioPlaybackRepository audioPlayback;
+  final AudioPlaybackController? audioController;
 
   @override
   State<ArticleReaderPage> createState() => _ArticleReaderPageState();
@@ -796,6 +804,7 @@ final class _ArticleReaderPageState extends State<ArticleReaderPage> {
       clock: widget.clock,
       audio: widget.audio,
       audioPlayback: widget.audioPlayback,
+      audioController: widget.audioController,
     );
   }
 

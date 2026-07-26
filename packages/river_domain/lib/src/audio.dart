@@ -172,6 +172,48 @@ enum AudioEnginePhase {
   failed,
 }
 
+enum AudioSystemEventType {
+  play,
+  pause,
+  stop,
+  skipNext,
+  skipPrevious,
+  interruptionBegan,
+  interruptionEnded,
+  becomingNoisy,
+}
+
+final class AudioSystemEvent {
+  const AudioSystemEvent({
+    required this.type,
+    this.mayResume = false,
+  }) : assert(
+          type == AudioSystemEventType.interruptionEnded || !mayResume,
+          'Only an ended interruption can authorize automatic resume.',
+        );
+
+  final AudioSystemEventType type;
+  final bool mayResume;
+}
+
+final class AudioSystemPlaybackState {
+  const AudioSystemPlaybackState({
+    required this.item,
+    required this.phase,
+    required this.position,
+    required this.settings,
+    required this.canSkipPrevious,
+    required this.canSkipNext,
+  });
+
+  final AudioItem item;
+  final AudioEnginePhase phase;
+  final AudioPlaybackPosition position;
+  final AudioPlaybackSettings settings;
+  final bool canSkipPrevious;
+  final bool canSkipNext;
+}
+
 final class AudioEngineEvent {
   const AudioEngineEvent({
     required this.phase,
