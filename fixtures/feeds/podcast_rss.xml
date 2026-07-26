@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+  xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd"
+  xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>River Audio Lab</title>
+    <link>https://podcast.example.test/show</link>
+    <description>A synthetic podcast used by the River parser harness.</description>
+    <language>zh-CN</language>
+    <itunes:author>River Lab</itunes:author>
+    <itunes:image href="/images/show.jpg" />
+    <itunes:explicit>no</itunes:explicit>
+    <item>
+      <guid isPermaLink="false">episode-42</guid>
+      <title>Building a local-first listening queue</title>
+      <link>/episodes/42</link>
+      <description>Show notes for a synthetic episode.</description>
+      <dc:creator>Lin</dc:creator>
+      <pubDate>Sat, 25 Jul 2026 08:30:00 +0800</pubDate>
+      <itunes:image href="/images/episode-42.jpg" />
+      <itunes:duration>01:02:03</itunes:duration>
+      <itunes:episode>42</itunes:episode>
+      <itunes:season>3</itunes:season>
+      <itunes:episodeType>full</itunes:episodeType>
+      <itunes:explicit>yes</itunes:explicit>
+      <enclosure
+        url="/audio/episode-42.mp3"
+        type="audio/mpeg"
+        length="12345678" />
+    </item>
+    <item>
+      <guid isPermaLink="false">episode-42</guid>
+      <title>Duplicate entry that must not create another episode</title>
+      <enclosure
+        url="/audio/duplicate.mp3"
+        type="audio/mpeg"
+        length="12" />
+    </item>
+  </channel>
+</rss>
