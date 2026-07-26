@@ -9,6 +9,7 @@ dependencies:
   audio_service: 0.18.19
   audio_session: 0.2.4
   connectivity_plus: 7.3.0
+  crypto: 3.0.7
   # Vendored 11.0.2 keeps its path-traversal fix and iOS 13 support while
   # applying the upstream AGP 9 legacy-KGP compatibility patch.
   file_picker:
@@ -22,6 +23,7 @@ dependencies:
   flutter_inappwebview: 6.2.0-beta.3
   just_audio: 0.10.6
   just_audio_windows: 0.2.3
+  path_provider: 2.1.6
   river_domain:
     path: ../river_domain
   river_feed:

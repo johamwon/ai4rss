@@ -37,7 +37,7 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -132,6 +132,9 @@ final class RiverDatabase extends _$RiverDatabase {
         if (!await _hasTable('podcast_downloads')) {
           await migrator.createTable(podcastDownloads);
         }
+      }
+      if (from < 9 && !await _hasColumn('podcast_downloads', 'source_url')) {
+        await migrator.addColumn(podcastDownloads, podcastDownloads.sourceUrl);
       }
     },
     beforeOpen: (OpeningDetails details) async {

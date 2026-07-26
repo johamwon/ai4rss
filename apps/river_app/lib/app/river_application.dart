@@ -103,6 +103,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
         unawaited(dependencies.feedRefreshCoordinator.resumePending());
       }
       unawaited(dependencies.offlineArticles.resumePending());
+      unawaited(dependencies.podcastDownloads.start());
     }
   }
 
@@ -112,6 +113,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
     if (state == AppLifecycleState.resumed && dependencies != null) {
       unawaited(_checkNetworkAvailability());
       unawaited(dependencies.offlineArticles.resumePending());
+      unawaited(dependencies.podcastDownloads.resumePending());
       if (dependencies.automaticRefreshEnabled) {
         unawaited(_runAutomaticRefresh());
       }
