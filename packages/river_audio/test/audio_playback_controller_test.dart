@@ -382,6 +382,65 @@ void main() {
     expect(engine.pauseCalls, 1);
     expect(engine.playCalls, 1);
   });
+
+  test('moves a bounded preparation window without coupling playback to it',
+      () async {
+    final engine = _FakeAudioEngine();
+    final prefetcher = _FakeAudioSegmentPrefetcher();
+    final controller = AudioPlaybackController(
+      engine: engine,
+      repository: _MemoryAudioPlaybackRepository(),
+      segmentPrefetcher: prefetcher,
+      clock: _MutableClock(DateTime.utc(2026, 7, 26)),
+    );
+    await controller.load(_request());
+
+    expect(prefetcher.updates.single.segmentIndex, 0);
+    engine.emit(
+      const AudioEngineEvent(
+        phase: AudioEnginePhase.ready,
+        itemId: 'article-1',
+        position: AudioPlaybackPosition.speech(
+          segmentIndex: 0,
+          characterOffset: 4,
+        ),
+      ),
+    );
+    expect(prefetcher.updates, hasLength(1));
+
+    await controller.skipNext();
+    expect(prefetcher.updates.last.segmentIndex, 1);
+    await controller.updateSettings(
+      const AudioPlaybackSettings(rate: 1.5),
+    );
+    expect(prefetcher.updates.last.settings.rate, 1.5);
+
+    await controller.stop();
+    expect(prefetcher.cancelCalls, greaterThanOrEqualTo(2));
+    await controller.dispose();
+    expect(prefetcher.disposeCalls, 1);
+  });
+
+  test('segment preparation failure never blocks local playback', () async {
+    final engine = _FakeAudioEngine();
+    final prefetcher = _FakeAudioSegmentPrefetcher()..failUpdates = true;
+    final controller = AudioPlaybackController(
+      engine: engine,
+      repository: _MemoryAudioPlaybackRepository(),
+      segmentPrefetcher: prefetcher,
+      clock: _MutableClock(DateTime.utc(2026, 7, 26)),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.load(_request());
+    await _flushMicrotasks();
+    await controller.play();
+
+    expect(prefetcher.updates, hasLength(1));
+    expect(engine.playCalls, 1);
+    expect(controller.state.phase, AudioEnginePhase.playing);
+    expect(controller.state.failureCode, isNull);
+  });
 }
 
 AudioItem _articleItem(String id) => AudioItem(
@@ -609,6 +668,48 @@ final class _FakeAudioSystemSession implements AudioSystemSession {
 
   void emit(AudioSystemEventType type, {bool mayResume = false}) {
     _events.add(AudioSystemEvent(type: type, mayResume: mayResume));
+  }
+}
+
+final class _PrefetchUpdate {
+  const _PrefetchUpdate({
+    required this.segmentIndex,
+    required this.settings,
+  });
+
+  final int segmentIndex;
+  final AudioPlaybackSettings settings;
+}
+
+final class _FakeAudioSegmentPrefetcher implements AudioSegmentPrefetcher {
+  final List<_PrefetchUpdate> updates = <_PrefetchUpdate>[];
+  var cancelCalls = 0;
+  var disposeCalls = 0;
+  var failUpdates = false;
+
+  @override
+  Future<void> cancel() async {
+    cancelCalls += 1;
+  }
+
+  @override
+  Future<void> dispose() async {
+    disposeCalls += 1;
+  }
+
+  @override
+  Future<void> update({
+    required AudioLoadRequest request,
+    required int currentSegmentIndex,
+    required AudioPlaybackSettings settings,
+  }) async {
+    updates.add(
+      _PrefetchUpdate(
+        segmentIndex: currentSegmentIndex,
+        settings: settings,
+      ),
+    );
+    if (failUpdates) throw StateError('private preparation failure');
   }
 }
 

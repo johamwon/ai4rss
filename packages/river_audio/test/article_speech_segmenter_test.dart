@@ -94,6 +94,44 @@ void main() {
     expect(segments.last.text, '正文继续。');
   });
 
+  test('two-hour synthetic article stays within a bounded speech-plan budget',
+      () {
+    const sentence =
+        'River reads this complete sentence locally and keeps its position. ';
+    const targetCharacters = 120 * 900;
+    final source = List<String>.filled(
+      (targetCharacters / sentence.length).ceil(),
+      sentence,
+      growable: false,
+    ).join();
+    final stopwatch = Stopwatch()..start();
+
+    final segments = const ArticleSpeechSegmenter().segment(source);
+
+    stopwatch.stop();
+    final retainedEstimate = segments.fold<int>(
+      0,
+      (total, segment) => total + segment.text.length * 2 + 256,
+    );
+    expect(source.length, greaterThanOrEqualTo(targetCharacters));
+    expect(segments, isNotEmpty);
+    expect(
+      segments.every((segment) => segment.text.length <= 280),
+      isTrue,
+    );
+    expect(
+      segments.indexed.every(
+        (entry) =>
+            entry.$2.index == entry.$1 &&
+            (entry.$1 == 0 ||
+                segments[entry.$1 - 1].sourceEnd <= entry.$2.sourceStart),
+      ),
+      isTrue,
+    );
+    expect(retainedEstimate, lessThan(2 * 1024 * 1024));
+    expect(stopwatch.elapsed, lessThan(const Duration(seconds: 5)));
+  });
+
   test('empty and whitespace-only articles have no speech work', () {
     const segmenter = ArticleSpeechSegmenter();
 

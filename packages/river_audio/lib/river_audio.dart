@@ -4,6 +4,7 @@ import 'package:river_domain/river_domain.dart';
 
 export 'src/article_speech_segmenter.dart';
 export 'src/audio_playback_controller.dart';
+export 'src/audio_segment_prefetcher.dart';
 
 final class AudioQueue {
   final List<AudioItem> _items = <AudioItem>[];

@@ -23,6 +23,7 @@ final class AppDependencies {
     AudioEngine? audio,
     AudioPlaybackRepository? audioPlayback,
     AudioSystemSession? audioSystemSession,
+    AudioSegmentPrefetcher? audioSegmentPrefetcher,
     NetworkMonitor? network,
     OpmlFileGateway? opmlFiles,
   })  : opmlFiles = opmlFiles ?? const PlatformOpmlFileGateway(),
@@ -71,6 +72,8 @@ final class AppDependencies {
       engine: this.audio,
       repository: this.audioPlayback,
       systemSession: this.audioSystemSession,
+      segmentPrefetcher:
+          audioSegmentPrefetcher ?? const UnavailableAudioSegmentPrefetcher(),
       clock: clock,
     );
   }

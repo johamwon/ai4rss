@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:river_domain/river_domain.dart';
 
+import 'audio_segment_prefetcher.dart';
+
 abstract interface class AudioTimerHandle {
   bool get isActive;
   void cancel();
@@ -127,12 +129,15 @@ final class AudioPlaybackController {
     required AudioPlaybackRepository repository,
     required Clock clock,
     AudioSystemSession systemSession = const UnavailableAudioSystemSession(),
+    AudioSegmentPrefetcher segmentPrefetcher =
+        const UnavailableAudioSegmentPrefetcher(),
     AudioScheduler scheduler = const DartAudioScheduler(),
     this.persistenceDelay = const Duration(milliseconds: 400),
   })  : _engine = engine,
         _repository = repository,
         _clock = clock,
         _systemSession = systemSession,
+        _segmentPrefetcher = segmentPrefetcher,
         _scheduler = scheduler {
     _engineSubscription = _engine.events.listen(
       _handleEngineEvent,
@@ -152,6 +157,7 @@ final class AudioPlaybackController {
   final AudioPlaybackRepository _repository;
   final Clock _clock;
   final AudioSystemSession _systemSession;
+  final AudioSegmentPrefetcher _segmentPrefetcher;
   final AudioScheduler _scheduler;
   final Duration persistenceDelay;
   final StreamController<AudioPlaybackState> _states =
@@ -164,6 +170,7 @@ final class AudioPlaybackController {
   var _generation = 0;
   var _restoring = false;
   var _resumeAfterInterruption = false;
+  (String, String?, int, double, double, String?, String?)? _lastPrefetchKey;
   var _disposed = false;
 
   AudioPlaybackState get state => _state;
@@ -172,6 +179,12 @@ final class AudioPlaybackController {
   Future<void> load(AudioLoadRequest request) async {
     if (_disposed) return;
     final generation = ++_generation;
+    _lastPrefetchKey = null;
+    try {
+      await _segmentPrefetcher.cancel();
+    } on Object {
+      // Preparation is optional; the playback engine remains the fallback.
+    }
     _cancelPersistenceTimer();
     _cancelSleepTimer(updateState: false);
     _emit(
@@ -291,6 +304,12 @@ final class AudioPlaybackController {
       await _systemSession.deactivate();
     } on Object {
       _fail('audio_stop_failed');
+    }
+    _lastPrefetchKey = null;
+    try {
+      await _segmentPrefetcher.cancel();
+    } on Object {
+      // Stopping playback must not depend on optional prepared resources.
     }
   }
 
@@ -436,6 +455,8 @@ final class AudioPlaybackController {
       case AudioEnginePhase.completed:
         _cancelPersistenceTimer();
         _cancelSleepTimer();
+        _lastPrefetchKey = null;
+        unawaited(_segmentPrefetcher.cancel().catchError((_) {}));
         unawaited(_systemSession.deactivate().catchError((_) {}));
         unawaited(_repository.clear(request.item.id).catchError((_) {}));
       case AudioEnginePhase.idle ||
@@ -643,6 +664,7 @@ final class AudioPlaybackController {
     if (_disposed) return;
     _state = state;
     _states.add(state);
+    _schedulePrefetch(state);
     final item = state.item;
     final position = state.position;
     if (item == null || position == null) {
@@ -665,6 +687,53 @@ final class AudioPlaybackController {
     );
   }
 
+  void _schedulePrefetch(AudioPlaybackState state) {
+    if (_disposed ||
+        state.restoring ||
+        state.request?.item.kind != AudioKind.articleTts) {
+      return;
+    }
+    if (state.phase != AudioEnginePhase.ready &&
+        state.phase != AudioEnginePhase.playing &&
+        state.phase != AudioEnginePhase.paused &&
+        state.phase != AudioEnginePhase.interrupted) {
+      return;
+    }
+    final request = state.request;
+    final segmentIndex = state.position?.segmentIndex;
+    if (request == null ||
+        segmentIndex == null ||
+        segmentIndex < 0 ||
+        segmentIndex >= request.speechSegments.length) {
+      return;
+    }
+    final settings = state.settings;
+    final key = (
+      request.item.id,
+      request.contentRevision,
+      segmentIndex,
+      settings.rate,
+      settings.pitch,
+      settings.voiceId,
+      settings.languageTag,
+    );
+    if (_lastPrefetchKey == key) return;
+    _lastPrefetchKey = key;
+    try {
+      unawaited(
+        _segmentPrefetcher
+            .update(
+              request: request,
+              currentSegmentIndex: segmentIndex,
+              settings: settings,
+            )
+            .catchError((_) {}),
+      );
+    } on Object {
+      // A custom prefetcher may fail synchronously. Playback still continues.
+    }
+  }
+
   Future<void> dispose() async {
     if (_disposed) return;
     await _persistNow();
@@ -675,6 +744,7 @@ final class AudioPlaybackController {
     _sleepTimer = null;
     await _engineSubscription.cancel();
     await _systemSubscription.cancel();
+    await _segmentPrefetcher.dispose().catchError((_) {});
     await _systemSession.clear().catchError((_) {});
     await _states.close();
   }
