@@ -274,8 +274,11 @@ final class ArticleListTile extends StatelessWidget {
     ];
     final summary = article.summary?.trim();
     return Semantics(
+      button: true,
       container: true,
+      excludeSemantics: true,
       label: '${article.title}，$metadata，${states.join('，')}',
+      onTap: onOpen,
       child: ListTile(
         onTap: onOpen,
         leading: CircleAvatar(

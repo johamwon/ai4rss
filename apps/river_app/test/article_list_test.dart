@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:river_app/app/article_list.dart';
 import 'package:river_feed/river_feed.dart';
@@ -139,7 +140,79 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(
+      tester
+          .getSemantics(find.byType(ArticleListTile))
+          .getSemanticsData()
+          .flagsCollection
+          .isButton,
+      isTrue,
+    );
     semantics.dispose();
+  });
+
+  testWidgets('article row is reachable and activatable from the keyboard', (
+    tester,
+  ) async {
+    var opened = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ArticleListTile(
+            article: _article(id: 'keyboard', title: 'Keyboard article'),
+            onOpen: () => opened = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+
+    expect(opened, isTrue);
+  });
+
+  testWidgets('article list remains usable at 200 percent system text size', (
+    tester,
+  ) async {
+    final controller = ArticleListController(
+      load: (_) => Stream<List<FeedArticleRecord>>.value(
+        <FeedArticleRecord>[
+          _article(
+            id: 'large-text',
+            title: 'A long accessible article title that may wrap safely',
+            starred: true,
+            readLater: true,
+          ),
+        ],
+      ),
+    );
+    addTearDown(controller.dispose);
+    tester.view.physicalSize = const Size(640, 1280);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: Scaffold(
+            body: ArticleListPane(
+              controller: controller,
+              folders: const <FeedFolderRecord>[],
+              onOpenArticle: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('A long accessible article'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('article row delegates opening to the reader route', (

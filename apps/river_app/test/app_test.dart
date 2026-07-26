@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:river_app/app/app_dependencies.dart';
 import 'package:river_app/app/river_application.dart';
@@ -180,6 +181,31 @@ void main() {
     expect(find.text('River'), findsOneWidget);
     expect(find.text('还没有订阅源'), findsOneWidget);
     expect(find.byTooltip('添加订阅源'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('primary Windows shortcuts open search and add-feed flows', (
+    tester,
+  ) async {
+    await tester.pumpWidget(RiverApp(dependencies: dependencies));
+    await tester.pumpAndSettle();
+
+    await _sendControlShortcut(tester, LogicalKeyboardKey.keyF);
+    await tester.pumpAndSettle();
+    expect(find.text('搜索文章与知识库内容'), findsOneWidget);
+    expect(
+      tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus,
+      isTrue,
+    );
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await _sendControlShortcut(tester, LogicalKeyboardKey.keyN);
+    await tester.pumpAndSettle();
+    expect(find.text('添加订阅源'), findsWidgets);
+    expect(find.widgetWithText(FilledButton, '添加'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));
@@ -448,4 +474,13 @@ void main() {
       ),
     );
   });
+}
+
+Future<void> _sendControlShortcut(
+  WidgetTester tester,
+  LogicalKeyboardKey key,
+) async {
+  await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+  await tester.sendKeyEvent(key);
+  await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
 }

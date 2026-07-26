@@ -1,8 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:river_app/app/article_reader.dart';
+import 'package:river_design_system/river_design_system.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
 
@@ -452,6 +454,92 @@ void main() {
     expect(media.textScaler.scale(10), 15);
     expect(tester.widget<TextField>(field).style!.fontSize, greaterThan(18));
   });
+
+  testWidgets('reader shortcuts invoke accessible article actions', (
+    tester,
+  ) async {
+    final repository = FakeArticleReaderRepository(
+      (_) => Stream<FeedArticleDetailRecord?>.value(
+        _detail(summary: 'Keyboard readable body', read: true),
+      ),
+    );
+    final offline = FakeOfflineArticleManager();
+    final external = FakeExternalUriGateway();
+    final controller = buildReaderController(
+      articleId: 'article-1',
+      watch: repository.watch,
+      repository: repository,
+      offlineArticles: offline,
+      externalUri: external,
+      extract: (_) => Completer<ExtractionResult>().future,
+    );
+    addTearDown(() async {
+      controller.dispose();
+      await offline.close();
+    });
+    await tester.pumpWidget(_TestHost(controller: controller));
+    await tester.pump();
+    await tester.pump();
+
+    await _sendControlShortcut(tester, LogicalKeyboardKey.keyM);
+    await _sendControlShortcut(tester, LogicalKeyboardKey.keyS);
+    await _sendControlShortcut(tester, LogicalKeyboardKey.keyL);
+    await _sendControlShortcut(tester, LogicalKeyboardKey.keyO);
+    await _sendControlShortcut(tester, LogicalKeyboardKey.keyD);
+    await tester.pump();
+
+    expect(repository.readWrites, <bool>[true, false]);
+    expect(repository.starredWrites, <bool>[true]);
+    expect(repository.readLaterWrites, <bool>[true]);
+    expect(external.lastUri, Uri.parse('https://example.test/article'));
+    expect(offline.enqueued, <String>['article-1']);
+  });
+
+  testWidgets('reader honors high contrast and exposes the title as a header', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    final settings = FakeReaderSettingsRepository(
+      initial: const ReaderSettings(theme: ReaderThemePreference.light),
+    );
+    final controller = buildReaderController(
+      articleId: 'article-1',
+      watch: (_) => Stream<FeedArticleDetailRecord?>.value(
+        _detail(summary: 'Accessible high contrast body'),
+      ),
+      settings: settings,
+      extract: (_) => Completer<ExtractionResult>().future,
+    );
+    addTearDown(() async {
+      controller.dispose();
+      await settings.close();
+    });
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(highContrast: true),
+          child: ArticleReaderScreen(controller: controller),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    final readerTheme = Theme.of(tester.element(find.byType(TextField)));
+    expect(
+      readerTheme.colorScheme.primary,
+      RiverTheme.highContrastLight().colorScheme.primary,
+    );
+    expect(
+      tester
+          .getSemantics(find.text('Progressive article'))
+          .getSemanticsData()
+          .flagsCollection
+          .isHeader,
+      isTrue,
+    );
+    semantics.dispose();
+  });
 }
 
 final class _TestHost extends StatelessWidget {
@@ -505,3 +593,12 @@ ExtractionSuccess _success(String text) => ExtractionSuccess(
         ),
       ],
     );
+
+Future<void> _sendControlShortcut(
+  WidgetTester tester,
+  LogicalKeyboardKey key,
+) async {
+  await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+  await tester.sendKeyEvent(key);
+  await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+}
