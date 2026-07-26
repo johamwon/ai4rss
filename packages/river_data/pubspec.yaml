@@ -11,6 +11,8 @@ dependencies:
     path: ../river_feed
   river_domain:
     path: ../river_domain
+  river_sync:
+    path: ../river_sync
 dev_dependencies:
   build_runner: ^2.7.1
   drift_dev: 2.34.0

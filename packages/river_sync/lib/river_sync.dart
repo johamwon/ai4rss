@@ -1,9 +1,12 @@
 library;
 
 export 'src/conflict_model.dart';
+export 'src/incremental_sync.dart';
 export 'src/sync_auth.dart';
 export 'src/sync_crypto.dart';
+export 'src/sync_payload.dart';
 export 'src/sync_protocol.dart';
+export 'src/sync_wire_codec.dart';
 export 'src/version_vector.dart';
 
 final class VersionedValue<T> {

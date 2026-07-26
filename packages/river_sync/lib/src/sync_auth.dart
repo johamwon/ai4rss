@@ -239,6 +239,10 @@ abstract interface class SyncSessionVault {
   Future<void> clear();
 }
 
+abstract interface class SyncAuthorizer {
+  Future<SyncAuthResult<SyncSession>> authorizeSync();
+}
+
 abstract interface class SyncIdentityGateway {
   Future<SyncAuthResult<PasswordlessChallenge>> startPasswordless(
     PasswordlessEmail email,
@@ -271,7 +275,7 @@ abstract interface class SyncIdentityGateway {
   });
 }
 
-final class SyncAuthController {
+final class SyncAuthController implements SyncAuthorizer {
   SyncAuthController({
     required SyncIdentityGateway gateway,
     required SyncSessionVault vault,
@@ -410,6 +414,7 @@ final class SyncAuthController {
     }
   }
 
+  @override
   Future<SyncAuthResult<SyncSession>> authorizeSync() async {
     final refreshed = await refreshDeviceStatus();
     if (refreshed case SyncAuthSuccess<SyncSession>(:final value)) {

@@ -6288,6 +6288,1736 @@ class SyncTombstonesCompanion extends UpdateCompanion<SyncTombstone> {
   }
 }
 
+class $SyncReplicaEntriesTable extends SyncReplicaEntries
+    with TableInfo<$SyncReplicaEntriesTable, SyncReplicaEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncReplicaEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _objectKindMeta = const VerificationMeta(
+    'objectKind',
+  );
+  @override
+  late final GeneratedColumn<String> objectKind = GeneratedColumn<String>(
+    'object_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _objectIdMeta = const VerificationMeta(
+    'objectId',
+  );
+  @override
+  late final GeneratedColumn<String> objectId = GeneratedColumn<String>(
+    'object_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _envelopeJsonMeta = const VerificationMeta(
+    'envelopeJson',
+  );
+  @override
+  late final GeneratedColumn<String> envelopeJson = GeneratedColumn<String>(
+    'envelope_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _clearPayloadJsonMeta = const VerificationMeta(
+    'clearPayloadJson',
+  );
+  @override
+  late final GeneratedColumn<String> clearPayloadJson = GeneratedColumn<String>(
+    'clear_payload_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    accountId,
+    objectKind,
+    objectId,
+    envelopeJson,
+    clearPayloadJson,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_replica_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncReplicaEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('object_kind')) {
+      context.handle(
+        _objectKindMeta,
+        objectKind.isAcceptableOrUnknown(data['object_kind']!, _objectKindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_objectKindMeta);
+    }
+    if (data.containsKey('object_id')) {
+      context.handle(
+        _objectIdMeta,
+        objectId.isAcceptableOrUnknown(data['object_id']!, _objectIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_objectIdMeta);
+    }
+    if (data.containsKey('envelope_json')) {
+      context.handle(
+        _envelopeJsonMeta,
+        envelopeJson.isAcceptableOrUnknown(
+          data['envelope_json']!,
+          _envelopeJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_envelopeJsonMeta);
+    }
+    if (data.containsKey('clear_payload_json')) {
+      context.handle(
+        _clearPayloadJsonMeta,
+        clearPayloadJson.isAcceptableOrUnknown(
+          data['clear_payload_json']!,
+          _clearPayloadJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_clearPayloadJsonMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {accountId, objectKind, objectId};
+  @override
+  SyncReplicaEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncReplicaEntry(
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      objectKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}object_kind'],
+      )!,
+      objectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}object_id'],
+      )!,
+      envelopeJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}envelope_json'],
+      )!,
+      clearPayloadJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clear_payload_json'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncReplicaEntriesTable createAlias(String alias) {
+    return $SyncReplicaEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class SyncReplicaEntry extends DataClass
+    implements Insertable<SyncReplicaEntry> {
+  final String accountId;
+  final String objectKind;
+  final String objectId;
+  final String envelopeJson;
+  final String clearPayloadJson;
+  final DateTime updatedAt;
+  const SyncReplicaEntry({
+    required this.accountId,
+    required this.objectKind,
+    required this.objectId,
+    required this.envelopeJson,
+    required this.clearPayloadJson,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['account_id'] = Variable<String>(accountId);
+    map['object_kind'] = Variable<String>(objectKind);
+    map['object_id'] = Variable<String>(objectId);
+    map['envelope_json'] = Variable<String>(envelopeJson);
+    map['clear_payload_json'] = Variable<String>(clearPayloadJson);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  SyncReplicaEntriesCompanion toCompanion(bool nullToAbsent) {
+    return SyncReplicaEntriesCompanion(
+      accountId: Value(accountId),
+      objectKind: Value(objectKind),
+      objectId: Value(objectId),
+      envelopeJson: Value(envelopeJson),
+      clearPayloadJson: Value(clearPayloadJson),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory SyncReplicaEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncReplicaEntry(
+      accountId: serializer.fromJson<String>(json['accountId']),
+      objectKind: serializer.fromJson<String>(json['objectKind']),
+      objectId: serializer.fromJson<String>(json['objectId']),
+      envelopeJson: serializer.fromJson<String>(json['envelopeJson']),
+      clearPayloadJson: serializer.fromJson<String>(json['clearPayloadJson']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'accountId': serializer.toJson<String>(accountId),
+      'objectKind': serializer.toJson<String>(objectKind),
+      'objectId': serializer.toJson<String>(objectId),
+      'envelopeJson': serializer.toJson<String>(envelopeJson),
+      'clearPayloadJson': serializer.toJson<String>(clearPayloadJson),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  SyncReplicaEntry copyWith({
+    String? accountId,
+    String? objectKind,
+    String? objectId,
+    String? envelopeJson,
+    String? clearPayloadJson,
+    DateTime? updatedAt,
+  }) => SyncReplicaEntry(
+    accountId: accountId ?? this.accountId,
+    objectKind: objectKind ?? this.objectKind,
+    objectId: objectId ?? this.objectId,
+    envelopeJson: envelopeJson ?? this.envelopeJson,
+    clearPayloadJson: clearPayloadJson ?? this.clearPayloadJson,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  SyncReplicaEntry copyWithCompanion(SyncReplicaEntriesCompanion data) {
+    return SyncReplicaEntry(
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      objectKind: data.objectKind.present
+          ? data.objectKind.value
+          : this.objectKind,
+      objectId: data.objectId.present ? data.objectId.value : this.objectId,
+      envelopeJson: data.envelopeJson.present
+          ? data.envelopeJson.value
+          : this.envelopeJson,
+      clearPayloadJson: data.clearPayloadJson.present
+          ? data.clearPayloadJson.value
+          : this.clearPayloadJson,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncReplicaEntry(')
+          ..write('accountId: $accountId, ')
+          ..write('objectKind: $objectKind, ')
+          ..write('objectId: $objectId, ')
+          ..write('envelopeJson: $envelopeJson, ')
+          ..write('clearPayloadJson: $clearPayloadJson, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    accountId,
+    objectKind,
+    objectId,
+    envelopeJson,
+    clearPayloadJson,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncReplicaEntry &&
+          other.accountId == this.accountId &&
+          other.objectKind == this.objectKind &&
+          other.objectId == this.objectId &&
+          other.envelopeJson == this.envelopeJson &&
+          other.clearPayloadJson == this.clearPayloadJson &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SyncReplicaEntriesCompanion extends UpdateCompanion<SyncReplicaEntry> {
+  final Value<String> accountId;
+  final Value<String> objectKind;
+  final Value<String> objectId;
+  final Value<String> envelopeJson;
+  final Value<String> clearPayloadJson;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const SyncReplicaEntriesCompanion({
+    this.accountId = const Value.absent(),
+    this.objectKind = const Value.absent(),
+    this.objectId = const Value.absent(),
+    this.envelopeJson = const Value.absent(),
+    this.clearPayloadJson = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncReplicaEntriesCompanion.insert({
+    required String accountId,
+    required String objectKind,
+    required String objectId,
+    required String envelopeJson,
+    required String clearPayloadJson,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : accountId = Value(accountId),
+       objectKind = Value(objectKind),
+       objectId = Value(objectId),
+       envelopeJson = Value(envelopeJson),
+       clearPayloadJson = Value(clearPayloadJson),
+       updatedAt = Value(updatedAt);
+  static Insertable<SyncReplicaEntry> custom({
+    Expression<String>? accountId,
+    Expression<String>? objectKind,
+    Expression<String>? objectId,
+    Expression<String>? envelopeJson,
+    Expression<String>? clearPayloadJson,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (accountId != null) 'account_id': accountId,
+      if (objectKind != null) 'object_kind': objectKind,
+      if (objectId != null) 'object_id': objectId,
+      if (envelopeJson != null) 'envelope_json': envelopeJson,
+      if (clearPayloadJson != null) 'clear_payload_json': clearPayloadJson,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncReplicaEntriesCompanion copyWith({
+    Value<String>? accountId,
+    Value<String>? objectKind,
+    Value<String>? objectId,
+    Value<String>? envelopeJson,
+    Value<String>? clearPayloadJson,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return SyncReplicaEntriesCompanion(
+      accountId: accountId ?? this.accountId,
+      objectKind: objectKind ?? this.objectKind,
+      objectId: objectId ?? this.objectId,
+      envelopeJson: envelopeJson ?? this.envelopeJson,
+      clearPayloadJson: clearPayloadJson ?? this.clearPayloadJson,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (objectKind.present) {
+      map['object_kind'] = Variable<String>(objectKind.value);
+    }
+    if (objectId.present) {
+      map['object_id'] = Variable<String>(objectId.value);
+    }
+    if (envelopeJson.present) {
+      map['envelope_json'] = Variable<String>(envelopeJson.value);
+    }
+    if (clearPayloadJson.present) {
+      map['clear_payload_json'] = Variable<String>(clearPayloadJson.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncReplicaEntriesCompanion(')
+          ..write('accountId: $accountId, ')
+          ..write('objectKind: $objectKind, ')
+          ..write('objectId: $objectId, ')
+          ..write('envelopeJson: $envelopeJson, ')
+          ..write('clearPayloadJson: $clearPayloadJson, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SyncOutboxRowsTable extends SyncOutboxRows
+    with TableInfo<$SyncOutboxRowsTable, SyncOutboxRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncOutboxRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _mutationIdMeta = const VerificationMeta(
+    'mutationId',
+  );
+  @override
+  late final GeneratedColumn<String> mutationId = GeneratedColumn<String>(
+    'mutation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deviceIdMeta = const VerificationMeta(
+    'deviceId',
+  );
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+    'device_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _envelopeJsonMeta = const VerificationMeta(
+    'envelopeJson',
+  );
+  @override
+  late final GeneratedColumn<String> envelopeJson = GeneratedColumn<String>(
+    'envelope_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _queuedAtMeta = const VerificationMeta(
+    'queuedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> queuedAt = GeneratedColumn<DateTime>(
+    'queued_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    mutationId,
+    accountId,
+    deviceId,
+    envelopeJson,
+    queuedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_outbox_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncOutboxRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('mutation_id')) {
+      context.handle(
+        _mutationIdMeta,
+        mutationId.isAcceptableOrUnknown(data['mutation_id']!, _mutationIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mutationIdMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('device_id')) {
+      context.handle(
+        _deviceIdMeta,
+        deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceIdMeta);
+    }
+    if (data.containsKey('envelope_json')) {
+      context.handle(
+        _envelopeJsonMeta,
+        envelopeJson.isAcceptableOrUnknown(
+          data['envelope_json']!,
+          _envelopeJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_envelopeJsonMeta);
+    }
+    if (data.containsKey('queued_at')) {
+      context.handle(
+        _queuedAtMeta,
+        queuedAt.isAcceptableOrUnknown(data['queued_at']!, _queuedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_queuedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {mutationId};
+  @override
+  SyncOutboxRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncOutboxRow(
+      mutationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mutation_id'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      deviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_id'],
+      )!,
+      envelopeJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}envelope_json'],
+      )!,
+      queuedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}queued_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncOutboxRowsTable createAlias(String alias) {
+    return $SyncOutboxRowsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncOutboxRow extends DataClass implements Insertable<SyncOutboxRow> {
+  final String mutationId;
+  final String accountId;
+  final String deviceId;
+  final String envelopeJson;
+  final DateTime queuedAt;
+  const SyncOutboxRow({
+    required this.mutationId,
+    required this.accountId,
+    required this.deviceId,
+    required this.envelopeJson,
+    required this.queuedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['mutation_id'] = Variable<String>(mutationId);
+    map['account_id'] = Variable<String>(accountId);
+    map['device_id'] = Variable<String>(deviceId);
+    map['envelope_json'] = Variable<String>(envelopeJson);
+    map['queued_at'] = Variable<DateTime>(queuedAt);
+    return map;
+  }
+
+  SyncOutboxRowsCompanion toCompanion(bool nullToAbsent) {
+    return SyncOutboxRowsCompanion(
+      mutationId: Value(mutationId),
+      accountId: Value(accountId),
+      deviceId: Value(deviceId),
+      envelopeJson: Value(envelopeJson),
+      queuedAt: Value(queuedAt),
+    );
+  }
+
+  factory SyncOutboxRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncOutboxRow(
+      mutationId: serializer.fromJson<String>(json['mutationId']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      deviceId: serializer.fromJson<String>(json['deviceId']),
+      envelopeJson: serializer.fromJson<String>(json['envelopeJson']),
+      queuedAt: serializer.fromJson<DateTime>(json['queuedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'mutationId': serializer.toJson<String>(mutationId),
+      'accountId': serializer.toJson<String>(accountId),
+      'deviceId': serializer.toJson<String>(deviceId),
+      'envelopeJson': serializer.toJson<String>(envelopeJson),
+      'queuedAt': serializer.toJson<DateTime>(queuedAt),
+    };
+  }
+
+  SyncOutboxRow copyWith({
+    String? mutationId,
+    String? accountId,
+    String? deviceId,
+    String? envelopeJson,
+    DateTime? queuedAt,
+  }) => SyncOutboxRow(
+    mutationId: mutationId ?? this.mutationId,
+    accountId: accountId ?? this.accountId,
+    deviceId: deviceId ?? this.deviceId,
+    envelopeJson: envelopeJson ?? this.envelopeJson,
+    queuedAt: queuedAt ?? this.queuedAt,
+  );
+  SyncOutboxRow copyWithCompanion(SyncOutboxRowsCompanion data) {
+    return SyncOutboxRow(
+      mutationId: data.mutationId.present
+          ? data.mutationId.value
+          : this.mutationId,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      envelopeJson: data.envelopeJson.present
+          ? data.envelopeJson.value
+          : this.envelopeJson,
+      queuedAt: data.queuedAt.present ? data.queuedAt.value : this.queuedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncOutboxRow(')
+          ..write('mutationId: $mutationId, ')
+          ..write('accountId: $accountId, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('envelopeJson: $envelopeJson, ')
+          ..write('queuedAt: $queuedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(mutationId, accountId, deviceId, envelopeJson, queuedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncOutboxRow &&
+          other.mutationId == this.mutationId &&
+          other.accountId == this.accountId &&
+          other.deviceId == this.deviceId &&
+          other.envelopeJson == this.envelopeJson &&
+          other.queuedAt == this.queuedAt);
+}
+
+class SyncOutboxRowsCompanion extends UpdateCompanion<SyncOutboxRow> {
+  final Value<String> mutationId;
+  final Value<String> accountId;
+  final Value<String> deviceId;
+  final Value<String> envelopeJson;
+  final Value<DateTime> queuedAt;
+  final Value<int> rowid;
+  const SyncOutboxRowsCompanion({
+    this.mutationId = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.envelopeJson = const Value.absent(),
+    this.queuedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncOutboxRowsCompanion.insert({
+    required String mutationId,
+    required String accountId,
+    required String deviceId,
+    required String envelopeJson,
+    required DateTime queuedAt,
+    this.rowid = const Value.absent(),
+  }) : mutationId = Value(mutationId),
+       accountId = Value(accountId),
+       deviceId = Value(deviceId),
+       envelopeJson = Value(envelopeJson),
+       queuedAt = Value(queuedAt);
+  static Insertable<SyncOutboxRow> custom({
+    Expression<String>? mutationId,
+    Expression<String>? accountId,
+    Expression<String>? deviceId,
+    Expression<String>? envelopeJson,
+    Expression<DateTime>? queuedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (mutationId != null) 'mutation_id': mutationId,
+      if (accountId != null) 'account_id': accountId,
+      if (deviceId != null) 'device_id': deviceId,
+      if (envelopeJson != null) 'envelope_json': envelopeJson,
+      if (queuedAt != null) 'queued_at': queuedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncOutboxRowsCompanion copyWith({
+    Value<String>? mutationId,
+    Value<String>? accountId,
+    Value<String>? deviceId,
+    Value<String>? envelopeJson,
+    Value<DateTime>? queuedAt,
+    Value<int>? rowid,
+  }) {
+    return SyncOutboxRowsCompanion(
+      mutationId: mutationId ?? this.mutationId,
+      accountId: accountId ?? this.accountId,
+      deviceId: deviceId ?? this.deviceId,
+      envelopeJson: envelopeJson ?? this.envelopeJson,
+      queuedAt: queuedAt ?? this.queuedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (mutationId.present) {
+      map['mutation_id'] = Variable<String>(mutationId.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (envelopeJson.present) {
+      map['envelope_json'] = Variable<String>(envelopeJson.value);
+    }
+    if (queuedAt.present) {
+      map['queued_at'] = Variable<DateTime>(queuedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncOutboxRowsCompanion(')
+          ..write('mutationId: $mutationId, ')
+          ..write('accountId: $accountId, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('envelopeJson: $envelopeJson, ')
+          ..write('queuedAt: $queuedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SyncCursorRowsTable extends SyncCursorRows
+    with TableInfo<$SyncCursorRowsTable, SyncCursorRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncCursorRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deviceIdMeta = const VerificationMeta(
+    'deviceId',
+  );
+  @override
+  late final GeneratedColumn<String> deviceId = GeneratedColumn<String>(
+    'device_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _protocolVersionMeta = const VerificationMeta(
+    'protocolVersion',
+  );
+  @override
+  late final GeneratedColumn<int> protocolVersion = GeneratedColumn<int>(
+    'protocol_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _serverSequenceMeta = const VerificationMeta(
+    'serverSequence',
+  );
+  @override
+  late final GeneratedColumn<int> serverSequence = GeneratedColumn<int>(
+    'server_sequence',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _opaqueTokenMeta = const VerificationMeta(
+    'opaqueToken',
+  );
+  @override
+  late final GeneratedColumn<String> opaqueToken = GeneratedColumn<String>(
+    'opaque_token',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    accountId,
+    deviceId,
+    protocolVersion,
+    serverSequence,
+    opaqueToken,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_cursor_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncCursorRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('device_id')) {
+      context.handle(
+        _deviceIdMeta,
+        deviceId.isAcceptableOrUnknown(data['device_id']!, _deviceIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deviceIdMeta);
+    }
+    if (data.containsKey('protocol_version')) {
+      context.handle(
+        _protocolVersionMeta,
+        protocolVersion.isAcceptableOrUnknown(
+          data['protocol_version']!,
+          _protocolVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_protocolVersionMeta);
+    }
+    if (data.containsKey('server_sequence')) {
+      context.handle(
+        _serverSequenceMeta,
+        serverSequence.isAcceptableOrUnknown(
+          data['server_sequence']!,
+          _serverSequenceMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_serverSequenceMeta);
+    }
+    if (data.containsKey('opaque_token')) {
+      context.handle(
+        _opaqueTokenMeta,
+        opaqueToken.isAcceptableOrUnknown(
+          data['opaque_token']!,
+          _opaqueTokenMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_opaqueTokenMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {accountId, deviceId};
+  @override
+  SyncCursorRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncCursorRow(
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      deviceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}device_id'],
+      )!,
+      protocolVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}protocol_version'],
+      )!,
+      serverSequence: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}server_sequence'],
+      )!,
+      opaqueToken: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}opaque_token'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncCursorRowsTable createAlias(String alias) {
+    return $SyncCursorRowsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncCursorRow extends DataClass implements Insertable<SyncCursorRow> {
+  final String accountId;
+  final String deviceId;
+  final int protocolVersion;
+  final int serverSequence;
+  final String opaqueToken;
+  final DateTime updatedAt;
+  const SyncCursorRow({
+    required this.accountId,
+    required this.deviceId,
+    required this.protocolVersion,
+    required this.serverSequence,
+    required this.opaqueToken,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['account_id'] = Variable<String>(accountId);
+    map['device_id'] = Variable<String>(deviceId);
+    map['protocol_version'] = Variable<int>(protocolVersion);
+    map['server_sequence'] = Variable<int>(serverSequence);
+    map['opaque_token'] = Variable<String>(opaqueToken);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  SyncCursorRowsCompanion toCompanion(bool nullToAbsent) {
+    return SyncCursorRowsCompanion(
+      accountId: Value(accountId),
+      deviceId: Value(deviceId),
+      protocolVersion: Value(protocolVersion),
+      serverSequence: Value(serverSequence),
+      opaqueToken: Value(opaqueToken),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory SyncCursorRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncCursorRow(
+      accountId: serializer.fromJson<String>(json['accountId']),
+      deviceId: serializer.fromJson<String>(json['deviceId']),
+      protocolVersion: serializer.fromJson<int>(json['protocolVersion']),
+      serverSequence: serializer.fromJson<int>(json['serverSequence']),
+      opaqueToken: serializer.fromJson<String>(json['opaqueToken']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'accountId': serializer.toJson<String>(accountId),
+      'deviceId': serializer.toJson<String>(deviceId),
+      'protocolVersion': serializer.toJson<int>(protocolVersion),
+      'serverSequence': serializer.toJson<int>(serverSequence),
+      'opaqueToken': serializer.toJson<String>(opaqueToken),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  SyncCursorRow copyWith({
+    String? accountId,
+    String? deviceId,
+    int? protocolVersion,
+    int? serverSequence,
+    String? opaqueToken,
+    DateTime? updatedAt,
+  }) => SyncCursorRow(
+    accountId: accountId ?? this.accountId,
+    deviceId: deviceId ?? this.deviceId,
+    protocolVersion: protocolVersion ?? this.protocolVersion,
+    serverSequence: serverSequence ?? this.serverSequence,
+    opaqueToken: opaqueToken ?? this.opaqueToken,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  SyncCursorRow copyWithCompanion(SyncCursorRowsCompanion data) {
+    return SyncCursorRow(
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      deviceId: data.deviceId.present ? data.deviceId.value : this.deviceId,
+      protocolVersion: data.protocolVersion.present
+          ? data.protocolVersion.value
+          : this.protocolVersion,
+      serverSequence: data.serverSequence.present
+          ? data.serverSequence.value
+          : this.serverSequence,
+      opaqueToken: data.opaqueToken.present
+          ? data.opaqueToken.value
+          : this.opaqueToken,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncCursorRow(')
+          ..write('accountId: $accountId, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('protocolVersion: $protocolVersion, ')
+          ..write('serverSequence: $serverSequence, ')
+          ..write('opaqueToken: $opaqueToken, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    accountId,
+    deviceId,
+    protocolVersion,
+    serverSequence,
+    opaqueToken,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncCursorRow &&
+          other.accountId == this.accountId &&
+          other.deviceId == this.deviceId &&
+          other.protocolVersion == this.protocolVersion &&
+          other.serverSequence == this.serverSequence &&
+          other.opaqueToken == this.opaqueToken &&
+          other.updatedAt == this.updatedAt);
+}
+
+class SyncCursorRowsCompanion extends UpdateCompanion<SyncCursorRow> {
+  final Value<String> accountId;
+  final Value<String> deviceId;
+  final Value<int> protocolVersion;
+  final Value<int> serverSequence;
+  final Value<String> opaqueToken;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const SyncCursorRowsCompanion({
+    this.accountId = const Value.absent(),
+    this.deviceId = const Value.absent(),
+    this.protocolVersion = const Value.absent(),
+    this.serverSequence = const Value.absent(),
+    this.opaqueToken = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncCursorRowsCompanion.insert({
+    required String accountId,
+    required String deviceId,
+    required int protocolVersion,
+    required int serverSequence,
+    required String opaqueToken,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : accountId = Value(accountId),
+       deviceId = Value(deviceId),
+       protocolVersion = Value(protocolVersion),
+       serverSequence = Value(serverSequence),
+       opaqueToken = Value(opaqueToken),
+       updatedAt = Value(updatedAt);
+  static Insertable<SyncCursorRow> custom({
+    Expression<String>? accountId,
+    Expression<String>? deviceId,
+    Expression<int>? protocolVersion,
+    Expression<int>? serverSequence,
+    Expression<String>? opaqueToken,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (accountId != null) 'account_id': accountId,
+      if (deviceId != null) 'device_id': deviceId,
+      if (protocolVersion != null) 'protocol_version': protocolVersion,
+      if (serverSequence != null) 'server_sequence': serverSequence,
+      if (opaqueToken != null) 'opaque_token': opaqueToken,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncCursorRowsCompanion copyWith({
+    Value<String>? accountId,
+    Value<String>? deviceId,
+    Value<int>? protocolVersion,
+    Value<int>? serverSequence,
+    Value<String>? opaqueToken,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return SyncCursorRowsCompanion(
+      accountId: accountId ?? this.accountId,
+      deviceId: deviceId ?? this.deviceId,
+      protocolVersion: protocolVersion ?? this.protocolVersion,
+      serverSequence: serverSequence ?? this.serverSequence,
+      opaqueToken: opaqueToken ?? this.opaqueToken,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (deviceId.present) {
+      map['device_id'] = Variable<String>(deviceId.value);
+    }
+    if (protocolVersion.present) {
+      map['protocol_version'] = Variable<int>(protocolVersion.value);
+    }
+    if (serverSequence.present) {
+      map['server_sequence'] = Variable<int>(serverSequence.value);
+    }
+    if (opaqueToken.present) {
+      map['opaque_token'] = Variable<String>(opaqueToken.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncCursorRowsCompanion(')
+          ..write('accountId: $accountId, ')
+          ..write('deviceId: $deviceId, ')
+          ..write('protocolVersion: $protocolVersion, ')
+          ..write('serverSequence: $serverSequence, ')
+          ..write('opaqueToken: $opaqueToken, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SyncConflictRowsTable extends SyncConflictRows
+    with TableInfo<$SyncConflictRowsTable, SyncConflictRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncConflictRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _mutationIdMeta = const VerificationMeta(
+    'mutationId',
+  );
+  @override
+  late final GeneratedColumn<String> mutationId = GeneratedColumn<String>(
+    'mutation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _objectKindMeta = const VerificationMeta(
+    'objectKind',
+  );
+  @override
+  late final GeneratedColumn<String> objectKind = GeneratedColumn<String>(
+    'object_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _objectIdMeta = const VerificationMeta(
+    'objectId',
+  );
+  @override
+  late final GeneratedColumn<String> objectId = GeneratedColumn<String>(
+    'object_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _envelopeJsonMeta = const VerificationMeta(
+    'envelopeJson',
+  );
+  @override
+  late final GeneratedColumn<String> envelopeJson = GeneratedColumn<String>(
+    'envelope_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _clearPayloadJsonMeta = const VerificationMeta(
+    'clearPayloadJson',
+  );
+  @override
+  late final GeneratedColumn<String> clearPayloadJson = GeneratedColumn<String>(
+    'clear_payload_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _detectedAtMeta = const VerificationMeta(
+    'detectedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> detectedAt = GeneratedColumn<DateTime>(
+    'detected_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    mutationId,
+    accountId,
+    objectKind,
+    objectId,
+    envelopeJson,
+    clearPayloadJson,
+    detectedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_conflict_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncConflictRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('mutation_id')) {
+      context.handle(
+        _mutationIdMeta,
+        mutationId.isAcceptableOrUnknown(data['mutation_id']!, _mutationIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mutationIdMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('object_kind')) {
+      context.handle(
+        _objectKindMeta,
+        objectKind.isAcceptableOrUnknown(data['object_kind']!, _objectKindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_objectKindMeta);
+    }
+    if (data.containsKey('object_id')) {
+      context.handle(
+        _objectIdMeta,
+        objectId.isAcceptableOrUnknown(data['object_id']!, _objectIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_objectIdMeta);
+    }
+    if (data.containsKey('envelope_json')) {
+      context.handle(
+        _envelopeJsonMeta,
+        envelopeJson.isAcceptableOrUnknown(
+          data['envelope_json']!,
+          _envelopeJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_envelopeJsonMeta);
+    }
+    if (data.containsKey('clear_payload_json')) {
+      context.handle(
+        _clearPayloadJsonMeta,
+        clearPayloadJson.isAcceptableOrUnknown(
+          data['clear_payload_json']!,
+          _clearPayloadJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_clearPayloadJsonMeta);
+    }
+    if (data.containsKey('detected_at')) {
+      context.handle(
+        _detectedAtMeta,
+        detectedAt.isAcceptableOrUnknown(data['detected_at']!, _detectedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_detectedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {mutationId};
+  @override
+  SyncConflictRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncConflictRow(
+      mutationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mutation_id'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      objectKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}object_kind'],
+      )!,
+      objectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}object_id'],
+      )!,
+      envelopeJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}envelope_json'],
+      )!,
+      clearPayloadJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}clear_payload_json'],
+      )!,
+      detectedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}detected_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncConflictRowsTable createAlias(String alias) {
+    return $SyncConflictRowsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
+  final String mutationId;
+  final String accountId;
+  final String objectKind;
+  final String objectId;
+  final String envelopeJson;
+  final String clearPayloadJson;
+  final DateTime detectedAt;
+  const SyncConflictRow({
+    required this.mutationId,
+    required this.accountId,
+    required this.objectKind,
+    required this.objectId,
+    required this.envelopeJson,
+    required this.clearPayloadJson,
+    required this.detectedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['mutation_id'] = Variable<String>(mutationId);
+    map['account_id'] = Variable<String>(accountId);
+    map['object_kind'] = Variable<String>(objectKind);
+    map['object_id'] = Variable<String>(objectId);
+    map['envelope_json'] = Variable<String>(envelopeJson);
+    map['clear_payload_json'] = Variable<String>(clearPayloadJson);
+    map['detected_at'] = Variable<DateTime>(detectedAt);
+    return map;
+  }
+
+  SyncConflictRowsCompanion toCompanion(bool nullToAbsent) {
+    return SyncConflictRowsCompanion(
+      mutationId: Value(mutationId),
+      accountId: Value(accountId),
+      objectKind: Value(objectKind),
+      objectId: Value(objectId),
+      envelopeJson: Value(envelopeJson),
+      clearPayloadJson: Value(clearPayloadJson),
+      detectedAt: Value(detectedAt),
+    );
+  }
+
+  factory SyncConflictRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncConflictRow(
+      mutationId: serializer.fromJson<String>(json['mutationId']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      objectKind: serializer.fromJson<String>(json['objectKind']),
+      objectId: serializer.fromJson<String>(json['objectId']),
+      envelopeJson: serializer.fromJson<String>(json['envelopeJson']),
+      clearPayloadJson: serializer.fromJson<String>(json['clearPayloadJson']),
+      detectedAt: serializer.fromJson<DateTime>(json['detectedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'mutationId': serializer.toJson<String>(mutationId),
+      'accountId': serializer.toJson<String>(accountId),
+      'objectKind': serializer.toJson<String>(objectKind),
+      'objectId': serializer.toJson<String>(objectId),
+      'envelopeJson': serializer.toJson<String>(envelopeJson),
+      'clearPayloadJson': serializer.toJson<String>(clearPayloadJson),
+      'detectedAt': serializer.toJson<DateTime>(detectedAt),
+    };
+  }
+
+  SyncConflictRow copyWith({
+    String? mutationId,
+    String? accountId,
+    String? objectKind,
+    String? objectId,
+    String? envelopeJson,
+    String? clearPayloadJson,
+    DateTime? detectedAt,
+  }) => SyncConflictRow(
+    mutationId: mutationId ?? this.mutationId,
+    accountId: accountId ?? this.accountId,
+    objectKind: objectKind ?? this.objectKind,
+    objectId: objectId ?? this.objectId,
+    envelopeJson: envelopeJson ?? this.envelopeJson,
+    clearPayloadJson: clearPayloadJson ?? this.clearPayloadJson,
+    detectedAt: detectedAt ?? this.detectedAt,
+  );
+  SyncConflictRow copyWithCompanion(SyncConflictRowsCompanion data) {
+    return SyncConflictRow(
+      mutationId: data.mutationId.present
+          ? data.mutationId.value
+          : this.mutationId,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      objectKind: data.objectKind.present
+          ? data.objectKind.value
+          : this.objectKind,
+      objectId: data.objectId.present ? data.objectId.value : this.objectId,
+      envelopeJson: data.envelopeJson.present
+          ? data.envelopeJson.value
+          : this.envelopeJson,
+      clearPayloadJson: data.clearPayloadJson.present
+          ? data.clearPayloadJson.value
+          : this.clearPayloadJson,
+      detectedAt: data.detectedAt.present
+          ? data.detectedAt.value
+          : this.detectedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncConflictRow(')
+          ..write('mutationId: $mutationId, ')
+          ..write('accountId: $accountId, ')
+          ..write('objectKind: $objectKind, ')
+          ..write('objectId: $objectId, ')
+          ..write('envelopeJson: $envelopeJson, ')
+          ..write('clearPayloadJson: $clearPayloadJson, ')
+          ..write('detectedAt: $detectedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    mutationId,
+    accountId,
+    objectKind,
+    objectId,
+    envelopeJson,
+    clearPayloadJson,
+    detectedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncConflictRow &&
+          other.mutationId == this.mutationId &&
+          other.accountId == this.accountId &&
+          other.objectKind == this.objectKind &&
+          other.objectId == this.objectId &&
+          other.envelopeJson == this.envelopeJson &&
+          other.clearPayloadJson == this.clearPayloadJson &&
+          other.detectedAt == this.detectedAt);
+}
+
+class SyncConflictRowsCompanion extends UpdateCompanion<SyncConflictRow> {
+  final Value<String> mutationId;
+  final Value<String> accountId;
+  final Value<String> objectKind;
+  final Value<String> objectId;
+  final Value<String> envelopeJson;
+  final Value<String> clearPayloadJson;
+  final Value<DateTime> detectedAt;
+  final Value<int> rowid;
+  const SyncConflictRowsCompanion({
+    this.mutationId = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.objectKind = const Value.absent(),
+    this.objectId = const Value.absent(),
+    this.envelopeJson = const Value.absent(),
+    this.clearPayloadJson = const Value.absent(),
+    this.detectedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncConflictRowsCompanion.insert({
+    required String mutationId,
+    required String accountId,
+    required String objectKind,
+    required String objectId,
+    required String envelopeJson,
+    required String clearPayloadJson,
+    required DateTime detectedAt,
+    this.rowid = const Value.absent(),
+  }) : mutationId = Value(mutationId),
+       accountId = Value(accountId),
+       objectKind = Value(objectKind),
+       objectId = Value(objectId),
+       envelopeJson = Value(envelopeJson),
+       clearPayloadJson = Value(clearPayloadJson),
+       detectedAt = Value(detectedAt);
+  static Insertable<SyncConflictRow> custom({
+    Expression<String>? mutationId,
+    Expression<String>? accountId,
+    Expression<String>? objectKind,
+    Expression<String>? objectId,
+    Expression<String>? envelopeJson,
+    Expression<String>? clearPayloadJson,
+    Expression<DateTime>? detectedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (mutationId != null) 'mutation_id': mutationId,
+      if (accountId != null) 'account_id': accountId,
+      if (objectKind != null) 'object_kind': objectKind,
+      if (objectId != null) 'object_id': objectId,
+      if (envelopeJson != null) 'envelope_json': envelopeJson,
+      if (clearPayloadJson != null) 'clear_payload_json': clearPayloadJson,
+      if (detectedAt != null) 'detected_at': detectedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncConflictRowsCompanion copyWith({
+    Value<String>? mutationId,
+    Value<String>? accountId,
+    Value<String>? objectKind,
+    Value<String>? objectId,
+    Value<String>? envelopeJson,
+    Value<String>? clearPayloadJson,
+    Value<DateTime>? detectedAt,
+    Value<int>? rowid,
+  }) {
+    return SyncConflictRowsCompanion(
+      mutationId: mutationId ?? this.mutationId,
+      accountId: accountId ?? this.accountId,
+      objectKind: objectKind ?? this.objectKind,
+      objectId: objectId ?? this.objectId,
+      envelopeJson: envelopeJson ?? this.envelopeJson,
+      clearPayloadJson: clearPayloadJson ?? this.clearPayloadJson,
+      detectedAt: detectedAt ?? this.detectedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (mutationId.present) {
+      map['mutation_id'] = Variable<String>(mutationId.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (objectKind.present) {
+      map['object_kind'] = Variable<String>(objectKind.value);
+    }
+    if (objectId.present) {
+      map['object_id'] = Variable<String>(objectId.value);
+    }
+    if (envelopeJson.present) {
+      map['envelope_json'] = Variable<String>(envelopeJson.value);
+    }
+    if (clearPayloadJson.present) {
+      map['clear_payload_json'] = Variable<String>(clearPayloadJson.value);
+    }
+    if (detectedAt.present) {
+      map['detected_at'] = Variable<DateTime>(detectedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncConflictRowsCompanion(')
+          ..write('mutationId: $mutationId, ')
+          ..write('accountId: $accountId, ')
+          ..write('objectKind: $objectKind, ')
+          ..write('objectId: $objectId, ')
+          ..write('envelopeJson: $envelopeJson, ')
+          ..write('clearPayloadJson: $clearPayloadJson, ')
+          ..write('detectedAt: $detectedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$RiverDatabase extends GeneratedDatabase {
   _$RiverDatabase(QueryExecutor e) : super(e);
   $RiverDatabaseManager get managers => $RiverDatabaseManager(this);
@@ -6305,6 +8035,13 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
   late final $AudioItemsTable audioItems = $AudioItemsTable(this);
   late final $BackgroundJobsTable backgroundJobs = $BackgroundJobsTable(this);
   late final $SyncTombstonesTable syncTombstones = $SyncTombstonesTable(this);
+  late final $SyncReplicaEntriesTable syncReplicaEntries =
+      $SyncReplicaEntriesTable(this);
+  late final $SyncOutboxRowsTable syncOutboxRows = $SyncOutboxRowsTable(this);
+  late final $SyncCursorRowsTable syncCursorRows = $SyncCursorRowsTable(this);
+  late final $SyncConflictRowsTable syncConflictRows = $SyncConflictRowsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -6320,6 +8057,10 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
     audioItems,
     backgroundJobs,
     syncTombstones,
+    syncReplicaEntries,
+    syncOutboxRows,
+    syncCursorRows,
+    syncConflictRows,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -10520,6 +12261,943 @@ typedef $$SyncTombstonesTableProcessedTableManager =
       SyncTombstone,
       PrefetchHooks Function()
     >;
+typedef $$SyncReplicaEntriesTableCreateCompanionBuilder =
+    SyncReplicaEntriesCompanion Function({
+      required String accountId,
+      required String objectKind,
+      required String objectId,
+      required String envelopeJson,
+      required String clearPayloadJson,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$SyncReplicaEntriesTableUpdateCompanionBuilder =
+    SyncReplicaEntriesCompanion Function({
+      Value<String> accountId,
+      Value<String> objectKind,
+      Value<String> objectId,
+      Value<String> envelopeJson,
+      Value<String> clearPayloadJson,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$SyncReplicaEntriesTableFilterComposer
+    extends Composer<_$RiverDatabase, $SyncReplicaEntriesTable> {
+  $$SyncReplicaEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get objectKind => $composableBuilder(
+    column: $table.objectKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get objectId => $composableBuilder(
+    column: $table.objectId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clearPayloadJson => $composableBuilder(
+    column: $table.clearPayloadJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncReplicaEntriesTableOrderingComposer
+    extends Composer<_$RiverDatabase, $SyncReplicaEntriesTable> {
+  $$SyncReplicaEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get objectKind => $composableBuilder(
+    column: $table.objectKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get objectId => $composableBuilder(
+    column: $table.objectId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clearPayloadJson => $composableBuilder(
+    column: $table.clearPayloadJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncReplicaEntriesTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $SyncReplicaEntriesTable> {
+  $$SyncReplicaEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<String> get objectKind => $composableBuilder(
+    column: $table.objectKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get objectId =>
+      $composableBuilder(column: $table.objectId, builder: (column) => column);
+
+  GeneratedColumn<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get clearPayloadJson => $composableBuilder(
+    column: $table.clearPayloadJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$SyncReplicaEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $SyncReplicaEntriesTable,
+          SyncReplicaEntry,
+          $$SyncReplicaEntriesTableFilterComposer,
+          $$SyncReplicaEntriesTableOrderingComposer,
+          $$SyncReplicaEntriesTableAnnotationComposer,
+          $$SyncReplicaEntriesTableCreateCompanionBuilder,
+          $$SyncReplicaEntriesTableUpdateCompanionBuilder,
+          (
+            SyncReplicaEntry,
+            BaseReferences<
+              _$RiverDatabase,
+              $SyncReplicaEntriesTable,
+              SyncReplicaEntry
+            >,
+          ),
+          SyncReplicaEntry,
+          PrefetchHooks Function()
+        > {
+  $$SyncReplicaEntriesTableTableManager(
+    _$RiverDatabase db,
+    $SyncReplicaEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncReplicaEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncReplicaEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncReplicaEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> accountId = const Value.absent(),
+                Value<String> objectKind = const Value.absent(),
+                Value<String> objectId = const Value.absent(),
+                Value<String> envelopeJson = const Value.absent(),
+                Value<String> clearPayloadJson = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncReplicaEntriesCompanion(
+                accountId: accountId,
+                objectKind: objectKind,
+                objectId: objectId,
+                envelopeJson: envelopeJson,
+                clearPayloadJson: clearPayloadJson,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String accountId,
+                required String objectKind,
+                required String objectId,
+                required String envelopeJson,
+                required String clearPayloadJson,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncReplicaEntriesCompanion.insert(
+                accountId: accountId,
+                objectKind: objectKind,
+                objectId: objectId,
+                envelopeJson: envelopeJson,
+                clearPayloadJson: clearPayloadJson,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncReplicaEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $SyncReplicaEntriesTable,
+      SyncReplicaEntry,
+      $$SyncReplicaEntriesTableFilterComposer,
+      $$SyncReplicaEntriesTableOrderingComposer,
+      $$SyncReplicaEntriesTableAnnotationComposer,
+      $$SyncReplicaEntriesTableCreateCompanionBuilder,
+      $$SyncReplicaEntriesTableUpdateCompanionBuilder,
+      (
+        SyncReplicaEntry,
+        BaseReferences<
+          _$RiverDatabase,
+          $SyncReplicaEntriesTable,
+          SyncReplicaEntry
+        >,
+      ),
+      SyncReplicaEntry,
+      PrefetchHooks Function()
+    >;
+typedef $$SyncOutboxRowsTableCreateCompanionBuilder =
+    SyncOutboxRowsCompanion Function({
+      required String mutationId,
+      required String accountId,
+      required String deviceId,
+      required String envelopeJson,
+      required DateTime queuedAt,
+      Value<int> rowid,
+    });
+typedef $$SyncOutboxRowsTableUpdateCompanionBuilder =
+    SyncOutboxRowsCompanion Function({
+      Value<String> mutationId,
+      Value<String> accountId,
+      Value<String> deviceId,
+      Value<String> envelopeJson,
+      Value<DateTime> queuedAt,
+      Value<int> rowid,
+    });
+
+class $$SyncOutboxRowsTableFilterComposer
+    extends Composer<_$RiverDatabase, $SyncOutboxRowsTable> {
+  $$SyncOutboxRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get mutationId => $composableBuilder(
+    column: $table.mutationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get queuedAt => $composableBuilder(
+    column: $table.queuedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncOutboxRowsTableOrderingComposer
+    extends Composer<_$RiverDatabase, $SyncOutboxRowsTable> {
+  $$SyncOutboxRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get mutationId => $composableBuilder(
+    column: $table.mutationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get queuedAt => $composableBuilder(
+    column: $table.queuedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncOutboxRowsTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $SyncOutboxRowsTable> {
+  $$SyncOutboxRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get mutationId => $composableBuilder(
+    column: $table.mutationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+
+  GeneratedColumn<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get queuedAt =>
+      $composableBuilder(column: $table.queuedAt, builder: (column) => column);
+}
+
+class $$SyncOutboxRowsTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $SyncOutboxRowsTable,
+          SyncOutboxRow,
+          $$SyncOutboxRowsTableFilterComposer,
+          $$SyncOutboxRowsTableOrderingComposer,
+          $$SyncOutboxRowsTableAnnotationComposer,
+          $$SyncOutboxRowsTableCreateCompanionBuilder,
+          $$SyncOutboxRowsTableUpdateCompanionBuilder,
+          (
+            SyncOutboxRow,
+            BaseReferences<
+              _$RiverDatabase,
+              $SyncOutboxRowsTable,
+              SyncOutboxRow
+            >,
+          ),
+          SyncOutboxRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncOutboxRowsTableTableManager(
+    _$RiverDatabase db,
+    $SyncOutboxRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncOutboxRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncOutboxRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncOutboxRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> mutationId = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
+                Value<String> deviceId = const Value.absent(),
+                Value<String> envelopeJson = const Value.absent(),
+                Value<DateTime> queuedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncOutboxRowsCompanion(
+                mutationId: mutationId,
+                accountId: accountId,
+                deviceId: deviceId,
+                envelopeJson: envelopeJson,
+                queuedAt: queuedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String mutationId,
+                required String accountId,
+                required String deviceId,
+                required String envelopeJson,
+                required DateTime queuedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncOutboxRowsCompanion.insert(
+                mutationId: mutationId,
+                accountId: accountId,
+                deviceId: deviceId,
+                envelopeJson: envelopeJson,
+                queuedAt: queuedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncOutboxRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $SyncOutboxRowsTable,
+      SyncOutboxRow,
+      $$SyncOutboxRowsTableFilterComposer,
+      $$SyncOutboxRowsTableOrderingComposer,
+      $$SyncOutboxRowsTableAnnotationComposer,
+      $$SyncOutboxRowsTableCreateCompanionBuilder,
+      $$SyncOutboxRowsTableUpdateCompanionBuilder,
+      (
+        SyncOutboxRow,
+        BaseReferences<_$RiverDatabase, $SyncOutboxRowsTable, SyncOutboxRow>,
+      ),
+      SyncOutboxRow,
+      PrefetchHooks Function()
+    >;
+typedef $$SyncCursorRowsTableCreateCompanionBuilder =
+    SyncCursorRowsCompanion Function({
+      required String accountId,
+      required String deviceId,
+      required int protocolVersion,
+      required int serverSequence,
+      required String opaqueToken,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$SyncCursorRowsTableUpdateCompanionBuilder =
+    SyncCursorRowsCompanion Function({
+      Value<String> accountId,
+      Value<String> deviceId,
+      Value<int> protocolVersion,
+      Value<int> serverSequence,
+      Value<String> opaqueToken,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$SyncCursorRowsTableFilterComposer
+    extends Composer<_$RiverDatabase, $SyncCursorRowsTable> {
+  $$SyncCursorRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get protocolVersion => $composableBuilder(
+    column: $table.protocolVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get serverSequence => $composableBuilder(
+    column: $table.serverSequence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get opaqueToken => $composableBuilder(
+    column: $table.opaqueToken,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncCursorRowsTableOrderingComposer
+    extends Composer<_$RiverDatabase, $SyncCursorRowsTable> {
+  $$SyncCursorRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get deviceId => $composableBuilder(
+    column: $table.deviceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get protocolVersion => $composableBuilder(
+    column: $table.protocolVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get serverSequence => $composableBuilder(
+    column: $table.serverSequence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get opaqueToken => $composableBuilder(
+    column: $table.opaqueToken,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncCursorRowsTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $SyncCursorRowsTable> {
+  $$SyncCursorRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<String> get deviceId =>
+      $composableBuilder(column: $table.deviceId, builder: (column) => column);
+
+  GeneratedColumn<int> get protocolVersion => $composableBuilder(
+    column: $table.protocolVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get serverSequence => $composableBuilder(
+    column: $table.serverSequence,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get opaqueToken => $composableBuilder(
+    column: $table.opaqueToken,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$SyncCursorRowsTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $SyncCursorRowsTable,
+          SyncCursorRow,
+          $$SyncCursorRowsTableFilterComposer,
+          $$SyncCursorRowsTableOrderingComposer,
+          $$SyncCursorRowsTableAnnotationComposer,
+          $$SyncCursorRowsTableCreateCompanionBuilder,
+          $$SyncCursorRowsTableUpdateCompanionBuilder,
+          (
+            SyncCursorRow,
+            BaseReferences<
+              _$RiverDatabase,
+              $SyncCursorRowsTable,
+              SyncCursorRow
+            >,
+          ),
+          SyncCursorRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncCursorRowsTableTableManager(
+    _$RiverDatabase db,
+    $SyncCursorRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncCursorRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncCursorRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncCursorRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> accountId = const Value.absent(),
+                Value<String> deviceId = const Value.absent(),
+                Value<int> protocolVersion = const Value.absent(),
+                Value<int> serverSequence = const Value.absent(),
+                Value<String> opaqueToken = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncCursorRowsCompanion(
+                accountId: accountId,
+                deviceId: deviceId,
+                protocolVersion: protocolVersion,
+                serverSequence: serverSequence,
+                opaqueToken: opaqueToken,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String accountId,
+                required String deviceId,
+                required int protocolVersion,
+                required int serverSequence,
+                required String opaqueToken,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncCursorRowsCompanion.insert(
+                accountId: accountId,
+                deviceId: deviceId,
+                protocolVersion: protocolVersion,
+                serverSequence: serverSequence,
+                opaqueToken: opaqueToken,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncCursorRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $SyncCursorRowsTable,
+      SyncCursorRow,
+      $$SyncCursorRowsTableFilterComposer,
+      $$SyncCursorRowsTableOrderingComposer,
+      $$SyncCursorRowsTableAnnotationComposer,
+      $$SyncCursorRowsTableCreateCompanionBuilder,
+      $$SyncCursorRowsTableUpdateCompanionBuilder,
+      (
+        SyncCursorRow,
+        BaseReferences<_$RiverDatabase, $SyncCursorRowsTable, SyncCursorRow>,
+      ),
+      SyncCursorRow,
+      PrefetchHooks Function()
+    >;
+typedef $$SyncConflictRowsTableCreateCompanionBuilder =
+    SyncConflictRowsCompanion Function({
+      required String mutationId,
+      required String accountId,
+      required String objectKind,
+      required String objectId,
+      required String envelopeJson,
+      required String clearPayloadJson,
+      required DateTime detectedAt,
+      Value<int> rowid,
+    });
+typedef $$SyncConflictRowsTableUpdateCompanionBuilder =
+    SyncConflictRowsCompanion Function({
+      Value<String> mutationId,
+      Value<String> accountId,
+      Value<String> objectKind,
+      Value<String> objectId,
+      Value<String> envelopeJson,
+      Value<String> clearPayloadJson,
+      Value<DateTime> detectedAt,
+      Value<int> rowid,
+    });
+
+class $$SyncConflictRowsTableFilterComposer
+    extends Composer<_$RiverDatabase, $SyncConflictRowsTable> {
+  $$SyncConflictRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get mutationId => $composableBuilder(
+    column: $table.mutationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get objectKind => $composableBuilder(
+    column: $table.objectKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get objectId => $composableBuilder(
+    column: $table.objectId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get clearPayloadJson => $composableBuilder(
+    column: $table.clearPayloadJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get detectedAt => $composableBuilder(
+    column: $table.detectedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncConflictRowsTableOrderingComposer
+    extends Composer<_$RiverDatabase, $SyncConflictRowsTable> {
+  $$SyncConflictRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get mutationId => $composableBuilder(
+    column: $table.mutationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get objectKind => $composableBuilder(
+    column: $table.objectKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get objectId => $composableBuilder(
+    column: $table.objectId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get clearPayloadJson => $composableBuilder(
+    column: $table.clearPayloadJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get detectedAt => $composableBuilder(
+    column: $table.detectedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncConflictRowsTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $SyncConflictRowsTable> {
+  $$SyncConflictRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get mutationId => $composableBuilder(
+    column: $table.mutationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<String> get objectKind => $composableBuilder(
+    column: $table.objectKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get objectId =>
+      $composableBuilder(column: $table.objectId, builder: (column) => column);
+
+  GeneratedColumn<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get clearPayloadJson => $composableBuilder(
+    column: $table.clearPayloadJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get detectedAt => $composableBuilder(
+    column: $table.detectedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$SyncConflictRowsTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $SyncConflictRowsTable,
+          SyncConflictRow,
+          $$SyncConflictRowsTableFilterComposer,
+          $$SyncConflictRowsTableOrderingComposer,
+          $$SyncConflictRowsTableAnnotationComposer,
+          $$SyncConflictRowsTableCreateCompanionBuilder,
+          $$SyncConflictRowsTableUpdateCompanionBuilder,
+          (
+            SyncConflictRow,
+            BaseReferences<
+              _$RiverDatabase,
+              $SyncConflictRowsTable,
+              SyncConflictRow
+            >,
+          ),
+          SyncConflictRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncConflictRowsTableTableManager(
+    _$RiverDatabase db,
+    $SyncConflictRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncConflictRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncConflictRowsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncConflictRowsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> mutationId = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
+                Value<String> objectKind = const Value.absent(),
+                Value<String> objectId = const Value.absent(),
+                Value<String> envelopeJson = const Value.absent(),
+                Value<String> clearPayloadJson = const Value.absent(),
+                Value<DateTime> detectedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncConflictRowsCompanion(
+                mutationId: mutationId,
+                accountId: accountId,
+                objectKind: objectKind,
+                objectId: objectId,
+                envelopeJson: envelopeJson,
+                clearPayloadJson: clearPayloadJson,
+                detectedAt: detectedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String mutationId,
+                required String accountId,
+                required String objectKind,
+                required String objectId,
+                required String envelopeJson,
+                required String clearPayloadJson,
+                required DateTime detectedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncConflictRowsCompanion.insert(
+                mutationId: mutationId,
+                accountId: accountId,
+                objectKind: objectKind,
+                objectId: objectId,
+                envelopeJson: envelopeJson,
+                clearPayloadJson: clearPayloadJson,
+                detectedAt: detectedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncConflictRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $SyncConflictRowsTable,
+      SyncConflictRow,
+      $$SyncConflictRowsTableFilterComposer,
+      $$SyncConflictRowsTableOrderingComposer,
+      $$SyncConflictRowsTableAnnotationComposer,
+      $$SyncConflictRowsTableCreateCompanionBuilder,
+      $$SyncConflictRowsTableUpdateCompanionBuilder,
+      (
+        SyncConflictRow,
+        BaseReferences<
+          _$RiverDatabase,
+          $SyncConflictRowsTable,
+          SyncConflictRow
+        >,
+      ),
+      SyncConflictRow,
+      PrefetchHooks Function()
+    >;
 
 class $RiverDatabaseManager {
   final _$RiverDatabase _db;
@@ -10544,4 +13222,12 @@ class $RiverDatabaseManager {
       $$BackgroundJobsTableTableManager(_db, _db.backgroundJobs);
   $$SyncTombstonesTableTableManager get syncTombstones =>
       $$SyncTombstonesTableTableManager(_db, _db.syncTombstones);
+  $$SyncReplicaEntriesTableTableManager get syncReplicaEntries =>
+      $$SyncReplicaEntriesTableTableManager(_db, _db.syncReplicaEntries);
+  $$SyncOutboxRowsTableTableManager get syncOutboxRows =>
+      $$SyncOutboxRowsTableTableManager(_db, _db.syncOutboxRows);
+  $$SyncCursorRowsTableTableManager get syncCursorRows =>
+      $$SyncCursorRowsTableTableManager(_db, _db.syncCursorRows);
+  $$SyncConflictRowsTableTableManager get syncConflictRows =>
+      $$SyncConflictRowsTableTableManager(_db, _db.syncConflictRows);
 }

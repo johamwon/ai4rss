@@ -191,3 +191,55 @@ class SyncTombstones extends Table {
     <Column<Object>>{entityType, entityId},
   ];
 }
+
+class SyncReplicaEntries extends Table {
+  TextColumn get accountId => text()();
+  TextColumn get objectKind => text()();
+  TextColumn get objectId => text()();
+  TextColumn get envelopeJson => text()();
+  TextColumn get clearPayloadJson => text()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{
+    accountId,
+    objectKind,
+    objectId,
+  };
+}
+
+class SyncOutboxRows extends Table {
+  TextColumn get mutationId => text()();
+  TextColumn get accountId => text()();
+  TextColumn get deviceId => text()();
+  TextColumn get envelopeJson => text()();
+  DateTimeColumn get queuedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{mutationId};
+}
+
+class SyncCursorRows extends Table {
+  TextColumn get accountId => text()();
+  TextColumn get deviceId => text()();
+  IntColumn get protocolVersion => integer()();
+  IntColumn get serverSequence => integer()();
+  TextColumn get opaqueToken => text()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{accountId, deviceId};
+}
+
+class SyncConflictRows extends Table {
+  TextColumn get mutationId => text()();
+  TextColumn get accountId => text()();
+  TextColumn get objectKind => text()();
+  TextColumn get objectId => text()();
+  TextColumn get envelopeJson => text()();
+  TextColumn get clearPayloadJson => text()();
+  DateTimeColumn get detectedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{mutationId};
+}
