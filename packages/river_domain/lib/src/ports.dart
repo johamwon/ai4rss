@@ -106,6 +106,54 @@ abstract interface class AudioEngine {
   Future<void> stop();
   Future<void> seek(AudioPlaybackPosition position);
   Future<void> updateSettings(AudioPlaybackSettings settings);
+  Future<void> dispose();
+}
+
+final class UnavailableAudioEngine implements AudioEngine {
+  const UnavailableAudioEngine();
+
+  @override
+  Stream<AudioEngineEvent> get events => const Stream<AudioEngineEvent>.empty();
+
+  @override
+  Future<AudioEngineCapabilities> capabilities() async =>
+      const AudioEngineCapabilities(
+        supportsArticleTts: false,
+        supportsPodcastMedia: false,
+        canPause: false,
+        canResume: false,
+        canSeek: false,
+        canSetRate: false,
+        canSetPitch: false,
+        canSelectVoice: false,
+      );
+
+  @override
+  Future<List<AudioVoice>> voices() async => const <AudioVoice>[];
+
+  @override
+  Future<void> dispose() async {}
+
+  @override
+  Future<void> load(AudioLoadRequest request) async {}
+
+  @override
+  Future<void> pause() async {}
+
+  @override
+  Future<void> play() async {}
+
+  @override
+  Future<void> resume() async {}
+
+  @override
+  Future<void> seek(AudioPlaybackPosition position) async {}
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> updateSettings(AudioPlaybackSettings settings) async {}
 }
 
 abstract interface class KnowledgeConnector {

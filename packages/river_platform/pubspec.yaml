@@ -13,6 +13,7 @@ dependencies:
     path: ../../third_party/file_picker
   flutter:
     sdk: flutter
+  flutter_tts: 4.2.5
   # 6.2 beta platform packages include AGP 9 and Visual Studio 18 fixes that
   # have not been released on the 21-month-old stable channel.
   flutter_inappwebview: 6.2.0-beta.3
