@@ -7,6 +7,7 @@ import 'package:river_design_system/river_design_system.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
 
+import '../sync/sync_account_page.dart';
 import 'app_dependencies.dart';
 import 'article_list.dart';
 import 'article_reader.dart';
@@ -349,6 +350,16 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
     );
   }
 
+  Future<void> _openSyncAccount() async {
+    final experience = RiverDependenciesScope.of(context).syncAccount;
+    if (experience == null) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => SyncAccountPage(experience: experience),
+      ),
+    );
+  }
+
   Future<void> _run(Future<String?> Function() operation) async {
     setState(() => _busy = true);
     try {
@@ -557,6 +568,12 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
                   appBar: AppBar(
                     title: const Text('River'),
                     actions: <Widget>[
+                      if (_dependencies?.syncAccount != null)
+                        IconButton(
+                          onPressed: () => unawaited(_openSyncAccount()),
+                          icon: const Icon(Icons.cloud_sync_outlined),
+                          tooltip: '同步与账号',
+                        ),
                       IconButton(
                         onPressed: () => unawaited(
                           _openSearch(subscriptions, folders),
