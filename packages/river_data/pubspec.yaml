@@ -16,5 +16,5 @@ dev_dependencies:
   drift_dev: 2.34.0
   river_extract:
     path: ../river_extract
-  sqlite3: 3.4.0
+  sqlite3: 3.5.0
   test: ^1.31.0
