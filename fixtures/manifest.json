@@ -5,6 +5,10 @@
       "contains": ["<rss", "Synthetic River Feed"]
     },
     {
+      "path": "fixtures/feeds/podcast_rss.xml",
+      "contains": ["River Audio Lab", "episode-42", "itunes:duration"]
+    },
+    {
       "path": "fixtures/html/wechat_synthetic.html",
       "contains": ["js_content", "River Lab", "data-src"]
     },
