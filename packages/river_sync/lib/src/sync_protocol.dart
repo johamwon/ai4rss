@@ -156,6 +156,7 @@ final class WrappedSyncDataKey {
     required this.recipientDeviceId,
     required this.senderDeviceId,
     required this.ephemeralPublicKeyBase64,
+    required this.kdfSaltBase64,
     required this.nonceBase64,
     required this.ciphertextBase64,
     required this.authenticationTagBase64,
@@ -174,6 +175,7 @@ final class WrappedSyncDataKey {
       32,
       'ephemeralPublicKeyBase64',
     );
+    _requireDecodedLength(kdfSaltBase64, 32, 'kdfSaltBase64');
     _requireDecodedLength(nonceBase64, 12, 'nonceBase64');
     _requireNonEmptyBase64(ciphertextBase64, 'ciphertextBase64');
     _requireDecodedLength(
@@ -189,12 +191,34 @@ final class WrappedSyncDataKey {
   final String recipientDeviceId;
   final String senderDeviceId;
   final String ephemeralPublicKeyBase64;
+  final String kdfSaltBase64;
   final String nonceBase64;
   final String ciphertextBase64;
   final String authenticationTagBase64;
   final SyncKeyWrappingAlgorithm algorithm;
 
-  String get associatedData => <String>[
+  String get associatedData => associatedDataFor(
+        protocolVersion: protocolVersion,
+        accountId: accountId,
+        dataKeyId: dataKeyId,
+        recipientDeviceId: recipientDeviceId,
+        senderDeviceId: senderDeviceId,
+        algorithm: algorithm,
+        ephemeralPublicKeyBase64: ephemeralPublicKeyBase64,
+        kdfSaltBase64: kdfSaltBase64,
+      );
+
+  static String associatedDataFor({
+    required int protocolVersion,
+    required String accountId,
+    required String dataKeyId,
+    required String recipientDeviceId,
+    required String senderDeviceId,
+    required SyncKeyWrappingAlgorithm algorithm,
+    required String ephemeralPublicKeyBase64,
+    required String kdfSaltBase64,
+  }) =>
+      <String>[
         'river-sync-key-wrap-v$protocolVersion',
         _canonicalPart(accountId),
         _canonicalPart(dataKeyId),
@@ -202,6 +226,7 @@ final class WrappedSyncDataKey {
         _canonicalPart(senderDeviceId),
         algorithm.name,
         ephemeralPublicKeyBase64,
+        kdfSaltBase64,
       ].join('|');
 }
 
@@ -282,7 +307,32 @@ final class EncryptedSyncEnvelope {
       base64.decode(ciphertextBase64).length +
       base64.decode(authenticationTagBase64).length;
 
-  String get associatedData => <String>[
+  String get associatedData => associatedDataFor(
+        protocolVersion: protocolVersion,
+        mutationId: mutationId,
+        accountId: accountId,
+        objectKind: objectKind,
+        objectId: objectId,
+        payloadKind: payloadKind,
+        dataKeyId: dataKeyId,
+        authorDeviceId: authorDeviceId,
+        versionVector: versionVector,
+        occurredAt: occurredAt,
+      );
+
+  static String associatedDataFor({
+    required int protocolVersion,
+    required String mutationId,
+    required String accountId,
+    required SyncObjectKind objectKind,
+    required String objectId,
+    required SyncPayloadKind payloadKind,
+    required String dataKeyId,
+    required String authorDeviceId,
+    required VersionVector versionVector,
+    required DateTime occurredAt,
+  }) =>
+      <String>[
         'river-sync-v$protocolVersion',
         _canonicalPart(accountId),
         objectKind.name,

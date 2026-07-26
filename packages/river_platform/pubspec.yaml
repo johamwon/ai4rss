@@ -15,6 +15,7 @@ dependencies:
     path: ../../third_party/file_picker
   flutter:
     sdk: flutter
+  flutter_secure_storage: 10.3.1
   flutter_tts: 4.2.5
   # 6.2 beta platform packages include AGP 9 and Visual Studio 18 fixes that
   # have not been released on the 21-month-old stable channel.
@@ -23,6 +24,8 @@ dependencies:
     path: ../river_domain
   river_feed:
     path: ../river_feed
+  river_sync:
+    path: ../river_sync
   share_plus: 12.0.2
   url_launcher: 6.3.2
   workmanager: 0.9.0+3
