@@ -20,6 +20,8 @@ dependencies:
   # 6.2 beta platform packages include AGP 9 and Visual Studio 18 fixes that
   # have not been released on the 21-month-old stable channel.
   flutter_inappwebview: 6.2.0-beta.3
+  just_audio: 0.10.6
+  just_audio_windows: 0.2.3
   river_domain:
     path: ../river_domain
   river_feed:
