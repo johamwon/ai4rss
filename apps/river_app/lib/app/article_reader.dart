@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:river_audio/river_audio.dart';
 import 'package:river_design_system/river_design_system.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
@@ -58,6 +59,7 @@ final class ArticleReaderState {
     this.enhancementFailure,
     this.offlineArticle,
     this.settings = const ReaderSettings(),
+    this.audio = const AudioPlaybackState.initial(),
     this.operationFailure,
     this.isMutating = false,
   });
@@ -72,6 +74,7 @@ final class ArticleReaderState {
   final ArticleEnhancementFailure? enhancementFailure;
   final OfflineArticleState? offlineArticle;
   final ReaderSettings settings;
+  final AudioPlaybackState audio;
   final String? operationFailure;
   final bool isMutating;
 
@@ -84,6 +87,7 @@ final class ArticleReaderState {
     bool clearEnhancementFailure = false,
     OfflineArticleState? offlineArticle,
     ReaderSettings? settings,
+    AudioPlaybackState? audio,
     String? operationFailure,
     bool clearOperationFailure = false,
     bool? isMutating,
@@ -98,6 +102,7 @@ final class ArticleReaderState {
             : enhancementFailure ?? this.enhancementFailure,
         offlineArticle: offlineArticle ?? this.offlineArticle,
         settings: settings ?? this.settings,
+        audio: audio ?? this.audio,
         operationFailure: clearOperationFailure
             ? null
             : operationFailure ?? this.operationFailure,
@@ -115,16 +120,25 @@ final class ArticleReaderController extends ChangeNotifier {
     required ExternalUriGateway externalUri,
     required OfflineArticleManager offlineArticles,
     required Clock clock,
+    AudioEngine audio = const UnavailableAudioEngine(),
+    AudioPlaybackRepository audioPlayback =
+        const UnavailableAudioPlaybackRepository(),
   })  : _repository = repository,
         _extractor = extractor,
         _readerSettings = readerSettings,
         _share = share,
         _externalUri = externalUri,
         _offlineArticles = offlineArticles,
-        _clock = clock {
+        _clock = clock,
+        _audioController = AudioPlaybackController(
+          engine: audio,
+          repository: audioPlayback,
+          clock: clock,
+        ) {
     _subscribeArticle();
     _subscribeSettings();
     _subscribeOfflineArticle();
+    _subscribeAudio();
   }
 
   final String articleId;
@@ -135,9 +149,11 @@ final class ArticleReaderController extends ChangeNotifier {
   final ExternalUriGateway _externalUri;
   final OfflineArticleManager _offlineArticles;
   final Clock _clock;
+  final AudioPlaybackController _audioController;
   StreamSubscription<FeedArticleDetailRecord?>? _articleSubscription;
   StreamSubscription<ReaderSettings>? _settingsSubscription;
   StreamSubscription<OfflineArticleState>? _offlineArticleSubscription;
+  StreamSubscription<AudioPlaybackState>? _audioSubscription;
   ArticleReaderState _state = const ArticleReaderState.loading();
   var _extractionStarted = false;
   var _subscriptionGeneration = 0;
@@ -156,6 +172,7 @@ final class ArticleReaderController extends ChangeNotifier {
       ArticleReaderState(
         loadPhase: ArticleReaderLoadPhase.loading,
         settings: _state.settings,
+        audio: _state.audio,
       ),
     );
     _subscribeArticle();
@@ -171,7 +188,7 @@ final class ArticleReaderController extends ChangeNotifier {
       onError: (Object error, StackTrace stackTrace) {
         if (generation != _subscriptionGeneration) return;
         _setState(
-          const ArticleReaderState(loadPhase: ArticleReaderLoadPhase.failed),
+          _state.copyWith(loadPhase: ArticleReaderLoadPhase.failed),
         );
       },
     );
@@ -202,6 +219,12 @@ final class ArticleReaderController extends ChangeNotifier {
         );
   }
 
+  void _subscribeAudio() {
+    _audioSubscription = _audioController.states.listen(
+      (audio) => _setState(_state.copyWith(audio: audio)),
+    );
+  }
+
   void _acceptOfflineArticleState(OfflineArticleState offlineArticle) {
     final content = _state.content;
     if (content != null && content.source != ArticleReaderContentSource.feed) {
@@ -220,8 +243,13 @@ final class ArticleReaderController extends ChangeNotifier {
 
   void _acceptDetail(FeedArticleDetailRecord? detail) {
     if (detail == null) {
+      unawaited(_audioController.stop());
       _setState(
-        const ArticleReaderState(loadPhase: ArticleReaderLoadPhase.missing),
+        ArticleReaderState(
+          loadPhase: ArticleReaderLoadPhase.missing,
+          settings: _state.settings,
+          audio: _state.audio,
+        ),
       );
       return;
     }
@@ -240,6 +268,7 @@ final class ArticleReaderController extends ChangeNotifier {
         enhancementFailure: _state.enhancementFailure,
         offlineArticle: _offlineStateForDetail(detail),
         settings: _state.settings,
+        audio: _state.audio,
         operationFailure: _state.operationFailure,
         isMutating: _state.isMutating,
       ),
@@ -308,6 +337,11 @@ final class ArticleReaderController extends ChangeNotifier {
           revision:
               '${article.extractor}@${article.extractorVersion}:${article.html.hashCode}',
         );
+        if (_state.audio.request case final request?
+            when request.contentRevision != content.revision) {
+          await _audioController.stop();
+          if (_disposed || generation != _extractionGeneration) return;
+        }
         _setState(
           _state.copyWith(
             enhancementPhase: ArticleEnhancementPhase.ready,
@@ -493,6 +527,95 @@ final class ArticleReaderController extends ChangeNotifier {
     }
   }
 
+  Future<void> toggleSpeech() async {
+    final audio = _audioController.state;
+    if (audio.phase == AudioEnginePhase.playing) {
+      await _audioController.pause();
+      return;
+    }
+    if (audio.phase == AudioEnginePhase.loading || audio.restoring) return;
+
+    final detail = _state.detail;
+    final content = _state.content;
+    if (detail == null || content == null) {
+      _setState(
+        _state.copyWith(operationFailure: '正文准备完成后才能开始朗读'),
+      );
+      return;
+    }
+    final segments = const ArticleSpeechSegmenter().segment(content.text);
+    if (segments.isEmpty) {
+      _setState(_state.copyWith(operationFailure: '当前文章没有可朗读的正文'));
+      return;
+    }
+
+    final loaded = audio.request;
+    if (loaded == null ||
+        loaded.item.id != articleId ||
+        loaded.contentRevision != content.revision) {
+      await _audioController.load(
+        AudioLoadRequest(
+          item: AudioItem(
+            id: articleId,
+            kind: AudioKind.articleTts,
+            title: detail.title,
+            sourceUri: detail.canonicalUrl,
+          ),
+          speechSegments: segments,
+          contentRevision: content.revision,
+        ),
+      );
+    }
+    if (_audioController.state.phase != AudioEnginePhase.failed) {
+      await _audioController.play();
+    }
+  }
+
+  Future<void> skipSpeechNext() => _audioController.skipNext();
+
+  Future<void> skipSpeechPrevious() => _audioController.skipPrevious();
+
+  Future<void> restartSpeechSegment() =>
+      _audioController.restartCurrentSegment();
+
+  Future<void> setSpeechRate(double rate) {
+    final current = _audioController.state.settings;
+    return _audioController.updateSettings(
+      AudioPlaybackSettings(
+        rate: rate,
+        pitch: current.pitch,
+        voiceId: current.voiceId,
+        languageTag: current.languageTag,
+      ),
+    );
+  }
+
+  Future<void> selectSpeechVoice(String? voiceId) {
+    final current = _audioController.state.settings;
+    AudioVoice? selected;
+    if (voiceId != null) {
+      for (final voice in _audioController.state.voices) {
+        if (voice.id == voiceId) {
+          selected = voice;
+          break;
+        }
+      }
+    }
+    return _audioController.updateSettings(
+      AudioPlaybackSettings(
+        rate: current.rate,
+        pitch: current.pitch,
+        voiceId: selected?.id,
+        languageTag: selected?.languageTag,
+      ),
+    );
+  }
+
+  void setSpeechTimer(Duration? duration) =>
+      _audioController.setSleepTimer(duration);
+
+  void clearAudioFailure() => _audioController.clearFailure();
+
   Future<void> shareArticle({ShareAnchor? anchor}) async {
     final detail = _state.detail;
     if (detail == null) return;
@@ -620,6 +743,8 @@ final class ArticleReaderController extends ChangeNotifier {
     unawaited(_articleSubscription?.cancel());
     unawaited(_settingsSubscription?.cancel());
     unawaited(_offlineArticleSubscription?.cancel());
+    unawaited(_audioSubscription?.cancel());
+    unawaited(_audioController.dispose());
     super.dispose();
   }
 }
@@ -634,6 +759,8 @@ final class ArticleReaderPage extends StatefulWidget {
     required this.externalUri,
     required this.offlineArticles,
     required this.clock,
+    this.audio = const UnavailableAudioEngine(),
+    this.audioPlayback = const UnavailableAudioPlaybackRepository(),
     super.key,
   });
 
@@ -645,6 +772,8 @@ final class ArticleReaderPage extends StatefulWidget {
   final ExternalUriGateway externalUri;
   final OfflineArticleManager offlineArticles;
   final Clock clock;
+  final AudioEngine audio;
+  final AudioPlaybackRepository audioPlayback;
 
   @override
   State<ArticleReaderPage> createState() => _ArticleReaderPageState();
@@ -665,6 +794,8 @@ final class _ArticleReaderPageState extends State<ArticleReaderPage> {
       externalUri: widget.externalUri,
       offlineArticles: widget.offlineArticles,
       clock: widget.clock,
+      audio: widget.audio,
+      audioPlayback: widget.audioPlayback,
     );
   }
 
@@ -809,6 +940,11 @@ final class _ReaderReady extends StatelessWidget {
             controller: controller,
           ),
         _ReaderActions(state: state, controller: controller),
+        if (content != null)
+          _ArticleTtsControls(
+            audio: state.audio,
+            controller: controller,
+          ),
         const Divider(height: 1),
         _ReaderHeader(
           detail: detail,
@@ -826,11 +962,240 @@ final class _ReaderReady extends StatelessWidget {
                   settings: state.settings,
                   initialProgress: detail.scrollDepth,
                   onProgressChanged: controller.reportProgress,
+                  highlightedSegment:
+                      state.audio.request?.contentRevision == content.revision
+                          ? state.audio.currentSpeechSegment
+                          : null,
                 ),
         ),
       ],
     );
   }
+}
+
+final class _ArticleTtsControls extends StatelessWidget {
+  const _ArticleTtsControls({
+    required this.audio,
+    required this.controller,
+  });
+
+  static const _rates = <double>[0.75, 1, 1.25, 1.5, 2, 2.5, 3];
+  static const _systemVoiceId = '__river_system_voice__';
+
+  final AudioPlaybackState audio;
+  final ArticleReaderController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasRequest = audio.request != null;
+    final busy = audio.phase == AudioEnginePhase.loading || audio.restoring;
+    final playing = audio.phase == AudioEnginePhase.playing;
+    final segment = audio.currentSpeechSegment;
+    final segmentCount = audio.request?.speechSegments.length ?? 0;
+    final status = _statusLabel(audio, segment?.index, segmentCount);
+    final colors = Theme.of(context).colorScheme;
+
+    return Semantics(
+      container: true,
+      label: '文章朗读控制，$status',
+      child: ColoredBox(
+        color: colors.surfaceContainerHighest,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: <Widget>[
+                  IconButton(
+                    onPressed: busy
+                        ? null
+                        : () => unawaited(controller.toggleSpeech()),
+                    icon: busy
+                        ? const SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(playing ? Icons.pause : Icons.play_arrow),
+                    tooltip: !hasRequest
+                        ? '朗读文章'
+                        : playing
+                            ? '暂停朗读'
+                            : '继续朗读',
+                  ),
+                  IconButton(
+                    onPressed: audio.canSkipPrevious && !busy
+                        ? () => unawaited(controller.skipSpeechPrevious())
+                        : null,
+                    icon: const Icon(Icons.skip_previous),
+                    tooltip: '上一句',
+                  ),
+                  IconButton(
+                    onPressed: hasRequest && !busy
+                        ? () => unawaited(controller.restartSpeechSegment())
+                        : null,
+                    icon: const Icon(Icons.replay),
+                    tooltip: '重读当前句',
+                  ),
+                  IconButton(
+                    onPressed: audio.canSkipNext && !busy
+                        ? () => unawaited(controller.skipSpeechNext())
+                        : null,
+                    icon: const Icon(Icons.skip_next),
+                    tooltip: '下一句',
+                  ),
+                  const SizedBox(width: 4),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minWidth: 80,
+                      maxWidth: 220,
+                    ),
+                    child: Text(
+                      status,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  PopupMenuButton<double>(
+                    enabled: hasRequest && !busy,
+                    tooltip: '朗读速度',
+                    onSelected: (rate) =>
+                        unawaited(controller.setSpeechRate(rate)),
+                    itemBuilder: (context) => _rates
+                        .map(
+                          (rate) => CheckedPopupMenuItem<double>(
+                            value: rate,
+                            checked: audio.settings.rate == rate,
+                            child: Text('${_number(rate)} 倍速'),
+                          ),
+                        )
+                        .toList(growable: false),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 10,
+                      ),
+                      child: Text('${_number(audio.settings.rate)}×'),
+                    ),
+                  ),
+                  if (audio.voices.isNotEmpty)
+                    PopupMenuButton<String>(
+                      enabled: hasRequest && !busy,
+                      tooltip: '朗读声音',
+                      onSelected: (voiceId) => unawaited(
+                        controller.selectSpeechVoice(
+                          voiceId == _systemVoiceId ? null : voiceId,
+                        ),
+                      ),
+                      itemBuilder: (context) => <PopupMenuEntry<String>>[
+                        CheckedPopupMenuItem<String>(
+                          value: _systemVoiceId,
+                          checked: audio.settings.voiceId == null,
+                          child: const Text('系统默认声音'),
+                        ),
+                        ...audio.voices.map(
+                          (voice) => CheckedPopupMenuItem<String>(
+                            value: voice.id,
+                            checked: audio.settings.voiceId == voice.id,
+                            child: Text(
+                              '${voice.name} · ${voice.languageTag}',
+                            ),
+                          ),
+                        ),
+                      ],
+                      icon: const Icon(Icons.record_voice_over_outlined),
+                    ),
+                  PopupMenuButton<int>(
+                    enabled: hasRequest && !busy,
+                    tooltip: '定时停止',
+                    onSelected: (minutes) => controller.setSpeechTimer(
+                      minutes == 0 ? null : Duration(minutes: minutes),
+                    ),
+                    itemBuilder: (context) => <PopupMenuEntry<int>>[
+                      const PopupMenuItem<int>(
+                        value: 0,
+                        child: Text('关闭定时'),
+                      ),
+                      for (final minutes in <int>[10, 20, 30, 60])
+                        PopupMenuItem<int>(
+                          value: minutes,
+                          child: Text('$minutes 分钟后停止'),
+                        ),
+                    ],
+                    icon: Icon(
+                      audio.sleepDeadline == null
+                          ? Icons.timer_outlined
+                          : Icons.timer,
+                    ),
+                  ),
+                ],
+              ),
+              if (audio.failureCode case final failure?)
+                Row(
+                  children: <Widget>[
+                    Icon(
+                      Icons.info_outline,
+                      size: 18,
+                      color: colors.error,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _failureLabel(failure),
+                        style: TextStyle(color: colors.error),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: controller.clearAudioFailure,
+                      icon: const Icon(Icons.close),
+                      tooltip: '关闭朗读提示',
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _statusLabel(
+    AudioPlaybackState audio,
+    int? segmentIndex,
+    int segmentCount,
+  ) {
+    if (audio.restoring) return '正在恢复上次朗读位置';
+    if (audio.phase == AudioEnginePhase.loading) return '正在准备朗读';
+    final progress = segmentIndex == null || segmentCount == 0
+        ? ''
+        : ' · 第 ${segmentIndex + 1}/$segmentCount 句';
+    final timer = audio.sleepDeadline == null ? '' : ' · 已开启定时停止';
+    final phase = switch (audio.phase) {
+      AudioEnginePhase.idle => '点击播放开始朗读',
+      AudioEnginePhase.ready => '朗读已就绪',
+      AudioEnginePhase.playing => '正在朗读',
+      AudioEnginePhase.paused => '朗读已暂停',
+      AudioEnginePhase.stopped => '朗读已停止',
+      AudioEnginePhase.completed => '朗读已完成',
+      AudioEnginePhase.interrupted => '朗读被系统中断',
+      AudioEnginePhase.failed => '朗读暂不可用',
+      AudioEnginePhase.loading => '正在准备朗读',
+    };
+    return '$phase$progress$timer';
+  }
+
+  static String _failureLabel(String code) => switch (code) {
+        'audio_kind_unsupported' => '当前设备不支持文章朗读',
+        'audio_voice_unavailable' => '所选声音不可用，请重新选择',
+        'audio_progress_save_failed' => '朗读进度暂时无法保存',
+        'audio_invalid_sleep_timer' => '定时时长无效',
+        _ => '朗读遇到问题，请重试',
+      };
+
+  static String _number(double value) =>
+      value == value.roundToDouble() ? value.toInt().toString() : '$value';
 }
 
 final class _EnhancementFailureBanner extends StatelessWidget {
@@ -1115,6 +1480,7 @@ final class ArticleDocumentView extends StatefulWidget {
     required this.settings,
     required this.initialProgress,
     required this.onProgressChanged,
+    this.highlightedSegment,
     super.key,
   });
 
@@ -1122,6 +1488,7 @@ final class ArticleDocumentView extends StatefulWidget {
   final ReaderSettings settings;
   final double initialProgress;
   final ValueChanged<double> onProgressChanged;
+  final SpeechSegment? highlightedSegment;
 
   @override
   State<ArticleDocumentView> createState() => ArticleDocumentViewState();
@@ -1137,6 +1504,8 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
 
   TextSelection get selection => _textController.selection;
   String get documentText => _textController.text;
+  TextRange? get highlightedRange =>
+      (_textController as _HighlightingTextEditingController).highlightedRange;
   double get scrollOffset =>
       _scrollController.hasClients ? _scrollController.offset : 0;
   String get selectedText {
@@ -1149,8 +1518,10 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_reportProgress);
-    _textController = TextEditingController(text: widget.content.text)
-      ..addListener(_handleSelectionChange);
+    _textController = _HighlightingTextEditingController(
+      text: widget.content.text,
+      highlightedSegment: widget.highlightedSegment,
+    )..addListener(_handleSelectionChange);
     _focusNode = FocusNode();
     WidgetsBinding.instance.addPostFrameCallback((_) => _restoreProgress());
   }
@@ -1160,6 +1531,10 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
     super.didUpdateWidget(oldWidget);
     if (widget.content.text != oldWidget.content.text) {
       _replacePreservingAnchors(widget.content.text);
+    }
+    if (widget.highlightedSegment != oldWidget.highlightedSegment) {
+      (_textController as _HighlightingTextEditingController)
+          .setHighlightedSegment(widget.highlightedSegment);
     }
   }
 
@@ -1291,6 +1666,78 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
       ),
     );
   }
+}
+
+final class _HighlightingTextEditingController extends TextEditingController {
+  _HighlightingTextEditingController({
+    required String text,
+    SpeechSegment? highlightedSegment,
+  })  : _highlightedRange = _rangeFor(text, highlightedSegment),
+        super(text: text);
+
+  TextRange? _highlightedRange;
+
+  TextRange? get highlightedRange => _highlightedRange;
+
+  void setHighlightedSegment(SpeechSegment? segment) {
+    final next = _rangeFor(text, segment);
+    if (_sameRange(_highlightedRange, next)) return;
+    _highlightedRange = next;
+    notifyListeners();
+  }
+
+  @override
+  set value(TextEditingValue newValue) {
+    super.value = newValue;
+    final range = _highlightedRange;
+    if (range != null && range.end > newValue.text.length) {
+      _highlightedRange = null;
+    }
+  }
+
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
+    final range = _highlightedRange;
+    if (range == null || range.isCollapsed || range.end > text.length) {
+      return super.buildTextSpan(
+        context: context,
+        style: style,
+        withComposing: withComposing,
+      );
+    }
+    final foreground = style?.color ?? Theme.of(context).colorScheme.onSurface;
+    return TextSpan(
+      style: style,
+      children: <InlineSpan>[
+        if (range.start > 0) TextSpan(text: text.substring(0, range.start)),
+        TextSpan(
+          text: text.substring(range.start, range.end),
+          style: TextStyle(
+            backgroundColor: foreground.withValues(alpha: 0.16),
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (range.end < text.length) TextSpan(text: text.substring(range.end)),
+      ],
+    );
+  }
+
+  static TextRange? _rangeFor(String text, SpeechSegment? segment) {
+    if (segment == null ||
+        segment.sourceStart < 0 ||
+        segment.sourceStart >= segment.sourceEnd ||
+        segment.sourceEnd > text.length) {
+      return null;
+    }
+    return TextRange(start: segment.sourceStart, end: segment.sourceEnd);
+  }
+
+  static bool _sameRange(TextRange? left, TextRange? right) =>
+      left?.start == right?.start && left?.end == right?.end;
 }
 
 TextStyle _readerTextStyle(TextTheme textTheme, ReaderSettings settings) {

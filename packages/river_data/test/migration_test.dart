@@ -8,7 +8,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:test/test.dart';
 
 void main() {
-  test('v1 fixture migrates to v4 without losing article state', () async {
+  test('v1 fixture migrates to v5 without losing article state', () async {
     final fixture = await _materializeFixture('v001_populated.sql');
     final migrated = await _openFixture(fixture);
 
@@ -17,7 +17,7 @@ void main() {
     expect(article.feedSummary, 'Existing preview survives migration');
     expect(article.starred, isTrue);
     expect(article.feedContentHtml, isNull);
-    expect(await _userVersion(migrated), 4);
+    expect(await _userVersion(migrated), 5);
     expect(
       await DriftReaderSettingsRepository(migrated).watchSettings().first,
       const ReaderSettings(),
@@ -37,7 +37,7 @@ void main() {
 
     final article = await recovered.select(recovered.articles).getSingle();
     expect(article.feedContentHtml, '<p>Recovered body</p>');
-    expect(await _userVersion(recovered), 4);
+    expect(await _userVersion(recovered), 5);
   });
 
   test('v2 fixture creates the settings table and preserves article', () async {
@@ -46,7 +46,7 @@ void main() {
 
     final article = await migrated.select(migrated.articles).getSingle();
     expect(article.feedContentHtml, '<p>Current immediate body</p>');
-    expect(await _userVersion(migrated), 4);
+    expect(await _userVersion(migrated), 5);
     expect(
       await DriftReaderSettingsRepository(migrated).watchSettings().first,
       const ReaderSettings(),
@@ -81,7 +81,7 @@ void main() {
     expect(settings.fontFamily, ReaderFontFamily.serif);
     expect(settings.fontScale, 1.3);
     expect(settings.theme, ReaderThemePreference.dark);
-    expect(await _userVersion(recovered), 4);
+    expect(await _userVersion(recovered), 5);
   });
 
   test('v3 fixture creates a searchable index without data loss', () async {
@@ -108,7 +108,7 @@ void main() {
           .id,
       'article-1',
     );
-    expect(await _userVersion(current), 4);
+    expect(await _userVersion(current), 5);
   });
 
   test('interrupted v4 index creation rebuilds and creates triggers', () async {
@@ -135,10 +135,10 @@ void main() {
       'article-1',
     ]);
     expect(await _searchTriggerCount(recovered), 10);
-    expect(await _userVersion(recovered), 4);
+    expect(await _userVersion(recovered), 5);
   });
 
-  test('current v4 fixture opens with index and triggers intact', () async {
+  test('v4 fixture adds restartable audio state with index intact', () async {
     final fixture = await _materializeFixture('v004_populated.sql');
     final current = await _openFixture(fixture);
 
@@ -156,7 +156,43 @@ void main() {
       'article-1',
     );
     expect(await _searchTriggerCount(current), 10);
-    expect(await _userVersion(current), 4);
+    expect(
+      await _audioColumnNames(current),
+      containsAll(<String>[
+        'segment_index',
+        'character_offset',
+        'content_revision',
+        'pitch',
+        'voice_id',
+        'language_tag',
+      ]),
+    );
+    expect(await _userVersion(current), 5);
+  });
+
+  test('interrupted v5 audio column additions retry idempotently', () async {
+    final fixture = await _materializeFixture('v004_populated.sql');
+    final raw = sqlite.sqlite3.open(fixture.path);
+    raw
+      ..execute(
+        'ALTER TABLE audio_items '
+        'ADD COLUMN segment_index INTEGER NULL',
+      )
+      ..close();
+    final recovered = await _openFixture(fixture);
+
+    expect(
+      await _audioColumnNames(recovered),
+      containsAll(<String>[
+        'segment_index',
+        'character_offset',
+        'content_revision',
+        'pitch',
+        'voice_id',
+        'language_tag',
+      ]),
+    );
+    expect(await _userVersion(recovered), 5);
   });
 }
 
@@ -196,3 +232,8 @@ Future<int> _searchTriggerCount(RiverDatabase database) async =>
       FROM sqlite_master
       WHERE type = 'trigger' AND name LIKE 'article_search_%'
       ''').getSingle()).read<int>('trigger_count');
+
+Future<List<String>> _audioColumnNames(RiverDatabase database) async =>
+    (await database.customSelect('PRAGMA table_info(audio_items)').get())
+        .map((row) => row.read<String>('name'))
+        .toList(growable: false);

@@ -20,10 +20,12 @@ final class AppDependencies {
     BackgroundRefreshScheduler? backgroundRefresh,
     ExternalUriGateway? externalUri,
     AudioEngine? audio,
+    AudioPlaybackRepository? audioPlayback,
     NetworkMonitor? network,
     OpmlFileGateway? opmlFiles,
   })  : opmlFiles = opmlFiles ?? const PlatformOpmlFileGateway(),
         audio = audio ?? const UnavailableAudioEngine(),
+        audioPlayback = audioPlayback ?? DriftAudioPlaybackRepository(database),
         network = network ?? const UnknownNetworkMonitor(),
         externalUri = externalUri ?? const UnavailableExternalUriGateway(),
         backgroundRefresh =
@@ -111,6 +113,7 @@ final class AppDependencies {
   final BackgroundRefreshScheduler backgroundRefresh;
   final ShareGateway share;
   final AudioEngine audio;
+  final AudioPlaybackRepository audioPlayback;
   final ExternalUriGateway externalUri;
   final NetworkMonitor network;
   final HttpPort http;

@@ -109,6 +109,26 @@ abstract interface class AudioEngine {
   Future<void> dispose();
 }
 
+abstract interface class AudioPlaybackRepository {
+  Future<AudioPlaybackSnapshot?> read(String itemId);
+  Future<void> save(AudioPlaybackSnapshot snapshot);
+  Future<void> clear(String itemId);
+}
+
+final class UnavailableAudioPlaybackRepository
+    implements AudioPlaybackRepository {
+  const UnavailableAudioPlaybackRepository();
+
+  @override
+  Future<void> clear(String itemId) async {}
+
+  @override
+  Future<AudioPlaybackSnapshot?> read(String itemId) async => null;
+
+  @override
+  Future<void> save(AudioPlaybackSnapshot snapshot) async {}
+}
+
 final class UnavailableAudioEngine implements AudioEngine {
   const UnavailableAudioEngine();
 
