@@ -239,6 +239,20 @@ class SyncConflictRows extends Table {
   TextColumn get envelopeJson => text()();
   TextColumn get clearPayloadJson => text()();
   DateTimeColumn get detectedAt => dateTime()();
+  TextColumn get resolutionKind =>
+      text().withDefault(const Constant('unresolved'))();
+  TextColumn get resolutionMutationId => text().nullable()();
+  DateTimeColumn get resolvedAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{mutationId};
+}
+
+class SyncSeenMutationRows extends Table {
+  TextColumn get mutationId => text()();
+  TextColumn get accountId => text()();
+  TextColumn get envelopeJson => text()();
+  DateTimeColumn get firstSeenAt => dateTime()();
 
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{mutationId};

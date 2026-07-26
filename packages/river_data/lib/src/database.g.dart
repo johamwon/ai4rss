@@ -7616,6 +7616,40 @@ class $SyncConflictRowsTable extends SyncConflictRows
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _resolutionKindMeta = const VerificationMeta(
+    'resolutionKind',
+  );
+  @override
+  late final GeneratedColumn<String> resolutionKind = GeneratedColumn<String>(
+    'resolution_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('unresolved'),
+  );
+  static const VerificationMeta _resolutionMutationIdMeta =
+      const VerificationMeta('resolutionMutationId');
+  @override
+  late final GeneratedColumn<String> resolutionMutationId =
+      GeneratedColumn<String>(
+        'resolution_mutation_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _resolvedAtMeta = const VerificationMeta(
+    'resolvedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> resolvedAt = GeneratedColumn<DateTime>(
+    'resolved_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     mutationId,
@@ -7625,6 +7659,9 @@ class $SyncConflictRowsTable extends SyncConflictRows
     envelopeJson,
     clearPayloadJson,
     detectedAt,
+    resolutionKind,
+    resolutionMutationId,
+    resolvedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -7700,6 +7737,30 @@ class $SyncConflictRowsTable extends SyncConflictRows
     } else if (isInserting) {
       context.missing(_detectedAtMeta);
     }
+    if (data.containsKey('resolution_kind')) {
+      context.handle(
+        _resolutionKindMeta,
+        resolutionKind.isAcceptableOrUnknown(
+          data['resolution_kind']!,
+          _resolutionKindMeta,
+        ),
+      );
+    }
+    if (data.containsKey('resolution_mutation_id')) {
+      context.handle(
+        _resolutionMutationIdMeta,
+        resolutionMutationId.isAcceptableOrUnknown(
+          data['resolution_mutation_id']!,
+          _resolutionMutationIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('resolved_at')) {
+      context.handle(
+        _resolvedAtMeta,
+        resolvedAt.isAcceptableOrUnknown(data['resolved_at']!, _resolvedAtMeta),
+      );
+    }
     return context;
   }
 
@@ -7737,6 +7798,18 @@ class $SyncConflictRowsTable extends SyncConflictRows
         DriftSqlType.dateTime,
         data['${effectivePrefix}detected_at'],
       )!,
+      resolutionKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resolution_kind'],
+      )!,
+      resolutionMutationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resolution_mutation_id'],
+      ),
+      resolvedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}resolved_at'],
+      ),
     );
   }
 
@@ -7754,6 +7827,9 @@ class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
   final String envelopeJson;
   final String clearPayloadJson;
   final DateTime detectedAt;
+  final String resolutionKind;
+  final String? resolutionMutationId;
+  final DateTime? resolvedAt;
   const SyncConflictRow({
     required this.mutationId,
     required this.accountId,
@@ -7762,6 +7838,9 @@ class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
     required this.envelopeJson,
     required this.clearPayloadJson,
     required this.detectedAt,
+    required this.resolutionKind,
+    this.resolutionMutationId,
+    this.resolvedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7773,6 +7852,13 @@ class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
     map['envelope_json'] = Variable<String>(envelopeJson);
     map['clear_payload_json'] = Variable<String>(clearPayloadJson);
     map['detected_at'] = Variable<DateTime>(detectedAt);
+    map['resolution_kind'] = Variable<String>(resolutionKind);
+    if (!nullToAbsent || resolutionMutationId != null) {
+      map['resolution_mutation_id'] = Variable<String>(resolutionMutationId);
+    }
+    if (!nullToAbsent || resolvedAt != null) {
+      map['resolved_at'] = Variable<DateTime>(resolvedAt);
+    }
     return map;
   }
 
@@ -7785,6 +7871,13 @@ class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
       envelopeJson: Value(envelopeJson),
       clearPayloadJson: Value(clearPayloadJson),
       detectedAt: Value(detectedAt),
+      resolutionKind: Value(resolutionKind),
+      resolutionMutationId: resolutionMutationId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolutionMutationId),
+      resolvedAt: resolvedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(resolvedAt),
     );
   }
 
@@ -7801,6 +7894,11 @@ class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
       envelopeJson: serializer.fromJson<String>(json['envelopeJson']),
       clearPayloadJson: serializer.fromJson<String>(json['clearPayloadJson']),
       detectedAt: serializer.fromJson<DateTime>(json['detectedAt']),
+      resolutionKind: serializer.fromJson<String>(json['resolutionKind']),
+      resolutionMutationId: serializer.fromJson<String?>(
+        json['resolutionMutationId'],
+      ),
+      resolvedAt: serializer.fromJson<DateTime?>(json['resolvedAt']),
     );
   }
   @override
@@ -7814,6 +7912,9 @@ class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
       'envelopeJson': serializer.toJson<String>(envelopeJson),
       'clearPayloadJson': serializer.toJson<String>(clearPayloadJson),
       'detectedAt': serializer.toJson<DateTime>(detectedAt),
+      'resolutionKind': serializer.toJson<String>(resolutionKind),
+      'resolutionMutationId': serializer.toJson<String?>(resolutionMutationId),
+      'resolvedAt': serializer.toJson<DateTime?>(resolvedAt),
     };
   }
 
@@ -7825,6 +7926,9 @@ class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
     String? envelopeJson,
     String? clearPayloadJson,
     DateTime? detectedAt,
+    String? resolutionKind,
+    Value<String?> resolutionMutationId = const Value.absent(),
+    Value<DateTime?> resolvedAt = const Value.absent(),
   }) => SyncConflictRow(
     mutationId: mutationId ?? this.mutationId,
     accountId: accountId ?? this.accountId,
@@ -7833,6 +7937,11 @@ class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
     envelopeJson: envelopeJson ?? this.envelopeJson,
     clearPayloadJson: clearPayloadJson ?? this.clearPayloadJson,
     detectedAt: detectedAt ?? this.detectedAt,
+    resolutionKind: resolutionKind ?? this.resolutionKind,
+    resolutionMutationId: resolutionMutationId.present
+        ? resolutionMutationId.value
+        : this.resolutionMutationId,
+    resolvedAt: resolvedAt.present ? resolvedAt.value : this.resolvedAt,
   );
   SyncConflictRow copyWithCompanion(SyncConflictRowsCompanion data) {
     return SyncConflictRow(
@@ -7853,6 +7962,15 @@ class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
       detectedAt: data.detectedAt.present
           ? data.detectedAt.value
           : this.detectedAt,
+      resolutionKind: data.resolutionKind.present
+          ? data.resolutionKind.value
+          : this.resolutionKind,
+      resolutionMutationId: data.resolutionMutationId.present
+          ? data.resolutionMutationId.value
+          : this.resolutionMutationId,
+      resolvedAt: data.resolvedAt.present
+          ? data.resolvedAt.value
+          : this.resolvedAt,
     );
   }
 
@@ -7865,7 +7983,10 @@ class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
           ..write('objectId: $objectId, ')
           ..write('envelopeJson: $envelopeJson, ')
           ..write('clearPayloadJson: $clearPayloadJson, ')
-          ..write('detectedAt: $detectedAt')
+          ..write('detectedAt: $detectedAt, ')
+          ..write('resolutionKind: $resolutionKind, ')
+          ..write('resolutionMutationId: $resolutionMutationId, ')
+          ..write('resolvedAt: $resolvedAt')
           ..write(')'))
         .toString();
   }
@@ -7879,6 +8000,9 @@ class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
     envelopeJson,
     clearPayloadJson,
     detectedAt,
+    resolutionKind,
+    resolutionMutationId,
+    resolvedAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -7890,7 +8014,10 @@ class SyncConflictRow extends DataClass implements Insertable<SyncConflictRow> {
           other.objectId == this.objectId &&
           other.envelopeJson == this.envelopeJson &&
           other.clearPayloadJson == this.clearPayloadJson &&
-          other.detectedAt == this.detectedAt);
+          other.detectedAt == this.detectedAt &&
+          other.resolutionKind == this.resolutionKind &&
+          other.resolutionMutationId == this.resolutionMutationId &&
+          other.resolvedAt == this.resolvedAt);
 }
 
 class SyncConflictRowsCompanion extends UpdateCompanion<SyncConflictRow> {
@@ -7901,6 +8028,9 @@ class SyncConflictRowsCompanion extends UpdateCompanion<SyncConflictRow> {
   final Value<String> envelopeJson;
   final Value<String> clearPayloadJson;
   final Value<DateTime> detectedAt;
+  final Value<String> resolutionKind;
+  final Value<String?> resolutionMutationId;
+  final Value<DateTime?> resolvedAt;
   final Value<int> rowid;
   const SyncConflictRowsCompanion({
     this.mutationId = const Value.absent(),
@@ -7910,6 +8040,9 @@ class SyncConflictRowsCompanion extends UpdateCompanion<SyncConflictRow> {
     this.envelopeJson = const Value.absent(),
     this.clearPayloadJson = const Value.absent(),
     this.detectedAt = const Value.absent(),
+    this.resolutionKind = const Value.absent(),
+    this.resolutionMutationId = const Value.absent(),
+    this.resolvedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SyncConflictRowsCompanion.insert({
@@ -7920,6 +8053,9 @@ class SyncConflictRowsCompanion extends UpdateCompanion<SyncConflictRow> {
     required String envelopeJson,
     required String clearPayloadJson,
     required DateTime detectedAt,
+    this.resolutionKind = const Value.absent(),
+    this.resolutionMutationId = const Value.absent(),
+    this.resolvedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : mutationId = Value(mutationId),
        accountId = Value(accountId),
@@ -7936,6 +8072,9 @@ class SyncConflictRowsCompanion extends UpdateCompanion<SyncConflictRow> {
     Expression<String>? envelopeJson,
     Expression<String>? clearPayloadJson,
     Expression<DateTime>? detectedAt,
+    Expression<String>? resolutionKind,
+    Expression<String>? resolutionMutationId,
+    Expression<DateTime>? resolvedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -7946,6 +8085,10 @@ class SyncConflictRowsCompanion extends UpdateCompanion<SyncConflictRow> {
       if (envelopeJson != null) 'envelope_json': envelopeJson,
       if (clearPayloadJson != null) 'clear_payload_json': clearPayloadJson,
       if (detectedAt != null) 'detected_at': detectedAt,
+      if (resolutionKind != null) 'resolution_kind': resolutionKind,
+      if (resolutionMutationId != null)
+        'resolution_mutation_id': resolutionMutationId,
+      if (resolvedAt != null) 'resolved_at': resolvedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -7958,6 +8101,9 @@ class SyncConflictRowsCompanion extends UpdateCompanion<SyncConflictRow> {
     Value<String>? envelopeJson,
     Value<String>? clearPayloadJson,
     Value<DateTime>? detectedAt,
+    Value<String>? resolutionKind,
+    Value<String?>? resolutionMutationId,
+    Value<DateTime?>? resolvedAt,
     Value<int>? rowid,
   }) {
     return SyncConflictRowsCompanion(
@@ -7968,6 +8114,9 @@ class SyncConflictRowsCompanion extends UpdateCompanion<SyncConflictRow> {
       envelopeJson: envelopeJson ?? this.envelopeJson,
       clearPayloadJson: clearPayloadJson ?? this.clearPayloadJson,
       detectedAt: detectedAt ?? this.detectedAt,
+      resolutionKind: resolutionKind ?? this.resolutionKind,
+      resolutionMutationId: resolutionMutationId ?? this.resolutionMutationId,
+      resolvedAt: resolvedAt ?? this.resolvedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -7996,6 +8145,17 @@ class SyncConflictRowsCompanion extends UpdateCompanion<SyncConflictRow> {
     if (detectedAt.present) {
       map['detected_at'] = Variable<DateTime>(detectedAt.value);
     }
+    if (resolutionKind.present) {
+      map['resolution_kind'] = Variable<String>(resolutionKind.value);
+    }
+    if (resolutionMutationId.present) {
+      map['resolution_mutation_id'] = Variable<String>(
+        resolutionMutationId.value,
+      );
+    }
+    if (resolvedAt.present) {
+      map['resolved_at'] = Variable<DateTime>(resolvedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -8012,6 +8172,344 @@ class SyncConflictRowsCompanion extends UpdateCompanion<SyncConflictRow> {
           ..write('envelopeJson: $envelopeJson, ')
           ..write('clearPayloadJson: $clearPayloadJson, ')
           ..write('detectedAt: $detectedAt, ')
+          ..write('resolutionKind: $resolutionKind, ')
+          ..write('resolutionMutationId: $resolutionMutationId, ')
+          ..write('resolvedAt: $resolvedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SyncSeenMutationRowsTable extends SyncSeenMutationRows
+    with TableInfo<$SyncSeenMutationRowsTable, SyncSeenMutationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncSeenMutationRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _mutationIdMeta = const VerificationMeta(
+    'mutationId',
+  );
+  @override
+  late final GeneratedColumn<String> mutationId = GeneratedColumn<String>(
+    'mutation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _accountIdMeta = const VerificationMeta(
+    'accountId',
+  );
+  @override
+  late final GeneratedColumn<String> accountId = GeneratedColumn<String>(
+    'account_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _envelopeJsonMeta = const VerificationMeta(
+    'envelopeJson',
+  );
+  @override
+  late final GeneratedColumn<String> envelopeJson = GeneratedColumn<String>(
+    'envelope_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _firstSeenAtMeta = const VerificationMeta(
+    'firstSeenAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> firstSeenAt = GeneratedColumn<DateTime>(
+    'first_seen_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    mutationId,
+    accountId,
+    envelopeJson,
+    firstSeenAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_seen_mutation_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncSeenMutationRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('mutation_id')) {
+      context.handle(
+        _mutationIdMeta,
+        mutationId.isAcceptableOrUnknown(data['mutation_id']!, _mutationIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mutationIdMeta);
+    }
+    if (data.containsKey('account_id')) {
+      context.handle(
+        _accountIdMeta,
+        accountId.isAcceptableOrUnknown(data['account_id']!, _accountIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('envelope_json')) {
+      context.handle(
+        _envelopeJsonMeta,
+        envelopeJson.isAcceptableOrUnknown(
+          data['envelope_json']!,
+          _envelopeJsonMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_envelopeJsonMeta);
+    }
+    if (data.containsKey('first_seen_at')) {
+      context.handle(
+        _firstSeenAtMeta,
+        firstSeenAt.isAcceptableOrUnknown(
+          data['first_seen_at']!,
+          _firstSeenAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_firstSeenAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {mutationId};
+  @override
+  SyncSeenMutationRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncSeenMutationRow(
+      mutationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mutation_id'],
+      )!,
+      accountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}account_id'],
+      )!,
+      envelopeJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}envelope_json'],
+      )!,
+      firstSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}first_seen_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncSeenMutationRowsTable createAlias(String alias) {
+    return $SyncSeenMutationRowsTable(attachedDatabase, alias);
+  }
+}
+
+class SyncSeenMutationRow extends DataClass
+    implements Insertable<SyncSeenMutationRow> {
+  final String mutationId;
+  final String accountId;
+  final String envelopeJson;
+  final DateTime firstSeenAt;
+  const SyncSeenMutationRow({
+    required this.mutationId,
+    required this.accountId,
+    required this.envelopeJson,
+    required this.firstSeenAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['mutation_id'] = Variable<String>(mutationId);
+    map['account_id'] = Variable<String>(accountId);
+    map['envelope_json'] = Variable<String>(envelopeJson);
+    map['first_seen_at'] = Variable<DateTime>(firstSeenAt);
+    return map;
+  }
+
+  SyncSeenMutationRowsCompanion toCompanion(bool nullToAbsent) {
+    return SyncSeenMutationRowsCompanion(
+      mutationId: Value(mutationId),
+      accountId: Value(accountId),
+      envelopeJson: Value(envelopeJson),
+      firstSeenAt: Value(firstSeenAt),
+    );
+  }
+
+  factory SyncSeenMutationRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncSeenMutationRow(
+      mutationId: serializer.fromJson<String>(json['mutationId']),
+      accountId: serializer.fromJson<String>(json['accountId']),
+      envelopeJson: serializer.fromJson<String>(json['envelopeJson']),
+      firstSeenAt: serializer.fromJson<DateTime>(json['firstSeenAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'mutationId': serializer.toJson<String>(mutationId),
+      'accountId': serializer.toJson<String>(accountId),
+      'envelopeJson': serializer.toJson<String>(envelopeJson),
+      'firstSeenAt': serializer.toJson<DateTime>(firstSeenAt),
+    };
+  }
+
+  SyncSeenMutationRow copyWith({
+    String? mutationId,
+    String? accountId,
+    String? envelopeJson,
+    DateTime? firstSeenAt,
+  }) => SyncSeenMutationRow(
+    mutationId: mutationId ?? this.mutationId,
+    accountId: accountId ?? this.accountId,
+    envelopeJson: envelopeJson ?? this.envelopeJson,
+    firstSeenAt: firstSeenAt ?? this.firstSeenAt,
+  );
+  SyncSeenMutationRow copyWithCompanion(SyncSeenMutationRowsCompanion data) {
+    return SyncSeenMutationRow(
+      mutationId: data.mutationId.present
+          ? data.mutationId.value
+          : this.mutationId,
+      accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      envelopeJson: data.envelopeJson.present
+          ? data.envelopeJson.value
+          : this.envelopeJson,
+      firstSeenAt: data.firstSeenAt.present
+          ? data.firstSeenAt.value
+          : this.firstSeenAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncSeenMutationRow(')
+          ..write('mutationId: $mutationId, ')
+          ..write('accountId: $accountId, ')
+          ..write('envelopeJson: $envelopeJson, ')
+          ..write('firstSeenAt: $firstSeenAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(mutationId, accountId, envelopeJson, firstSeenAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncSeenMutationRow &&
+          other.mutationId == this.mutationId &&
+          other.accountId == this.accountId &&
+          other.envelopeJson == this.envelopeJson &&
+          other.firstSeenAt == this.firstSeenAt);
+}
+
+class SyncSeenMutationRowsCompanion
+    extends UpdateCompanion<SyncSeenMutationRow> {
+  final Value<String> mutationId;
+  final Value<String> accountId;
+  final Value<String> envelopeJson;
+  final Value<DateTime> firstSeenAt;
+  final Value<int> rowid;
+  const SyncSeenMutationRowsCompanion({
+    this.mutationId = const Value.absent(),
+    this.accountId = const Value.absent(),
+    this.envelopeJson = const Value.absent(),
+    this.firstSeenAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncSeenMutationRowsCompanion.insert({
+    required String mutationId,
+    required String accountId,
+    required String envelopeJson,
+    required DateTime firstSeenAt,
+    this.rowid = const Value.absent(),
+  }) : mutationId = Value(mutationId),
+       accountId = Value(accountId),
+       envelopeJson = Value(envelopeJson),
+       firstSeenAt = Value(firstSeenAt);
+  static Insertable<SyncSeenMutationRow> custom({
+    Expression<String>? mutationId,
+    Expression<String>? accountId,
+    Expression<String>? envelopeJson,
+    Expression<DateTime>? firstSeenAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (mutationId != null) 'mutation_id': mutationId,
+      if (accountId != null) 'account_id': accountId,
+      if (envelopeJson != null) 'envelope_json': envelopeJson,
+      if (firstSeenAt != null) 'first_seen_at': firstSeenAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncSeenMutationRowsCompanion copyWith({
+    Value<String>? mutationId,
+    Value<String>? accountId,
+    Value<String>? envelopeJson,
+    Value<DateTime>? firstSeenAt,
+    Value<int>? rowid,
+  }) {
+    return SyncSeenMutationRowsCompanion(
+      mutationId: mutationId ?? this.mutationId,
+      accountId: accountId ?? this.accountId,
+      envelopeJson: envelopeJson ?? this.envelopeJson,
+      firstSeenAt: firstSeenAt ?? this.firstSeenAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (mutationId.present) {
+      map['mutation_id'] = Variable<String>(mutationId.value);
+    }
+    if (accountId.present) {
+      map['account_id'] = Variable<String>(accountId.value);
+    }
+    if (envelopeJson.present) {
+      map['envelope_json'] = Variable<String>(envelopeJson.value);
+    }
+    if (firstSeenAt.present) {
+      map['first_seen_at'] = Variable<DateTime>(firstSeenAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncSeenMutationRowsCompanion(')
+          ..write('mutationId: $mutationId, ')
+          ..write('accountId: $accountId, ')
+          ..write('envelopeJson: $envelopeJson, ')
+          ..write('firstSeenAt: $firstSeenAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -8042,6 +8540,8 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
   late final $SyncConflictRowsTable syncConflictRows = $SyncConflictRowsTable(
     this,
   );
+  late final $SyncSeenMutationRowsTable syncSeenMutationRows =
+      $SyncSeenMutationRowsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8061,6 +8561,7 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
     syncOutboxRows,
     syncCursorRows,
     syncConflictRows,
+    syncSeenMutationRows,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -12949,6 +13450,9 @@ typedef $$SyncConflictRowsTableCreateCompanionBuilder =
       required String envelopeJson,
       required String clearPayloadJson,
       required DateTime detectedAt,
+      Value<String> resolutionKind,
+      Value<String?> resolutionMutationId,
+      Value<DateTime?> resolvedAt,
       Value<int> rowid,
     });
 typedef $$SyncConflictRowsTableUpdateCompanionBuilder =
@@ -12960,6 +13464,9 @@ typedef $$SyncConflictRowsTableUpdateCompanionBuilder =
       Value<String> envelopeJson,
       Value<String> clearPayloadJson,
       Value<DateTime> detectedAt,
+      Value<String> resolutionKind,
+      Value<String?> resolutionMutationId,
+      Value<DateTime?> resolvedAt,
       Value<int> rowid,
     });
 
@@ -13004,6 +13511,21 @@ class $$SyncConflictRowsTableFilterComposer
 
   ColumnFilters<DateTime> get detectedAt => $composableBuilder(
     column: $table.detectedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resolutionKind => $composableBuilder(
+    column: $table.resolutionKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resolutionMutationId => $composableBuilder(
+    column: $table.resolutionMutationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -13051,6 +13573,21 @@ class $$SyncConflictRowsTableOrderingComposer
     column: $table.detectedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get resolutionKind => $composableBuilder(
+    column: $table.resolutionKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resolutionMutationId => $composableBuilder(
+    column: $table.resolutionMutationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SyncConflictRowsTableAnnotationComposer
@@ -13090,6 +13627,21 @@ class $$SyncConflictRowsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get detectedAt => $composableBuilder(
     column: $table.detectedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resolutionKind => $composableBuilder(
+    column: $table.resolutionKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resolutionMutationId => $composableBuilder(
+    column: $table.resolutionMutationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
     builder: (column) => column,
   );
 }
@@ -13138,6 +13690,9 @@ class $$SyncConflictRowsTableTableManager
                 Value<String> envelopeJson = const Value.absent(),
                 Value<String> clearPayloadJson = const Value.absent(),
                 Value<DateTime> detectedAt = const Value.absent(),
+                Value<String> resolutionKind = const Value.absent(),
+                Value<String?> resolutionMutationId = const Value.absent(),
+                Value<DateTime?> resolvedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncConflictRowsCompanion(
                 mutationId: mutationId,
@@ -13147,6 +13702,9 @@ class $$SyncConflictRowsTableTableManager
                 envelopeJson: envelopeJson,
                 clearPayloadJson: clearPayloadJson,
                 detectedAt: detectedAt,
+                resolutionKind: resolutionKind,
+                resolutionMutationId: resolutionMutationId,
+                resolvedAt: resolvedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -13158,6 +13716,9 @@ class $$SyncConflictRowsTableTableManager
                 required String envelopeJson,
                 required String clearPayloadJson,
                 required DateTime detectedAt,
+                Value<String> resolutionKind = const Value.absent(),
+                Value<String?> resolutionMutationId = const Value.absent(),
+                Value<DateTime?> resolvedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SyncConflictRowsCompanion.insert(
                 mutationId: mutationId,
@@ -13167,6 +13728,9 @@ class $$SyncConflictRowsTableTableManager
                 envelopeJson: envelopeJson,
                 clearPayloadJson: clearPayloadJson,
                 detectedAt: detectedAt,
+                resolutionKind: resolutionKind,
+                resolutionMutationId: resolutionMutationId,
+                resolvedAt: resolvedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -13196,6 +13760,209 @@ typedef $$SyncConflictRowsTableProcessedTableManager =
         >,
       ),
       SyncConflictRow,
+      PrefetchHooks Function()
+    >;
+typedef $$SyncSeenMutationRowsTableCreateCompanionBuilder =
+    SyncSeenMutationRowsCompanion Function({
+      required String mutationId,
+      required String accountId,
+      required String envelopeJson,
+      required DateTime firstSeenAt,
+      Value<int> rowid,
+    });
+typedef $$SyncSeenMutationRowsTableUpdateCompanionBuilder =
+    SyncSeenMutationRowsCompanion Function({
+      Value<String> mutationId,
+      Value<String> accountId,
+      Value<String> envelopeJson,
+      Value<DateTime> firstSeenAt,
+      Value<int> rowid,
+    });
+
+class $$SyncSeenMutationRowsTableFilterComposer
+    extends Composer<_$RiverDatabase, $SyncSeenMutationRowsTable> {
+  $$SyncSeenMutationRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get mutationId => $composableBuilder(
+    column: $table.mutationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncSeenMutationRowsTableOrderingComposer
+    extends Composer<_$RiverDatabase, $SyncSeenMutationRowsTable> {
+  $$SyncSeenMutationRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get mutationId => $composableBuilder(
+    column: $table.mutationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get accountId => $composableBuilder(
+    column: $table.accountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncSeenMutationRowsTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $SyncSeenMutationRowsTable> {
+  $$SyncSeenMutationRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get mutationId => $composableBuilder(
+    column: $table.mutationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get accountId =>
+      $composableBuilder(column: $table.accountId, builder: (column) => column);
+
+  GeneratedColumn<String> get envelopeJson => $composableBuilder(
+    column: $table.envelopeJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get firstSeenAt => $composableBuilder(
+    column: $table.firstSeenAt,
+    builder: (column) => column,
+  );
+}
+
+class $$SyncSeenMutationRowsTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $SyncSeenMutationRowsTable,
+          SyncSeenMutationRow,
+          $$SyncSeenMutationRowsTableFilterComposer,
+          $$SyncSeenMutationRowsTableOrderingComposer,
+          $$SyncSeenMutationRowsTableAnnotationComposer,
+          $$SyncSeenMutationRowsTableCreateCompanionBuilder,
+          $$SyncSeenMutationRowsTableUpdateCompanionBuilder,
+          (
+            SyncSeenMutationRow,
+            BaseReferences<
+              _$RiverDatabase,
+              $SyncSeenMutationRowsTable,
+              SyncSeenMutationRow
+            >,
+          ),
+          SyncSeenMutationRow,
+          PrefetchHooks Function()
+        > {
+  $$SyncSeenMutationRowsTableTableManager(
+    _$RiverDatabase db,
+    $SyncSeenMutationRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncSeenMutationRowsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncSeenMutationRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$SyncSeenMutationRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> mutationId = const Value.absent(),
+                Value<String> accountId = const Value.absent(),
+                Value<String> envelopeJson = const Value.absent(),
+                Value<DateTime> firstSeenAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncSeenMutationRowsCompanion(
+                mutationId: mutationId,
+                accountId: accountId,
+                envelopeJson: envelopeJson,
+                firstSeenAt: firstSeenAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String mutationId,
+                required String accountId,
+                required String envelopeJson,
+                required DateTime firstSeenAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncSeenMutationRowsCompanion.insert(
+                mutationId: mutationId,
+                accountId: accountId,
+                envelopeJson: envelopeJson,
+                firstSeenAt: firstSeenAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncSeenMutationRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $SyncSeenMutationRowsTable,
+      SyncSeenMutationRow,
+      $$SyncSeenMutationRowsTableFilterComposer,
+      $$SyncSeenMutationRowsTableOrderingComposer,
+      $$SyncSeenMutationRowsTableAnnotationComposer,
+      $$SyncSeenMutationRowsTableCreateCompanionBuilder,
+      $$SyncSeenMutationRowsTableUpdateCompanionBuilder,
+      (
+        SyncSeenMutationRow,
+        BaseReferences<
+          _$RiverDatabase,
+          $SyncSeenMutationRowsTable,
+          SyncSeenMutationRow
+        >,
+      ),
+      SyncSeenMutationRow,
       PrefetchHooks Function()
     >;
 
@@ -13230,4 +13997,6 @@ class $RiverDatabaseManager {
       $$SyncCursorRowsTableTableManager(_db, _db.syncCursorRows);
   $$SyncConflictRowsTableTableManager get syncConflictRows =>
       $$SyncConflictRowsTableTableManager(_db, _db.syncConflictRows);
+  $$SyncSeenMutationRowsTableTableManager get syncSeenMutationRows =>
+      $$SyncSeenMutationRowsTableTableManager(_db, _db.syncSeenMutationRows);
 }

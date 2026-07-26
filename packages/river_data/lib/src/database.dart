@@ -21,6 +21,7 @@ part 'database.g.dart';
     SyncOutboxRows,
     SyncCursorRows,
     SyncConflictRows,
+    SyncSeenMutationRows,
   ],
 )
 final class RiverDatabase extends _$RiverDatabase {
@@ -33,7 +34,7 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -95,6 +96,29 @@ final class RiverDatabase extends _$RiverDatabase {
           await migrator.createTable(syncConflictRows);
         }
       }
+      if (from < 7) {
+        if (!await _hasColumn('sync_conflict_rows', 'resolution_kind')) {
+          await migrator.addColumn(
+            syncConflictRows,
+            syncConflictRows.resolutionKind,
+          );
+        }
+        if (!await _hasColumn('sync_conflict_rows', 'resolution_mutation_id')) {
+          await migrator.addColumn(
+            syncConflictRows,
+            syncConflictRows.resolutionMutationId,
+          );
+        }
+        if (!await _hasColumn('sync_conflict_rows', 'resolved_at')) {
+          await migrator.addColumn(
+            syncConflictRows,
+            syncConflictRows.resolvedAt,
+          );
+        }
+        if (!await _hasTable('sync_seen_mutation_rows')) {
+          await migrator.createTable(syncSeenMutationRows);
+        }
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -103,10 +127,7 @@ final class RiverDatabase extends _$RiverDatabase {
   );
 
   Future<bool> _hasColumn(String tableName, String columnName) async {
-    final columns = await customSelect(
-      'PRAGMA table_info($tableName)',
-      readsFrom: <ResultSetImplementation<Table, Object?>>{articles},
-    ).get();
+    final columns = await customSelect('PRAGMA table_info($tableName)').get();
     return columns.any((row) => row.read<String>('name') == columnName);
   }
 

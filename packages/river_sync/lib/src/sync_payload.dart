@@ -3,14 +3,65 @@ import 'dart:typed_data';
 
 import 'sync_protocol.dart';
 
+final class SyncFieldVersion {
+  SyncFieldVersion({
+    required this.updatedAt,
+    required this.deviceId,
+    required this.mutationId,
+  }) {
+    _requireUtc(updatedAt, 'updatedAt');
+    _requireIdentifier(deviceId, 'deviceId');
+    _requireIdentifier(mutationId, 'mutationId');
+  }
+
+  factory SyncFieldVersion.fromJson(Map<String, Object?> value) {
+    _requireKeys(
+      value,
+      const <String>{'updatedAt', 'deviceId', 'mutationId'},
+    );
+    return SyncFieldVersion(
+      updatedAt: DateTime.parse(_string(value, 'updatedAt')),
+      deviceId: _string(value, 'deviceId'),
+      mutationId: _string(value, 'mutationId'),
+    );
+  }
+
+  final DateTime updatedAt;
+  final String deviceId;
+  final String mutationId;
+
+  Map<String, Object?> toJson() => <String, Object?>{
+        'updatedAt': updatedAt.toIso8601String(),
+        'deviceId': deviceId,
+        'mutationId': mutationId,
+      };
+
+  @override
+  bool operator ==(Object other) =>
+      other is SyncFieldVersion &&
+      other.updatedAt == updatedAt &&
+      other.deviceId == deviceId &&
+      other.mutationId == mutationId;
+
+  @override
+  int get hashCode => Object.hash(updatedAt, deviceId, mutationId);
+}
+
 final class SyncObjectPayload {
   SyncObjectPayload._({
     required this.objectKind,
     required this.objectId,
     required Map<String, Object?> fields,
-  }) : fields = Map<String, Object?>.unmodifiable(_copyFields(fields)) {
+    Map<String, SyncFieldVersion> fieldVersions =
+        const <String, SyncFieldVersion>{},
+  })  : fields = Map<String, Object?>.unmodifiable(_copyFields(fields)),
+        fieldVersions =
+            Map<String, SyncFieldVersion>.unmodifiable(fieldVersions) {
     _requireIdentifier(objectId, 'objectId');
     _validateFields(objectKind, this.fields);
+    if (!this.fields.keys.toSet().containsAll(this.fieldVersions.keys)) {
+      throw const SyncPayloadException(SyncPayloadFailureCode.invalidShape);
+    }
   }
 
   factory SyncObjectPayload.subscription({
@@ -138,16 +189,30 @@ final class SyncObjectPayload {
     required SyncObjectKind objectKind,
     required String objectId,
     required Map<String, Object?> fields,
+    Map<String, SyncFieldVersion> fieldVersions =
+        const <String, SyncFieldVersion>{},
   }) =>
       SyncObjectPayload._(
         objectKind: objectKind,
         objectId: objectId,
         fields: fields,
+        fieldVersions: fieldVersions,
       );
 
   final SyncObjectKind objectKind;
   final String objectId;
   final Map<String, Object?> fields;
+  final Map<String, SyncFieldVersion> fieldVersions;
+
+  SyncObjectPayload withFieldVersions(
+    Map<String, SyncFieldVersion> versions,
+  ) =>
+      SyncObjectPayload._(
+        objectKind: objectKind,
+        objectId: objectId,
+        fields: fields,
+        fieldVersions: versions,
+      );
 
   @override
   String toString() =>
@@ -217,6 +282,12 @@ abstract final class SyncPayloadCodec {
           'objectKind': payload.objectKind.name,
           'objectId': payload.objectId,
           'fields': payload.fields,
+          'fieldVersions': payload.fieldVersions.map(
+            (field, version) => MapEntry<String, Object?>(
+              field,
+              version.toJson(),
+            ),
+          ),
         },
       );
 
@@ -252,27 +323,54 @@ abstract final class SyncPayloadCodec {
       );
       switch (payloadKind) {
         case SyncPayloadKind.upsert:
-          _requireKeys(
-            decoded,
-            const <String>{
+          _requireOneOfKeySets(decoded, const <Set<String>>[
+            <String>{
               'schema',
               'payloadKind',
               'objectKind',
               'objectId',
               'fields',
             },
-          );
+            <String>{
+              'schema',
+              'payloadKind',
+              'objectKind',
+              'objectId',
+              'fields',
+              'fieldVersions',
+            },
+          ]);
           final fields = decoded['fields'];
           if (fields is! Map<String, Object?>) {
             throw const SyncPayloadException(
               SyncPayloadFailureCode.invalidShape,
             );
           }
+          final rawVersions = decoded['fieldVersions'];
+          final fieldVersions = <String, SyncFieldVersion>{};
+          if (rawVersions != null) {
+            if (rawVersions is! Map<String, Object?>) {
+              throw const SyncPayloadException(
+                SyncPayloadFailureCode.invalidShape,
+              );
+            }
+            for (final entry in rawVersions.entries) {
+              if (entry.value is! Map<String, Object?>) {
+                throw const SyncPayloadException(
+                  SyncPayloadFailureCode.invalidShape,
+                );
+              }
+              fieldVersions[entry.key] = SyncFieldVersion.fromJson(
+                entry.value! as Map<String, Object?>,
+              );
+            }
+          }
           return DecodedSyncUpsert(
             SyncObjectPayload.fromFields(
               objectKind: objectKind,
               objectId: objectId,
               fields: fields,
+              fieldVersions: fieldVersions,
             ),
           );
         case SyncPayloadKind.tombstone:
@@ -473,6 +571,20 @@ void _requireKeys(Map<String, Object?> fields, Set<String> expected) {
       !fields.keys.toSet().containsAll(expected)) {
     throw const SyncPayloadException(SyncPayloadFailureCode.invalidShape);
   }
+}
+
+void _requireOneOfKeySets(
+  Map<String, Object?> fields,
+  List<Set<String>> expectedSets,
+) {
+  if (expectedSets.any(
+    (expected) =>
+        fields.length == expected.length &&
+        fields.keys.toSet().containsAll(expected),
+  )) {
+    return;
+  }
+  throw const SyncPayloadException(SyncPayloadFailureCode.invalidShape);
 }
 
 String _string(Map<String, Object?> fields, String key) {
