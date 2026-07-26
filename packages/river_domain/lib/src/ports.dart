@@ -1,3 +1,4 @@
+import 'audio.dart';
 import 'models.dart';
 
 abstract interface class Clock {
@@ -94,10 +95,17 @@ final class UnavailableExternalUriGateway implements ExternalUriGateway {
 }
 
 abstract interface class AudioEngine {
-  Future<void> load(AudioItem item);
+  Stream<AudioEngineEvent> get events;
+
+  Future<AudioEngineCapabilities> capabilities();
+  Future<List<AudioVoice>> voices();
+  Future<void> load(AudioLoadRequest request);
   Future<void> play();
   Future<void> pause();
-  Future<void> seek(Duration position);
+  Future<void> resume();
+  Future<void> stop();
+  Future<void> seek(AudioPlaybackPosition position);
+  Future<void> updateSettings(AudioPlaybackSettings settings);
 }
 
 abstract interface class KnowledgeConnector {
