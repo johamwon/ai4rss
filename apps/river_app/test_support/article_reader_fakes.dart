@@ -114,6 +114,57 @@ final class FakeExternalUriGateway implements ExternalUriGateway {
   }
 }
 
+final class FakeOfflineArticleManager implements OfflineArticleManager {
+  final Map<String, OfflineArticleState> _states =
+      <String, OfflineArticleState>{};
+  final StreamController<OfflineArticleState> _changes =
+      StreamController<OfflineArticleState>.broadcast();
+  final List<String> enqueued = <String>[];
+  final List<String> retried = <String>[];
+
+  @override
+  Future<void> enqueue(String articleId) async {
+    enqueued.add(articleId);
+    emit(
+      OfflineArticleState(
+        articleId: articleId,
+        phase: OfflineArticlePhase.queued,
+      ),
+    );
+  }
+
+  @override
+  Future<void> resumePending() async {}
+
+  @override
+  Future<void> retry(String articleId) async {
+    retried.add(articleId);
+    emit(
+      OfflineArticleState(
+        articleId: articleId,
+        phase: OfflineArticlePhase.queued,
+      ),
+    );
+  }
+
+  @override
+  Future<OfflineArticleState> status(String articleId) async =>
+      _states[articleId] ?? OfflineArticleState.notDownloaded(articleId);
+
+  @override
+  Stream<OfflineArticleState> watch(String articleId) async* {
+    yield await status(articleId);
+    yield* _changes.stream.where((state) => state.articleId == articleId);
+  }
+
+  void emit(OfflineArticleState state) {
+    _states[state.articleId] = state;
+    _changes.add(state);
+  }
+
+  Future<void> close() => _changes.close();
+}
+
 final class FixedReaderClock implements Clock {
   const FixedReaderClock();
 
@@ -129,6 +180,7 @@ ArticleReaderController buildReaderController({
   FakeReaderSettingsRepository? settings,
   FakeShareGateway? share,
   FakeExternalUriGateway? externalUri,
+  FakeOfflineArticleManager? offlineArticles,
 }) =>
     ArticleReaderController(
       articleId: articleId,
@@ -137,5 +189,6 @@ ArticleReaderController buildReaderController({
       readerSettings: settings ?? FakeReaderSettingsRepository(),
       share: share ?? FakeShareGateway(),
       externalUri: externalUri ?? FakeExternalUriGateway(),
+      offlineArticles: offlineArticles ?? FakeOfflineArticleManager(),
       clock: const FixedReaderClock(),
     );

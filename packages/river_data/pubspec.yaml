@@ -14,5 +14,7 @@ dependencies:
 dev_dependencies:
   build_runner: ^2.7.1
   drift_dev: 2.34.0
+  river_extract:
+    path: ../river_extract
   sqlite3: 3.4.0
   test: ^1.31.0

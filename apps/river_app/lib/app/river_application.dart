@@ -98,6 +98,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
       } else {
         unawaited(dependencies.feedRefreshCoordinator.resumePending());
       }
+      unawaited(dependencies.offlineArticles.resumePending());
     }
   }
 
@@ -106,6 +107,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
     final dependencies = _dependencies;
     if (state == AppLifecycleState.resumed && dependencies != null) {
       unawaited(_checkNetworkAvailability());
+      unawaited(dependencies.offlineArticles.resumePending());
       if (dependencies.automaticRefreshEnabled) {
         unawaited(_runAutomaticRefresh());
       }
@@ -144,6 +146,9 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
     if (!mounted || availability == _networkAvailability) return;
     final previous = _networkAvailability;
     setState(() => _networkAvailability = availability);
+    if (availability.mayAttemptRequest) {
+      unawaited(_dependencies?.offlineArticles.resumePending());
+    }
     if (previous.isOffline && availability == NetworkAvailability.online) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -316,6 +321,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           readerSettings: dependencies.readerSettings,
           share: dependencies.share,
           externalUri: dependencies.externalUri,
+          offlineArticles: dependencies.offlineArticles,
           clock: dependencies.clock,
         ),
       ),

@@ -79,6 +79,46 @@ void main() {
     );
   });
 
+  test(
+    'explicit retry resets a terminal failure without duplicating work',
+    () async {
+      final now = DateTime.utc(2026, 7, 15);
+      await queue.enqueue(
+        NewDurableJob(
+          id: 'job-1',
+          type: 'extract',
+          idempotencyKey: 'extract:article-1',
+          payloadJson: '{}',
+          availableAt: now,
+          maxAttempts: 1,
+        ),
+        now,
+      );
+      await queue.claimNext(now: now);
+      await queue.failOrRetry(id: 'job-1', errorCode: 'network', now: now);
+
+      expect(
+        await queue.retryFailed(
+          idempotencyKey: 'extract:article-1',
+          now: now.add(const Duration(minutes: 1)),
+        ),
+        isTrue,
+      );
+      expect(
+        await queue.retryFailed(
+          idempotencyKey: 'extract:article-1',
+          now: now.add(const Duration(minutes: 1)),
+        ),
+        isFalse,
+      );
+      final retried = await queue.claimNext(
+        now: now.add(const Duration(minutes: 1)),
+      );
+      expect(retried?.id, 'job-1');
+      expect(retried?.attempt, 1);
+    },
+  );
+
   test('type filtering and cancellation preserve terminal state', () async {
     final now = DateTime.utc(2026, 7, 15);
     for (final type in <String>['refresh/a', 'extract']) {

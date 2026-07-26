@@ -55,6 +55,7 @@ final class ArticleReaderState {
     this.detail,
     this.content,
     this.enhancementFailure,
+    this.offlineArticle,
     this.settings = const ReaderSettings(),
     this.operationFailure,
     this.isMutating = false,
@@ -68,6 +69,7 @@ final class ArticleReaderState {
   final FeedArticleDetailRecord? detail;
   final ArticleReaderContent? content;
   final ArticleEnhancementFailure? enhancementFailure;
+  final OfflineArticleState? offlineArticle;
   final ReaderSettings settings;
   final String? operationFailure;
   final bool isMutating;
@@ -79,6 +81,7 @@ final class ArticleReaderState {
     ArticleReaderContent? content,
     ArticleEnhancementFailure? enhancementFailure,
     bool clearEnhancementFailure = false,
+    OfflineArticleState? offlineArticle,
     ReaderSettings? settings,
     String? operationFailure,
     bool clearOperationFailure = false,
@@ -92,6 +95,7 @@ final class ArticleReaderState {
         enhancementFailure: clearEnhancementFailure
             ? null
             : enhancementFailure ?? this.enhancementFailure,
+        offlineArticle: offlineArticle ?? this.offlineArticle,
         settings: settings ?? this.settings,
         operationFailure: clearOperationFailure
             ? null
@@ -108,15 +112,18 @@ final class ArticleReaderController extends ChangeNotifier {
     required ReaderSettingsRepository readerSettings,
     required ShareGateway share,
     required ExternalUriGateway externalUri,
+    required OfflineArticleManager offlineArticles,
     required Clock clock,
   })  : _repository = repository,
         _extractor = extractor,
         _readerSettings = readerSettings,
         _share = share,
         _externalUri = externalUri,
+        _offlineArticles = offlineArticles,
         _clock = clock {
     _subscribeArticle();
     _subscribeSettings();
+    _subscribeOfflineArticle();
   }
 
   final String articleId;
@@ -125,9 +132,11 @@ final class ArticleReaderController extends ChangeNotifier {
   final ReaderSettingsRepository _readerSettings;
   final ShareGateway _share;
   final ExternalUriGateway _externalUri;
+  final OfflineArticleManager _offlineArticles;
   final Clock _clock;
   StreamSubscription<FeedArticleDetailRecord?>? _articleSubscription;
   StreamSubscription<ReaderSettings>? _settingsSubscription;
+  StreamSubscription<OfflineArticleState>? _offlineArticleSubscription;
   ArticleReaderState _state = const ArticleReaderState.loading();
   var _extractionStarted = false;
   var _subscriptionGeneration = 0;
@@ -178,6 +187,36 @@ final class ArticleReaderController extends ChangeNotifier {
         );
   }
 
+  void _subscribeOfflineArticle() {
+    _offlineArticleSubscription = _offlineArticles.watch(articleId).listen(
+          _acceptOfflineArticleState,
+          onError: (Object error, StackTrace stackTrace) => _setState(
+            _state.copyWith(
+              offlineArticle: OfflineArticleState(
+                articleId: articleId,
+                phase: OfflineArticlePhase.failed,
+              ),
+            ),
+          ),
+        );
+  }
+
+  void _acceptOfflineArticleState(OfflineArticleState offlineArticle) {
+    final content = _state.content;
+    if (content != null && content.source != ArticleReaderContentSource.feed) {
+      _setState(
+        _state.copyWith(
+          offlineArticle: OfflineArticleState(
+            articleId: articleId,
+            phase: OfflineArticlePhase.available,
+          ),
+        ),
+      );
+      return;
+    }
+    _setState(_state.copyWith(offlineArticle: offlineArticle));
+  }
+
   void _acceptDetail(FeedArticleDetailRecord? detail) {
     if (detail == null) {
       _setState(
@@ -198,6 +237,7 @@ final class ArticleReaderController extends ChangeNotifier {
         detail: detail,
         content: nextContent,
         enhancementFailure: _state.enhancementFailure,
+        offlineArticle: _offlineStateForDetail(detail),
         settings: _state.settings,
         operationFailure: _state.operationFailure,
         isMutating: _state.isMutating,
@@ -271,6 +311,10 @@ final class ArticleReaderController extends ChangeNotifier {
           _state.copyWith(
             enhancementPhase: ArticleEnhancementPhase.ready,
             content: content.text.isEmpty ? _state.content : content,
+            offlineArticle: OfflineArticleState(
+              articleId: articleId,
+              phase: OfflineArticlePhase.available,
+            ),
             clearEnhancementFailure: true,
           ),
         );
@@ -357,6 +401,36 @@ final class ArticleReaderController extends ChangeNotifier {
       }
     } on Object {
       _setState(_state.copyWith(operationFailure: '报告问题失败，请重试'));
+    }
+  }
+
+  Future<void> downloadForOffline() async {
+    final detail = _state.detail;
+    if (detail == null) return;
+    if (_state.offlineArticle?.isAvailable == true ||
+        detail.content?.isReadable == true) {
+      _setState(
+        _state.copyWith(
+          offlineArticle: OfflineArticleState(
+            articleId: articleId,
+            phase: OfflineArticlePhase.available,
+          ),
+        ),
+      );
+      return;
+    }
+    try {
+      await _offlineArticles.enqueue(articleId);
+    } on Object {
+      _setState(_state.copyWith(operationFailure: '无法创建离线下载任务，请重试'));
+    }
+  }
+
+  Future<void> retryOfflineDownload() async {
+    try {
+      await _offlineArticles.retry(articleId);
+    } on Object {
+      _setState(_state.copyWith(operationFailure: '离线下载重试失败，请稍后再试'));
     }
   }
 
@@ -516,6 +590,19 @@ final class ArticleReaderController extends ChangeNotifier {
     );
   }
 
+  OfflineArticleState _offlineStateForDetail(
+    FeedArticleDetailRecord detail,
+  ) {
+    if (detail.content?.isReadable == true) {
+      return OfflineArticleState(
+        articleId: articleId,
+        phase: OfflineArticlePhase.available,
+      );
+    }
+    return _state.offlineArticle ??
+        OfflineArticleState.notDownloaded(articleId);
+  }
+
   void _setState(ArticleReaderState value) {
     if (_disposed) return;
     _state = value;
@@ -531,6 +618,7 @@ final class ArticleReaderController extends ChangeNotifier {
     _extractionGeneration += 1;
     unawaited(_articleSubscription?.cancel());
     unawaited(_settingsSubscription?.cancel());
+    unawaited(_offlineArticleSubscription?.cancel());
     super.dispose();
   }
 }
@@ -543,6 +631,7 @@ final class ArticleReaderPage extends StatefulWidget {
     required this.readerSettings,
     required this.share,
     required this.externalUri,
+    required this.offlineArticles,
     required this.clock,
     super.key,
   });
@@ -553,6 +642,7 @@ final class ArticleReaderPage extends StatefulWidget {
   final ReaderSettingsRepository readerSettings;
   final ShareGateway share;
   final ExternalUriGateway externalUri;
+  final OfflineArticleManager offlineArticles;
   final Clock clock;
 
   @override
@@ -572,6 +662,7 @@ final class _ArticleReaderPageState extends State<ArticleReaderPage> {
       readerSettings: widget.readerSettings,
       share: widget.share,
       externalUri: widget.externalUri,
+      offlineArticles: widget.offlineArticles,
       clock: widget.clock,
     );
   }
@@ -656,7 +747,11 @@ final class _ReaderReady extends StatelessWidget {
           ),
         _ReaderActions(state: state, controller: controller),
         const Divider(height: 1),
-        _ReaderHeader(detail: detail, enhancement: state.enhancementPhase),
+        _ReaderHeader(
+          detail: detail,
+          enhancement: state.enhancementPhase,
+          offlineArticle: state.offlineArticle,
+        ),
         const Divider(height: 1),
         Expanded(
           child: content == null
@@ -799,6 +894,7 @@ final class _ReaderActions extends StatelessWidget {
               icon: const Icon(Icons.open_in_new),
               tooltip: '打开原文',
             ),
+            _OfflineArticleAction(state: state, controller: controller),
             IconButton(
               onPressed: () => unawaited(
                 _showReaderSettings(context, state.settings, controller),
@@ -817,11 +913,59 @@ final class _ReaderActions extends StatelessWidget {
   }
 }
 
+final class _OfflineArticleAction extends StatelessWidget {
+  const _OfflineArticleAction({required this.state, required this.controller});
+
+  final ArticleReaderState state;
+  final ArticleReaderController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final phase =
+        state.offlineArticle?.phase ?? OfflineArticlePhase.notDownloaded;
+    return switch (phase) {
+      OfflineArticlePhase.notDownloaded => IconButton(
+          onPressed: () => unawaited(controller.downloadForOffline()),
+          icon: const Icon(Icons.download_for_offline_outlined),
+          tooltip: '离线下载',
+        ),
+      OfflineArticlePhase.queued => const IconButton(
+          onPressed: null,
+          icon: Icon(Icons.cloud_queue),
+          tooltip: '等待离线下载',
+        ),
+      OfflineArticlePhase.downloading => const IconButton(
+          onPressed: null,
+          icon: SizedBox.square(
+            dimension: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          tooltip: '正在离线下载',
+        ),
+      OfflineArticlePhase.available => const IconButton(
+          onPressed: null,
+          icon: Icon(Icons.offline_pin_outlined),
+          tooltip: '已可离线阅读',
+        ),
+      OfflineArticlePhase.failed => IconButton(
+          onPressed: () => unawaited(controller.retryOfflineDownload()),
+          icon: const Icon(Icons.sync_problem_outlined),
+          tooltip: '重试离线下载',
+        ),
+    };
+  }
+}
+
 final class _ReaderHeader extends StatelessWidget {
-  const _ReaderHeader({required this.detail, required this.enhancement});
+  const _ReaderHeader({
+    required this.detail,
+    required this.enhancement,
+    required this.offlineArticle,
+  });
 
   final FeedArticleDetailRecord detail;
   final ArticleEnhancementPhase enhancement;
+  final OfflineArticleState? offlineArticle;
 
   @override
   Widget build(BuildContext context) {
@@ -844,9 +988,17 @@ final class _ReaderHeader extends StatelessWidget {
           Icons.article_outlined
         ),
     };
+    final offlineStatus = switch (offlineArticle?.phase) {
+      OfflineArticlePhase.queued => ('已排队，联网后自动完成离线下载', Icons.cloud_queue),
+      OfflineArticlePhase.downloading => ('正在保存以供离线阅读', Icons.downloading),
+      OfflineArticlePhase.available => ('已可离线阅读', Icons.offline_pin_outlined),
+      OfflineArticlePhase.failed => ('离线下载失败，可以重试', Icons.sync_problem),
+      OfflineArticlePhase.notDownloaded || null => null,
+    };
     return Semantics(
       container: true,
-      label: '${detail.title}，$metadata，$status',
+      label: '${detail.title}，$metadata，$status'
+          '${offlineStatus == null ? '' : '，${offlineStatus.$1}'}',
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 12),
         child: Column(
@@ -870,6 +1022,20 @@ final class _ReaderHeader extends StatelessWidget {
                 ],
               ),
             ),
+            if (offlineStatus case final value?) ...<Widget>[
+              const SizedBox(height: 8),
+              Semantics(
+                liveRegion: true,
+                label: value.$1,
+                child: Row(
+                  children: <Widget>[
+                    Icon(value.$2, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(value.$1)),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),

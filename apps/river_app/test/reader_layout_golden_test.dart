@@ -149,6 +149,7 @@ void _expectExactReaderLayout(
   expect(find.byTooltip('移出稍后读'), findsOneWidget);
   expect(find.byTooltip('分享'), findsOneWidget);
   expect(find.byTooltip('打开原文'), findsOneWidget);
+  expect(find.byTooltip('已可离线阅读'), findsOneWidget);
   expect(find.byTooltip('阅读排版'), findsOneWidget);
 
   final documentSize = tester.getSize(find.byType(ArticleDocumentView));
