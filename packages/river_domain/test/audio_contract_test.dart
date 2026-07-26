@@ -122,6 +122,34 @@ void main() {
       throwsA(isA<AssertionError>()),
     );
   });
+
+  test('playback snapshots keep source-specific restart state', () {
+    final item = AudioItem(
+      id: 'article-1',
+      kind: AudioKind.articleTts,
+      title: 'Article',
+      sourceUri: Uri.parse('river://article/1'),
+    );
+    final snapshot = AudioPlaybackSnapshot(
+      item: item,
+      position: const AudioPlaybackPosition.speech(
+        segmentIndex: 4,
+        characterOffset: 12,
+      ),
+      settings: const AudioPlaybackSettings(
+        rate: 1.5,
+        pitch: 0.9,
+        voiceId: 'voice-1',
+        languageTag: 'zh-CN',
+      ),
+      contentRevision: 'sha256:article-1',
+      updatedAt: DateTime.utc(2026, 7, 26),
+    );
+
+    expect(snapshot.position.segmentIndex, 4);
+    expect(snapshot.settings.rate, 1.5);
+    expect(snapshot.contentRevision, 'sha256:article-1');
+  });
 }
 
 final class _RecordingAudioEngine implements AudioEngine {

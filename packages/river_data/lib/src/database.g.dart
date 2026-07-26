@@ -4315,6 +4315,39 @@ class $AudioItemsTable extends AudioItems
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _segmentIndexMeta = const VerificationMeta(
+    'segmentIndex',
+  );
+  @override
+  late final GeneratedColumn<int> segmentIndex = GeneratedColumn<int>(
+    'segment_index',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _characterOffsetMeta = const VerificationMeta(
+    'characterOffset',
+  );
+  @override
+  late final GeneratedColumn<int> characterOffset = GeneratedColumn<int>(
+    'character_offset',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _contentRevisionMeta = const VerificationMeta(
+    'contentRevision',
+  );
+  @override
+  late final GeneratedColumn<String> contentRevision = GeneratedColumn<String>(
+    'content_revision',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _durationMsMeta = const VerificationMeta(
     'durationMs',
   );
@@ -4337,6 +4370,38 @@ class $AudioItemsTable extends AudioItems
     type: DriftSqlType.double,
     requiredDuringInsert: false,
     defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _pitchMeta = const VerificationMeta('pitch');
+  @override
+  late final GeneratedColumn<double> pitch = GeneratedColumn<double>(
+    'pitch',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _voiceIdMeta = const VerificationMeta(
+    'voiceId',
+  );
+  @override
+  late final GeneratedColumn<String> voiceId = GeneratedColumn<String>(
+    'voice_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _languageTagMeta = const VerificationMeta(
+    'languageTag',
+  );
+  @override
+  late final GeneratedColumn<String> languageTag = GeneratedColumn<String>(
+    'language_tag',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _downloadedPathMeta = const VerificationMeta(
     'downloadedPath',
@@ -4378,8 +4443,14 @@ class $AudioItemsTable extends AudioItems
     title,
     sourceUri,
     positionMs,
+    segmentIndex,
+    characterOffset,
+    contentRevision,
     durationMs,
     playbackRate,
+    pitch,
+    voiceId,
+    languageTag,
     downloadedPath,
     createdAt,
     updatedAt,
@@ -4431,6 +4502,33 @@ class $AudioItemsTable extends AudioItems
         positionMs.isAcceptableOrUnknown(data['position_ms']!, _positionMsMeta),
       );
     }
+    if (data.containsKey('segment_index')) {
+      context.handle(
+        _segmentIndexMeta,
+        segmentIndex.isAcceptableOrUnknown(
+          data['segment_index']!,
+          _segmentIndexMeta,
+        ),
+      );
+    }
+    if (data.containsKey('character_offset')) {
+      context.handle(
+        _characterOffsetMeta,
+        characterOffset.isAcceptableOrUnknown(
+          data['character_offset']!,
+          _characterOffsetMeta,
+        ),
+      );
+    }
+    if (data.containsKey('content_revision')) {
+      context.handle(
+        _contentRevisionMeta,
+        contentRevision.isAcceptableOrUnknown(
+          data['content_revision']!,
+          _contentRevisionMeta,
+        ),
+      );
+    }
     if (data.containsKey('duration_ms')) {
       context.handle(
         _durationMsMeta,
@@ -4443,6 +4541,27 @@ class $AudioItemsTable extends AudioItems
         playbackRate.isAcceptableOrUnknown(
           data['playback_rate']!,
           _playbackRateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('pitch')) {
+      context.handle(
+        _pitchMeta,
+        pitch.isAcceptableOrUnknown(data['pitch']!, _pitchMeta),
+      );
+    }
+    if (data.containsKey('voice_id')) {
+      context.handle(
+        _voiceIdMeta,
+        voiceId.isAcceptableOrUnknown(data['voice_id']!, _voiceIdMeta),
+      );
+    }
+    if (data.containsKey('language_tag')) {
+      context.handle(
+        _languageTagMeta,
+        languageTag.isAcceptableOrUnknown(
+          data['language_tag']!,
+          _languageTagMeta,
         ),
       );
     }
@@ -4500,6 +4619,18 @@ class $AudioItemsTable extends AudioItems
         DriftSqlType.int,
         data['${effectivePrefix}position_ms'],
       )!,
+      segmentIndex: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}segment_index'],
+      ),
+      characterOffset: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}character_offset'],
+      ),
+      contentRevision: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content_revision'],
+      ),
       durationMs: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}duration_ms'],
@@ -4508,6 +4639,18 @@ class $AudioItemsTable extends AudioItems
         DriftSqlType.double,
         data['${effectivePrefix}playback_rate'],
       )!,
+      pitch: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}pitch'],
+      )!,
+      voiceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}voice_id'],
+      ),
+      languageTag: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}language_tag'],
+      ),
       downloadedPath: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}downloaded_path'],
@@ -4535,8 +4678,14 @@ class AudioItem extends DataClass implements Insertable<AudioItem> {
   final String title;
   final String sourceUri;
   final int positionMs;
+  final int? segmentIndex;
+  final int? characterOffset;
+  final String? contentRevision;
   final int? durationMs;
   final double playbackRate;
+  final double pitch;
+  final String? voiceId;
+  final String? languageTag;
   final String? downloadedPath;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -4546,8 +4695,14 @@ class AudioItem extends DataClass implements Insertable<AudioItem> {
     required this.title,
     required this.sourceUri,
     required this.positionMs,
+    this.segmentIndex,
+    this.characterOffset,
+    this.contentRevision,
     this.durationMs,
     required this.playbackRate,
+    required this.pitch,
+    this.voiceId,
+    this.languageTag,
     this.downloadedPath,
     required this.createdAt,
     required this.updatedAt,
@@ -4560,10 +4715,26 @@ class AudioItem extends DataClass implements Insertable<AudioItem> {
     map['title'] = Variable<String>(title);
     map['source_uri'] = Variable<String>(sourceUri);
     map['position_ms'] = Variable<int>(positionMs);
+    if (!nullToAbsent || segmentIndex != null) {
+      map['segment_index'] = Variable<int>(segmentIndex);
+    }
+    if (!nullToAbsent || characterOffset != null) {
+      map['character_offset'] = Variable<int>(characterOffset);
+    }
+    if (!nullToAbsent || contentRevision != null) {
+      map['content_revision'] = Variable<String>(contentRevision);
+    }
     if (!nullToAbsent || durationMs != null) {
       map['duration_ms'] = Variable<int>(durationMs);
     }
     map['playback_rate'] = Variable<double>(playbackRate);
+    map['pitch'] = Variable<double>(pitch);
+    if (!nullToAbsent || voiceId != null) {
+      map['voice_id'] = Variable<String>(voiceId);
+    }
+    if (!nullToAbsent || languageTag != null) {
+      map['language_tag'] = Variable<String>(languageTag);
+    }
     if (!nullToAbsent || downloadedPath != null) {
       map['downloaded_path'] = Variable<String>(downloadedPath);
     }
@@ -4579,10 +4750,26 @@ class AudioItem extends DataClass implements Insertable<AudioItem> {
       title: Value(title),
       sourceUri: Value(sourceUri),
       positionMs: Value(positionMs),
+      segmentIndex: segmentIndex == null && nullToAbsent
+          ? const Value.absent()
+          : Value(segmentIndex),
+      characterOffset: characterOffset == null && nullToAbsent
+          ? const Value.absent()
+          : Value(characterOffset),
+      contentRevision: contentRevision == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contentRevision),
       durationMs: durationMs == null && nullToAbsent
           ? const Value.absent()
           : Value(durationMs),
       playbackRate: Value(playbackRate),
+      pitch: Value(pitch),
+      voiceId: voiceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(voiceId),
+      languageTag: languageTag == null && nullToAbsent
+          ? const Value.absent()
+          : Value(languageTag),
       downloadedPath: downloadedPath == null && nullToAbsent
           ? const Value.absent()
           : Value(downloadedPath),
@@ -4602,8 +4789,14 @@ class AudioItem extends DataClass implements Insertable<AudioItem> {
       title: serializer.fromJson<String>(json['title']),
       sourceUri: serializer.fromJson<String>(json['sourceUri']),
       positionMs: serializer.fromJson<int>(json['positionMs']),
+      segmentIndex: serializer.fromJson<int?>(json['segmentIndex']),
+      characterOffset: serializer.fromJson<int?>(json['characterOffset']),
+      contentRevision: serializer.fromJson<String?>(json['contentRevision']),
       durationMs: serializer.fromJson<int?>(json['durationMs']),
       playbackRate: serializer.fromJson<double>(json['playbackRate']),
+      pitch: serializer.fromJson<double>(json['pitch']),
+      voiceId: serializer.fromJson<String?>(json['voiceId']),
+      languageTag: serializer.fromJson<String?>(json['languageTag']),
       downloadedPath: serializer.fromJson<String?>(json['downloadedPath']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -4618,8 +4811,14 @@ class AudioItem extends DataClass implements Insertable<AudioItem> {
       'title': serializer.toJson<String>(title),
       'sourceUri': serializer.toJson<String>(sourceUri),
       'positionMs': serializer.toJson<int>(positionMs),
+      'segmentIndex': serializer.toJson<int?>(segmentIndex),
+      'characterOffset': serializer.toJson<int?>(characterOffset),
+      'contentRevision': serializer.toJson<String?>(contentRevision),
       'durationMs': serializer.toJson<int?>(durationMs),
       'playbackRate': serializer.toJson<double>(playbackRate),
+      'pitch': serializer.toJson<double>(pitch),
+      'voiceId': serializer.toJson<String?>(voiceId),
+      'languageTag': serializer.toJson<String?>(languageTag),
       'downloadedPath': serializer.toJson<String?>(downloadedPath),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -4632,8 +4831,14 @@ class AudioItem extends DataClass implements Insertable<AudioItem> {
     String? title,
     String? sourceUri,
     int? positionMs,
+    Value<int?> segmentIndex = const Value.absent(),
+    Value<int?> characterOffset = const Value.absent(),
+    Value<String?> contentRevision = const Value.absent(),
     Value<int?> durationMs = const Value.absent(),
     double? playbackRate,
+    double? pitch,
+    Value<String?> voiceId = const Value.absent(),
+    Value<String?> languageTag = const Value.absent(),
     Value<String?> downloadedPath = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -4643,8 +4848,18 @@ class AudioItem extends DataClass implements Insertable<AudioItem> {
     title: title ?? this.title,
     sourceUri: sourceUri ?? this.sourceUri,
     positionMs: positionMs ?? this.positionMs,
+    segmentIndex: segmentIndex.present ? segmentIndex.value : this.segmentIndex,
+    characterOffset: characterOffset.present
+        ? characterOffset.value
+        : this.characterOffset,
+    contentRevision: contentRevision.present
+        ? contentRevision.value
+        : this.contentRevision,
     durationMs: durationMs.present ? durationMs.value : this.durationMs,
     playbackRate: playbackRate ?? this.playbackRate,
+    pitch: pitch ?? this.pitch,
+    voiceId: voiceId.present ? voiceId.value : this.voiceId,
+    languageTag: languageTag.present ? languageTag.value : this.languageTag,
     downloadedPath: downloadedPath.present
         ? downloadedPath.value
         : this.downloadedPath,
@@ -4660,12 +4875,26 @@ class AudioItem extends DataClass implements Insertable<AudioItem> {
       positionMs: data.positionMs.present
           ? data.positionMs.value
           : this.positionMs,
+      segmentIndex: data.segmentIndex.present
+          ? data.segmentIndex.value
+          : this.segmentIndex,
+      characterOffset: data.characterOffset.present
+          ? data.characterOffset.value
+          : this.characterOffset,
+      contentRevision: data.contentRevision.present
+          ? data.contentRevision.value
+          : this.contentRevision,
       durationMs: data.durationMs.present
           ? data.durationMs.value
           : this.durationMs,
       playbackRate: data.playbackRate.present
           ? data.playbackRate.value
           : this.playbackRate,
+      pitch: data.pitch.present ? data.pitch.value : this.pitch,
+      voiceId: data.voiceId.present ? data.voiceId.value : this.voiceId,
+      languageTag: data.languageTag.present
+          ? data.languageTag.value
+          : this.languageTag,
       downloadedPath: data.downloadedPath.present
           ? data.downloadedPath.value
           : this.downloadedPath,
@@ -4682,8 +4911,14 @@ class AudioItem extends DataClass implements Insertable<AudioItem> {
           ..write('title: $title, ')
           ..write('sourceUri: $sourceUri, ')
           ..write('positionMs: $positionMs, ')
+          ..write('segmentIndex: $segmentIndex, ')
+          ..write('characterOffset: $characterOffset, ')
+          ..write('contentRevision: $contentRevision, ')
           ..write('durationMs: $durationMs, ')
           ..write('playbackRate: $playbackRate, ')
+          ..write('pitch: $pitch, ')
+          ..write('voiceId: $voiceId, ')
+          ..write('languageTag: $languageTag, ')
           ..write('downloadedPath: $downloadedPath, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -4698,8 +4933,14 @@ class AudioItem extends DataClass implements Insertable<AudioItem> {
     title,
     sourceUri,
     positionMs,
+    segmentIndex,
+    characterOffset,
+    contentRevision,
     durationMs,
     playbackRate,
+    pitch,
+    voiceId,
+    languageTag,
     downloadedPath,
     createdAt,
     updatedAt,
@@ -4713,8 +4954,14 @@ class AudioItem extends DataClass implements Insertable<AudioItem> {
           other.title == this.title &&
           other.sourceUri == this.sourceUri &&
           other.positionMs == this.positionMs &&
+          other.segmentIndex == this.segmentIndex &&
+          other.characterOffset == this.characterOffset &&
+          other.contentRevision == this.contentRevision &&
           other.durationMs == this.durationMs &&
           other.playbackRate == this.playbackRate &&
+          other.pitch == this.pitch &&
+          other.voiceId == this.voiceId &&
+          other.languageTag == this.languageTag &&
           other.downloadedPath == this.downloadedPath &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -4726,8 +4973,14 @@ class AudioItemsCompanion extends UpdateCompanion<AudioItem> {
   final Value<String> title;
   final Value<String> sourceUri;
   final Value<int> positionMs;
+  final Value<int?> segmentIndex;
+  final Value<int?> characterOffset;
+  final Value<String?> contentRevision;
   final Value<int?> durationMs;
   final Value<double> playbackRate;
+  final Value<double> pitch;
+  final Value<String?> voiceId;
+  final Value<String?> languageTag;
   final Value<String?> downloadedPath;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -4738,8 +4991,14 @@ class AudioItemsCompanion extends UpdateCompanion<AudioItem> {
     this.title = const Value.absent(),
     this.sourceUri = const Value.absent(),
     this.positionMs = const Value.absent(),
+    this.segmentIndex = const Value.absent(),
+    this.characterOffset = const Value.absent(),
+    this.contentRevision = const Value.absent(),
     this.durationMs = const Value.absent(),
     this.playbackRate = const Value.absent(),
+    this.pitch = const Value.absent(),
+    this.voiceId = const Value.absent(),
+    this.languageTag = const Value.absent(),
     this.downloadedPath = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4751,8 +5010,14 @@ class AudioItemsCompanion extends UpdateCompanion<AudioItem> {
     required String title,
     required String sourceUri,
     this.positionMs = const Value.absent(),
+    this.segmentIndex = const Value.absent(),
+    this.characterOffset = const Value.absent(),
+    this.contentRevision = const Value.absent(),
     this.durationMs = const Value.absent(),
     this.playbackRate = const Value.absent(),
+    this.pitch = const Value.absent(),
+    this.voiceId = const Value.absent(),
+    this.languageTag = const Value.absent(),
     this.downloadedPath = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -4769,8 +5034,14 @@ class AudioItemsCompanion extends UpdateCompanion<AudioItem> {
     Expression<String>? title,
     Expression<String>? sourceUri,
     Expression<int>? positionMs,
+    Expression<int>? segmentIndex,
+    Expression<int>? characterOffset,
+    Expression<String>? contentRevision,
     Expression<int>? durationMs,
     Expression<double>? playbackRate,
+    Expression<double>? pitch,
+    Expression<String>? voiceId,
+    Expression<String>? languageTag,
     Expression<String>? downloadedPath,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -4782,8 +5053,14 @@ class AudioItemsCompanion extends UpdateCompanion<AudioItem> {
       if (title != null) 'title': title,
       if (sourceUri != null) 'source_uri': sourceUri,
       if (positionMs != null) 'position_ms': positionMs,
+      if (segmentIndex != null) 'segment_index': segmentIndex,
+      if (characterOffset != null) 'character_offset': characterOffset,
+      if (contentRevision != null) 'content_revision': contentRevision,
       if (durationMs != null) 'duration_ms': durationMs,
       if (playbackRate != null) 'playback_rate': playbackRate,
+      if (pitch != null) 'pitch': pitch,
+      if (voiceId != null) 'voice_id': voiceId,
+      if (languageTag != null) 'language_tag': languageTag,
       if (downloadedPath != null) 'downloaded_path': downloadedPath,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -4797,8 +5074,14 @@ class AudioItemsCompanion extends UpdateCompanion<AudioItem> {
     Value<String>? title,
     Value<String>? sourceUri,
     Value<int>? positionMs,
+    Value<int?>? segmentIndex,
+    Value<int?>? characterOffset,
+    Value<String?>? contentRevision,
     Value<int?>? durationMs,
     Value<double>? playbackRate,
+    Value<double>? pitch,
+    Value<String?>? voiceId,
+    Value<String?>? languageTag,
     Value<String?>? downloadedPath,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -4810,8 +5093,14 @@ class AudioItemsCompanion extends UpdateCompanion<AudioItem> {
       title: title ?? this.title,
       sourceUri: sourceUri ?? this.sourceUri,
       positionMs: positionMs ?? this.positionMs,
+      segmentIndex: segmentIndex ?? this.segmentIndex,
+      characterOffset: characterOffset ?? this.characterOffset,
+      contentRevision: contentRevision ?? this.contentRevision,
       durationMs: durationMs ?? this.durationMs,
       playbackRate: playbackRate ?? this.playbackRate,
+      pitch: pitch ?? this.pitch,
+      voiceId: voiceId ?? this.voiceId,
+      languageTag: languageTag ?? this.languageTag,
       downloadedPath: downloadedPath ?? this.downloadedPath,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -4837,11 +5126,29 @@ class AudioItemsCompanion extends UpdateCompanion<AudioItem> {
     if (positionMs.present) {
       map['position_ms'] = Variable<int>(positionMs.value);
     }
+    if (segmentIndex.present) {
+      map['segment_index'] = Variable<int>(segmentIndex.value);
+    }
+    if (characterOffset.present) {
+      map['character_offset'] = Variable<int>(characterOffset.value);
+    }
+    if (contentRevision.present) {
+      map['content_revision'] = Variable<String>(contentRevision.value);
+    }
     if (durationMs.present) {
       map['duration_ms'] = Variable<int>(durationMs.value);
     }
     if (playbackRate.present) {
       map['playback_rate'] = Variable<double>(playbackRate.value);
+    }
+    if (pitch.present) {
+      map['pitch'] = Variable<double>(pitch.value);
+    }
+    if (voiceId.present) {
+      map['voice_id'] = Variable<String>(voiceId.value);
+    }
+    if (languageTag.present) {
+      map['language_tag'] = Variable<String>(languageTag.value);
     }
     if (downloadedPath.present) {
       map['downloaded_path'] = Variable<String>(downloadedPath.value);
@@ -4866,8 +5173,14 @@ class AudioItemsCompanion extends UpdateCompanion<AudioItem> {
           ..write('title: $title, ')
           ..write('sourceUri: $sourceUri, ')
           ..write('positionMs: $positionMs, ')
+          ..write('segmentIndex: $segmentIndex, ')
+          ..write('characterOffset: $characterOffset, ')
+          ..write('contentRevision: $contentRevision, ')
           ..write('durationMs: $durationMs, ')
           ..write('playbackRate: $playbackRate, ')
+          ..write('pitch: $pitch, ')
+          ..write('voiceId: $voiceId, ')
+          ..write('languageTag: $languageTag, ')
           ..write('downloadedPath: $downloadedPath, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -9233,8 +9546,14 @@ typedef $$AudioItemsTableCreateCompanionBuilder =
       required String title,
       required String sourceUri,
       Value<int> positionMs,
+      Value<int?> segmentIndex,
+      Value<int?> characterOffset,
+      Value<String?> contentRevision,
       Value<int?> durationMs,
       Value<double> playbackRate,
+      Value<double> pitch,
+      Value<String?> voiceId,
+      Value<String?> languageTag,
       Value<String?> downloadedPath,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -9247,8 +9566,14 @@ typedef $$AudioItemsTableUpdateCompanionBuilder =
       Value<String> title,
       Value<String> sourceUri,
       Value<int> positionMs,
+      Value<int?> segmentIndex,
+      Value<int?> characterOffset,
+      Value<String?> contentRevision,
       Value<int?> durationMs,
       Value<double> playbackRate,
+      Value<double> pitch,
+      Value<String?> voiceId,
+      Value<String?> languageTag,
       Value<String?> downloadedPath,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -9289,6 +9614,21 @@ class $$AudioItemsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get segmentIndex => $composableBuilder(
+    column: $table.segmentIndex,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get characterOffset => $composableBuilder(
+    column: $table.characterOffset,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contentRevision => $composableBuilder(
+    column: $table.contentRevision,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get durationMs => $composableBuilder(
     column: $table.durationMs,
     builder: (column) => ColumnFilters(column),
@@ -9296,6 +9636,21 @@ class $$AudioItemsTableFilterComposer
 
   ColumnFilters<double> get playbackRate => $composableBuilder(
     column: $table.playbackRate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get pitch => $composableBuilder(
+    column: $table.pitch,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get voiceId => $composableBuilder(
+    column: $table.voiceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get languageTag => $composableBuilder(
+    column: $table.languageTag,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9349,6 +9704,21 @@ class $$AudioItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get segmentIndex => $composableBuilder(
+    column: $table.segmentIndex,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get characterOffset => $composableBuilder(
+    column: $table.characterOffset,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contentRevision => $composableBuilder(
+    column: $table.contentRevision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get durationMs => $composableBuilder(
     column: $table.durationMs,
     builder: (column) => ColumnOrderings(column),
@@ -9356,6 +9726,21 @@ class $$AudioItemsTableOrderingComposer
 
   ColumnOrderings<double> get playbackRate => $composableBuilder(
     column: $table.playbackRate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get pitch => $composableBuilder(
+    column: $table.pitch,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get voiceId => $composableBuilder(
+    column: $table.voiceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get languageTag => $composableBuilder(
+    column: $table.languageTag,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -9401,6 +9786,21 @@ class $$AudioItemsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get segmentIndex => $composableBuilder(
+    column: $table.segmentIndex,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get characterOffset => $composableBuilder(
+    column: $table.characterOffset,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get contentRevision => $composableBuilder(
+    column: $table.contentRevision,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get durationMs => $composableBuilder(
     column: $table.durationMs,
     builder: (column) => column,
@@ -9408,6 +9808,17 @@ class $$AudioItemsTableAnnotationComposer
 
   GeneratedColumn<double> get playbackRate => $composableBuilder(
     column: $table.playbackRate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get pitch =>
+      $composableBuilder(column: $table.pitch, builder: (column) => column);
+
+  GeneratedColumn<String> get voiceId =>
+      $composableBuilder(column: $table.voiceId, builder: (column) => column);
+
+  GeneratedColumn<String> get languageTag => $composableBuilder(
+    column: $table.languageTag,
     builder: (column) => column,
   );
 
@@ -9459,8 +9870,14 @@ class $$AudioItemsTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<String> sourceUri = const Value.absent(),
                 Value<int> positionMs = const Value.absent(),
+                Value<int?> segmentIndex = const Value.absent(),
+                Value<int?> characterOffset = const Value.absent(),
+                Value<String?> contentRevision = const Value.absent(),
                 Value<int?> durationMs = const Value.absent(),
                 Value<double> playbackRate = const Value.absent(),
+                Value<double> pitch = const Value.absent(),
+                Value<String?> voiceId = const Value.absent(),
+                Value<String?> languageTag = const Value.absent(),
                 Value<String?> downloadedPath = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -9471,8 +9888,14 @@ class $$AudioItemsTableTableManager
                 title: title,
                 sourceUri: sourceUri,
                 positionMs: positionMs,
+                segmentIndex: segmentIndex,
+                characterOffset: characterOffset,
+                contentRevision: contentRevision,
                 durationMs: durationMs,
                 playbackRate: playbackRate,
+                pitch: pitch,
+                voiceId: voiceId,
+                languageTag: languageTag,
                 downloadedPath: downloadedPath,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -9485,8 +9908,14 @@ class $$AudioItemsTableTableManager
                 required String title,
                 required String sourceUri,
                 Value<int> positionMs = const Value.absent(),
+                Value<int?> segmentIndex = const Value.absent(),
+                Value<int?> characterOffset = const Value.absent(),
+                Value<String?> contentRevision = const Value.absent(),
                 Value<int?> durationMs = const Value.absent(),
                 Value<double> playbackRate = const Value.absent(),
+                Value<double> pitch = const Value.absent(),
+                Value<String?> voiceId = const Value.absent(),
+                Value<String?> languageTag = const Value.absent(),
                 Value<String?> downloadedPath = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -9497,8 +9926,14 @@ class $$AudioItemsTableTableManager
                 title: title,
                 sourceUri: sourceUri,
                 positionMs: positionMs,
+                segmentIndex: segmentIndex,
+                characterOffset: characterOffset,
+                contentRevision: contentRevision,
                 durationMs: durationMs,
                 playbackRate: playbackRate,
+                pitch: pitch,
+                voiceId: voiceId,
+                languageTag: languageTag,
                 downloadedPath: downloadedPath,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

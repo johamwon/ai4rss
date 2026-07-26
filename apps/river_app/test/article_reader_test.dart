@@ -455,6 +455,91 @@ void main() {
     expect(tester.widget<TextField>(field).style!.fontSize, greaterThan(18));
   });
 
+  testWidgets(
+    'article TTS restores progress, highlights the sentence, and updates controls',
+    (tester) async {
+      const body = '第一句适合朗读。第二句从断点继续。';
+      final engine = FakeArticleAudioEngine();
+      final playback = MemoryAudioPlaybackRepository();
+      final controller = buildReaderController(
+        articleId: 'article-1',
+        watch: (_) => Stream<FeedArticleDetailRecord?>.value(
+          _detail(summary: body),
+        ),
+        extract: (_) => Completer<ExtractionResult>().future,
+        audio: engine,
+        audioPlayback: playback,
+      );
+      addTearDown(() async {
+        controller.dispose();
+        await engine.dispose();
+      });
+      await tester.pumpWidget(_TestHost(controller: controller));
+      await tester.pump();
+      await tester.pump();
+
+      final revision = controller.state.content!.revision;
+      playback.values['article-1'] = AudioPlaybackSnapshot(
+        item: AudioItem(
+          id: 'article-1',
+          kind: AudioKind.articleTts,
+          title: 'Progressive article',
+          sourceUri: Uri.parse('https://example.test/article'),
+        ),
+        position: const AudioPlaybackPosition.speech(segmentIndex: 1),
+        settings: const AudioPlaybackSettings(rate: 1.25),
+        updatedAt: DateTime.utc(2026, 7, 19, 7),
+        contentRevision: revision,
+      );
+
+      expect(find.byTooltip('朗读文章'), findsOneWidget);
+      await tester.tap(find.byTooltip('朗读文章'));
+      await tester.pumpAndSettle();
+
+      expect(engine.loaded, isNotNull);
+      expect(engine.loaded!.speechSegments, hasLength(2));
+      expect(engine.seeks.last.segmentIndex, 1);
+      expect(engine.playCalls, 1);
+      expect(find.textContaining('第 2/2 句'), findsOneWidget);
+      expect(find.byTooltip('暂停朗读'), findsOneWidget);
+      final document = tester.state<ArticleDocumentViewState>(
+        find.byType(ArticleDocumentView),
+      );
+      expect(
+        document.highlightedRange,
+        TextRange(
+          start: engine.loaded!.speechSegments[1].sourceStart,
+          end: engine.loaded!.speechSegments[1].sourceEnd,
+        ),
+      );
+
+      await tester.tap(find.byTooltip('朗读速度'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(CheckedPopupMenuItem<double>, '1.5 倍速'),
+      );
+      await tester.pumpAndSettle();
+      expect(engine.settingsWrites.last.rate, 1.5);
+
+      await tester.tap(find.byTooltip('定时停止'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('10 分钟后停止'));
+      await tester.pump();
+      expect(controller.state.audio.sleepDeadline, isNotNull);
+      expect(find.textContaining('已开启定时停止'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('暂停朗读'));
+      await tester.pump();
+      expect(engine.pauseCalls, 1);
+      expect(find.byTooltip('继续朗读'), findsOneWidget);
+      await tester.tap(find.byTooltip('定时停止'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('关闭定时'));
+      await tester.pump();
+      expect(controller.state.audio.sleepDeadline, isNull);
+    },
+  );
+
   testWidgets('reader shortcuts invoke accessible article actions', (
     tester,
   ) async {

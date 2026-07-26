@@ -172,6 +172,133 @@ final class FixedReaderClock implements Clock {
   DateTime now() => DateTime.utc(2026, 7, 19, 8);
 }
 
+final class FakeArticleAudioEngine implements AudioEngine {
+  final StreamController<AudioEngineEvent> _events =
+      StreamController<AudioEngineEvent>.broadcast(sync: true);
+  final List<AudioPlaybackSettings> settingsWrites = <AudioPlaybackSettings>[];
+  final List<AudioPlaybackPosition> seeks = <AudioPlaybackPosition>[];
+  AudioLoadRequest? loaded;
+  AudioPlaybackPosition? position;
+  var playCalls = 0;
+  var pauseCalls = 0;
+
+  @override
+  Stream<AudioEngineEvent> get events => _events.stream;
+
+  @override
+  Future<AudioEngineCapabilities> capabilities() async =>
+      const AudioEngineCapabilities(
+        supportsArticleTts: true,
+        supportsPodcastMedia: false,
+        canPause: true,
+        canResume: true,
+        canSeek: true,
+        canSetRate: true,
+        canSetPitch: true,
+        canSelectVoice: true,
+      );
+
+  @override
+  Future<List<AudioVoice>> voices() async => const <AudioVoice>[
+        AudioVoice(
+          id: 'local-zh',
+          name: '本地中文',
+          languageTag: 'zh-CN',
+          isLocal: true,
+        ),
+      ];
+
+  @override
+  Future<void> load(AudioLoadRequest request) async {
+    loaded = request;
+    position = const AudioPlaybackPosition.speech(segmentIndex: 0);
+    _events.add(
+      AudioEngineEvent(
+        phase: AudioEnginePhase.ready,
+        itemId: request.item.id,
+        position: position,
+      ),
+    );
+  }
+
+  @override
+  Future<void> play() async {
+    playCalls += 1;
+    _events.add(
+      AudioEngineEvent(
+        phase: AudioEnginePhase.playing,
+        itemId: loaded?.item.id,
+        position: position,
+      ),
+    );
+  }
+
+  @override
+  Future<void> pause() async {
+    pauseCalls += 1;
+    _events.add(
+      AudioEngineEvent(
+        phase: AudioEnginePhase.paused,
+        itemId: loaded?.item.id,
+        position: position,
+      ),
+    );
+  }
+
+  @override
+  Future<void> resume() => play();
+
+  @override
+  Future<void> seek(AudioPlaybackPosition position) async {
+    this.position = position;
+    seeks.add(position);
+    _events.add(
+      AudioEngineEvent(
+        phase: AudioEnginePhase.ready,
+        itemId: loaded?.item.id,
+        position: position,
+      ),
+    );
+  }
+
+  @override
+  Future<void> stop() async {
+    _events.add(
+      AudioEngineEvent(
+        phase: AudioEnginePhase.stopped,
+        itemId: loaded?.item.id,
+        position: position,
+      ),
+    );
+  }
+
+  @override
+  Future<void> updateSettings(AudioPlaybackSettings settings) async {
+    settingsWrites.add(settings);
+  }
+
+  @override
+  Future<void> dispose() => _events.close();
+}
+
+final class MemoryAudioPlaybackRepository implements AudioPlaybackRepository {
+  final Map<String, AudioPlaybackSnapshot> values =
+      <String, AudioPlaybackSnapshot>{};
+
+  @override
+  Future<AudioPlaybackSnapshot?> read(String itemId) async => values[itemId];
+
+  @override
+  Future<void> save(AudioPlaybackSnapshot snapshot) async {
+    values[snapshot.item.id] = snapshot;
+  }
+
+  @override
+  Future<void> clear(String itemId) async {
+    values.remove(itemId);
+  }
+}
+
 ArticleReaderController buildReaderController({
   required String articleId,
   required Stream<FeedArticleDetailRecord?> Function(String articleId) watch,
@@ -181,6 +308,9 @@ ArticleReaderController buildReaderController({
   FakeShareGateway? share,
   FakeExternalUriGateway? externalUri,
   FakeOfflineArticleManager? offlineArticles,
+  AudioEngine audio = const UnavailableAudioEngine(),
+  AudioPlaybackRepository audioPlayback =
+      const UnavailableAudioPlaybackRepository(),
 }) =>
     ArticleReaderController(
       articleId: articleId,
@@ -191,4 +321,6 @@ ArticleReaderController buildReaderController({
       externalUri: externalUri ?? FakeExternalUriGateway(),
       offlineArticles: offlineArticles ?? FakeOfflineArticleManager(),
       clock: const FixedReaderClock(),
+      audio: audio,
+      audioPlayback: audioPlayback,
     );

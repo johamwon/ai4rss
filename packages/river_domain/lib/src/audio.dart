@@ -94,6 +94,34 @@ final class AudioPlaybackSettings {
   final String? languageTag;
 }
 
+final class AudioPlaybackSnapshot {
+  AudioPlaybackSnapshot({
+    required this.item,
+    required this.position,
+    required this.settings,
+    required this.updatedAt,
+    this.contentRevision,
+  })  : assert(
+          item.kind != AudioKind.articleTts || position.isSpeech,
+          'Article TTS requires a speech position.',
+        ),
+        assert(
+          item.kind != AudioKind.podcastEpisode || !position.isSpeech,
+          'Podcast audio requires a media position.',
+        ),
+        assert(
+          item.kind != AudioKind.articleTts ||
+              (contentRevision != null && contentRevision.length > 0),
+          'Article TTS progress requires a content revision.',
+        );
+
+  final AudioItem item;
+  final AudioPlaybackPosition position;
+  final AudioPlaybackSettings settings;
+  final DateTime updatedAt;
+  final String? contentRevision;
+}
+
 final class AudioVoice {
   const AudioVoice({
     required this.id,

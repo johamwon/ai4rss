@@ -326,6 +326,8 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           externalUri: dependencies.externalUri,
           offlineArticles: dependencies.offlineArticles,
           clock: dependencies.clock,
+          audio: dependencies.audio,
+          audioPlayback: dependencies.audioPlayback,
         ),
       ),
     );

@@ -137,8 +137,14 @@ class AudioItems extends Table {
   TextColumn get title => text().withLength(min: 1, max: 2048)();
   TextColumn get sourceUri => text()();
   IntColumn get positionMs => integer().withDefault(const Constant(0))();
+  IntColumn get segmentIndex => integer().nullable()();
+  IntColumn get characterOffset => integer().nullable()();
+  TextColumn get contentRevision => text().nullable()();
   IntColumn get durationMs => integer().nullable()();
   RealColumn get playbackRate => real().withDefault(const Constant(1))();
+  RealColumn get pitch => real().withDefault(const Constant(1))();
+  TextColumn get voiceId => text().nullable()();
+  TextColumn get languageTag => text().nullable()();
   TextColumn get downloadedPath => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();

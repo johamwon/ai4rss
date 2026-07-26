@@ -29,7 +29,7 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -48,6 +48,34 @@ final class RiverDatabase extends _$RiverDatabase {
       if (from < 4) {
         await _createArticleSearchInfrastructure();
         await rebuildArticleSearchIndex();
+      }
+      if (from < 5) {
+        await _addAudioColumnIfMissing(
+          migrator,
+          'segment_index',
+          audioItems.segmentIndex,
+        );
+        await _addAudioColumnIfMissing(
+          migrator,
+          'character_offset',
+          audioItems.characterOffset,
+        );
+        await _addAudioColumnIfMissing(
+          migrator,
+          'content_revision',
+          audioItems.contentRevision,
+        );
+        await _addAudioColumnIfMissing(migrator, 'pitch', audioItems.pitch);
+        await _addAudioColumnIfMissing(
+          migrator,
+          'voice_id',
+          audioItems.voiceId,
+        );
+        await _addAudioColumnIfMissing(
+          migrator,
+          'language_tag',
+          audioItems.languageTag,
+        );
       }
     },
     beforeOpen: (OpeningDetails details) async {
@@ -70,6 +98,16 @@ final class RiverDatabase extends _$RiverDatabase {
       variables: <Variable<Object>>[Variable<String>(tableName)],
     ).getSingleOrNull();
     return row != null;
+  }
+
+  Future<void> _addAudioColumnIfMissing(
+    Migrator migrator,
+    String columnName,
+    GeneratedColumn<Object> column,
+  ) async {
+    if (!await _hasColumn('audio_items', columnName)) {
+      await migrator.addColumn(audioItems, column);
+    }
   }
 
   Future<void> rebuildArticleSearchIndex() async {

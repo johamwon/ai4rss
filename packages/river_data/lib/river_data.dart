@@ -1,5 +1,6 @@
 library;
 
+export 'src/audio_playback_repository.dart';
 export 'src/database.dart';
 export 'src/extraction_cache.dart';
 export 'src/feed_refresh_coordinator.dart';
