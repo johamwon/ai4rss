@@ -1,6 +1,7 @@
 library;
 
 export 'src/conflict_model.dart';
+export 'src/sync_auth.dart';
 export 'src/sync_protocol.dart';
 export 'src/version_vector.dart';
 

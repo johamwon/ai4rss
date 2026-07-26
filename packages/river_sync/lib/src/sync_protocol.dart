@@ -32,9 +32,36 @@ final class SyncAccount {
   final SyncAccountStatus status;
 }
 
-enum SyncDeviceStatus { active, revoked }
+enum SyncDeviceStatus { active, pendingApproval, revoked }
 
 enum DeviceKeyAgreementAlgorithm { x25519 }
+
+final class SyncDeviceRegistration {
+  SyncDeviceRegistration({
+    required this.requestedDeviceId,
+    required this.displayName,
+    required this.publicKeyId,
+    required this.publicKeyBase64,
+    this.keyAgreementAlgorithm = DeviceKeyAgreementAlgorithm.x25519,
+  }) {
+    _requireIdentifier(requestedDeviceId, 'requestedDeviceId');
+    _requireIdentifier(publicKeyId, 'publicKeyId');
+    if (displayName.isEmpty || displayName.length > 120) {
+      throw ArgumentError.value(
+        displayName,
+        'displayName',
+        'Device name must contain 1 to 120 characters.',
+      );
+    }
+    _requireDecodedLength(publicKeyBase64, 32, 'publicKeyBase64');
+  }
+
+  final String requestedDeviceId;
+  final String displayName;
+  final String publicKeyId;
+  final String publicKeyBase64;
+  final DeviceKeyAgreementAlgorithm keyAgreementAlgorithm;
+}
 
 final class SyncDevice {
   SyncDevice({
@@ -63,8 +90,8 @@ final class SyncDevice {
     if (status == SyncDeviceStatus.revoked && revokedAt == null) {
       throw ArgumentError('A revoked device requires revokedAt.');
     }
-    if (status == SyncDeviceStatus.active && revokedAt != null) {
-      throw ArgumentError('An active device cannot have revokedAt.');
+    if (status != SyncDeviceStatus.revoked && revokedAt != null) {
+      throw ArgumentError('Only a revoked device may have revokedAt.');
     }
     if (revokedAt != null) {
       _requireUtc(revokedAt!, 'revokedAt');
