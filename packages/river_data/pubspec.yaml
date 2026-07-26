@@ -6,7 +6,7 @@ resolution: workspace
 environment:
   sdk: '>=3.10.0 <4.0.0'
 dependencies:
-  drift: 2.33.0
+  drift: 2.34.2
   river_feed:
     path: ../river_feed
   river_domain:
