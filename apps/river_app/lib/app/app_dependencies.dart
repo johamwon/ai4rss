@@ -99,7 +99,10 @@ final class AppDependencies {
           );
     final audio = backgroundExecution
         ? const UnavailableAudioEngine()
-        : SystemTtsAudioEngine();
+        : RoutedAudioEngine(
+            articleEngine: SystemTtsAudioEngine(),
+            podcastEngine: PodcastAudioEngine(),
+          );
     final audioSystemSession = backgroundExecution
         ? const UnavailableAudioSystemSession()
         : await SystemAudioSession.create();
