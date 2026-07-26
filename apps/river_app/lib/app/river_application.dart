@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:river_data/river_data.dart';
 import 'package:river_design_system/river_design_system.dart';
 import 'package:river_domain/river_domain.dart';
@@ -25,6 +26,8 @@ final class RiverApp extends StatelessWidget {
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
         darkTheme: RiverTheme.dark(),
+        highContrastDarkTheme: RiverTheme.highContrastDark(),
+        highContrastTheme: RiverTheme.highContrastLight(),
         home: const RiverHomeScreen(),
         theme: RiverTheme.light(),
         title: 'River',
@@ -524,88 +527,122 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           final subscriptions =
               subscriptionSnapshot.data ?? const <FeedSubscriptionRecord>[];
           final refreshing = _refreshState.isActive;
-          return Scaffold(
-            appBar: AppBar(
-              title: const Text('River'),
-              actions: <Widget>[
-                IconButton(
-                  onPressed: () => unawaited(
-                    _openSearch(subscriptions, folders),
-                  ),
-                  icon: const Icon(Icons.search),
-                  tooltip: '搜索文章',
-                ),
-                IconButton(
-                  onPressed: refreshing
-                      ? _refreshState.phase == FeedRefreshBatchPhase.running
-                          ? () => unawaited(_cancelRefresh())
-                          : null
-                      : _busy || subscriptions.isEmpty
-                          ? null
-                          : () => unawaited(_refreshAll(subscriptions)),
-                  icon: Icon(
-                    refreshing ? Icons.stop_circle_outlined : Icons.refresh,
-                  ),
-                  tooltip: refreshing
-                      ? _refreshState.phase == FeedRefreshBatchPhase.cancelling
-                          ? '正在取消刷新'
-                          : '取消刷新'
-                      : '刷新全部',
-                ),
-                IconButton(
-                  onPressed: _busy ? null : () => unawaited(_addFeed()),
-                  icon: const Icon(Icons.add),
-                  tooltip: '添加订阅源',
-                ),
-                PopupMenuButton<_SubscriptionAction>(
-                  enabled: !_busy,
-                  onSelected: (action) =>
-                      unawaited(_handleSubscriptionAction(action)),
-                  itemBuilder: (context) =>
-                      const <PopupMenuEntry<_SubscriptionAction>>[
-                    PopupMenuItem<_SubscriptionAction>(
-                      value: _SubscriptionAction.createFolder,
-                      child: Text('新建文件夹'),
-                    ),
-                    PopupMenuItem<_SubscriptionAction>(
-                      value: _SubscriptionAction.importOpml,
-                      child: Text('导入 OPML'),
-                    ),
-                    PopupMenuItem<_SubscriptionAction>(
-                      value: _SubscriptionAction.exportOpml,
-                      child: Text('导出 OPML'),
-                    ),
-                  ],
-                  tooltip: '订阅与 OPML',
-                ),
-              ],
-            ),
-            body: _busy && subscriptions.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : Column(
-                    children: <Widget>[
-                      if (_networkAvailability.isOffline)
-                        _OfflineStatusBar(
-                          hasPendingFeed: _pendingFeedUri != null,
-                          hasPendingRefresh: _pendingRefreshFeeds != null,
+          return FocusTraversalGroup(
+            policy: ReadingOrderTraversalPolicy(),
+            child: CallbackShortcuts(
+              bindings: <ShortcutActivator, VoidCallback>{
+                const SingleActivator(
+                  LogicalKeyboardKey.keyF,
+                  control: true,
+                ): () => unawaited(_openSearch(subscriptions, folders)),
+                const SingleActivator(
+                  LogicalKeyboardKey.keyN,
+                  control: true,
+                ): () {
+                  if (!_busy) unawaited(_addFeed());
+                },
+                const SingleActivator(
+                  LogicalKeyboardKey.keyR,
+                  control: true,
+                ): () {
+                  if (!_busy && !refreshing && subscriptions.isNotEmpty) {
+                    unawaited(_refreshAll(subscriptions));
+                  }
+                },
+              },
+              child: Focus(
+                autofocus: true,
+                child: Scaffold(
+                  appBar: AppBar(
+                    title: const Text('River'),
+                    actions: <Widget>[
+                      IconButton(
+                        onPressed: () => unawaited(
+                          _openSearch(subscriptions, folders),
                         ),
-                      if (refreshing) _RefreshStatusBar(state: _refreshState),
-                      Expanded(
-                        child: _Inbox(
-                          subscriptions: subscriptions,
-                          folders: folders,
-                          articleListController: _articleListController!,
-                          onFeedAction: (feed, action) => unawaited(
-                            _handleFeedAction(feed, action, folders),
+                        icon: const Icon(Icons.search),
+                        tooltip: '搜索文章',
+                      ),
+                      IconButton(
+                        onPressed: refreshing
+                            ? _refreshState.phase ==
+                                    FeedRefreshBatchPhase.running
+                                ? () => unawaited(_cancelRefresh())
+                                : null
+                            : _busy || subscriptions.isEmpty
+                                ? null
+                                : () => unawaited(_refreshAll(subscriptions)),
+                        icon: Icon(
+                          refreshing
+                              ? Icons.stop_circle_outlined
+                              : Icons.refresh,
+                        ),
+                        tooltip: refreshing
+                            ? _refreshState.phase ==
+                                    FeedRefreshBatchPhase.cancelling
+                                ? '正在取消刷新'
+                                : '取消刷新'
+                            : '刷新全部',
+                      ),
+                      IconButton(
+                        onPressed: _busy ? null : () => unawaited(_addFeed()),
+                        icon: const Icon(Icons.add),
+                        tooltip: '添加订阅源',
+                      ),
+                      PopupMenuButton<_SubscriptionAction>(
+                        enabled: !_busy,
+                        onSelected: (action) =>
+                            unawaited(_handleSubscriptionAction(action)),
+                        itemBuilder: (context) =>
+                            const <PopupMenuEntry<_SubscriptionAction>>[
+                          PopupMenuItem<_SubscriptionAction>(
+                            value: _SubscriptionAction.createFolder,
+                            child: Text('新建文件夹'),
                           ),
-                          onFolderAction: (folder, action) =>
-                              unawaited(_handleFolderAction(folder, action)),
-                          onOpenArticle: (article) =>
-                              unawaited(_openArticle(article)),
-                        ),
+                          PopupMenuItem<_SubscriptionAction>(
+                            value: _SubscriptionAction.importOpml,
+                            child: Text('导入 OPML'),
+                          ),
+                          PopupMenuItem<_SubscriptionAction>(
+                            value: _SubscriptionAction.exportOpml,
+                            child: Text('导出 OPML'),
+                          ),
+                        ],
+                        tooltip: '订阅与 OPML',
                       ),
                     ],
                   ),
+                  body: _busy && subscriptions.isEmpty
+                      ? const Center(child: CircularProgressIndicator())
+                      : Column(
+                          children: <Widget>[
+                            if (_networkAvailability.isOffline)
+                              _OfflineStatusBar(
+                                hasPendingFeed: _pendingFeedUri != null,
+                                hasPendingRefresh: _pendingRefreshFeeds != null,
+                              ),
+                            if (refreshing)
+                              _RefreshStatusBar(state: _refreshState),
+                            Expanded(
+                              child: _Inbox(
+                                subscriptions: subscriptions,
+                                folders: folders,
+                                articleListController: _articleListController!,
+                                onFeedAction: (feed, action) => unawaited(
+                                  _handleFeedAction(feed, action, folders),
+                                ),
+                                onFolderAction: (folder, action) => unawaited(
+                                  _handleFolderAction(folder, action),
+                                ),
+                                onOpenArticle: (article) =>
+                                    unawaited(_openArticle(article)),
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ),
           );
         },
       ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:river_design_system/river_design_system.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
@@ -690,30 +691,92 @@ final class ArticleReaderScreen extends StatelessWidget {
       builder: (context, child) {
         final state = controller.state;
         final inheritedTheme = Theme.of(context);
+        final highContrast = MediaQuery.highContrastOf(context);
         final theme = switch (state.settings.theme) {
           ReaderThemePreference.system => inheritedTheme,
-          ReaderThemePreference.light => RiverTheme.light(),
-          ReaderThemePreference.dark => RiverTheme.dark(),
+          ReaderThemePreference.light =>
+            highContrast ? RiverTheme.highContrastLight() : RiverTheme.light(),
+          ReaderThemePreference.dark =>
+            highContrast ? RiverTheme.highContrastDark() : RiverTheme.dark(),
         };
         return Theme(
           data: theme,
-          child: Scaffold(
-            appBar: AppBar(title: Text(state.detail?.feedTitle ?? '阅读文章')),
-            body: switch (state.loadPhase) {
-              ArticleReaderLoadPhase.loading => const _ReaderLoading(),
-              ArticleReaderLoadPhase.missing => const _ReaderMissing(),
-              ArticleReaderLoadPhase.failed => _ReaderFailure(
-                  onRetry: controller.retry,
+          child: FocusTraversalGroup(
+            policy: ReadingOrderTraversalPolicy(),
+            child: CallbackShortcuts(
+              bindings: _readerShortcuts(state, controller),
+              child: Focus(
+                autofocus: true,
+                child: Scaffold(
+                  appBar:
+                      AppBar(title: Text(state.detail?.feedTitle ?? '阅读文章')),
+                  body: switch (state.loadPhase) {
+                    ArticleReaderLoadPhase.loading => const _ReaderLoading(),
+                    ArticleReaderLoadPhase.missing => const _ReaderMissing(),
+                    ArticleReaderLoadPhase.failed => _ReaderFailure(
+                        onRetry: controller.retry,
+                      ),
+                    ArticleReaderLoadPhase.ready => _ReaderReady(
+                        state: state,
+                        controller: controller,
+                      ),
+                  },
                 ),
-              ArticleReaderLoadPhase.ready => _ReaderReady(
-                  state: state,
-                  controller: controller,
-                ),
-            },
+              ),
+            ),
           ),
         );
       },
     );
+  }
+
+  Map<ShortcutActivator, VoidCallback> _readerShortcuts(
+    ArticleReaderState state,
+    ArticleReaderController controller,
+  ) {
+    final bindings = <ShortcutActivator, VoidCallback>{
+      const SingleActivator(
+        LogicalKeyboardKey.keyO,
+        control: true,
+      ): () => unawaited(controller.openOriginal()),
+    };
+    if (state.loadPhase != ArticleReaderLoadPhase.ready) return bindings;
+    if (!state.isMutating) {
+      bindings.addAll(<ShortcutActivator, VoidCallback>{
+        const SingleActivator(
+          LogicalKeyboardKey.keyM,
+          control: true,
+        ): () => unawaited(controller.toggleRead()),
+        const SingleActivator(
+          LogicalKeyboardKey.keyS,
+          control: true,
+        ): () => unawaited(controller.toggleStarred()),
+        const SingleActivator(
+          LogicalKeyboardKey.keyL,
+          control: true,
+        ): () => unawaited(controller.toggleReadLater()),
+      });
+    }
+    final offlinePhase =
+        state.offlineArticle?.phase ?? OfflineArticlePhase.notDownloaded;
+    if (offlinePhase == OfflineArticlePhase.notDownloaded) {
+      bindings[const SingleActivator(
+        LogicalKeyboardKey.keyD,
+        control: true,
+      )] = () => unawaited(controller.downloadForOffline());
+    } else if (offlinePhase == OfflineArticlePhase.failed) {
+      bindings[const SingleActivator(
+        LogicalKeyboardKey.keyD,
+        control: true,
+      )] = () => unawaited(controller.retryOfflineDownload());
+    }
+    if (state.enhancementPhase == ArticleEnhancementPhase.failed) {
+      bindings[const SingleActivator(
+        LogicalKeyboardKey.keyR,
+        control: true,
+      )] = () => unawaited(controller.retryEnhancement());
+    }
+    return bindings;
   }
 }
 
@@ -1004,9 +1067,12 @@ final class _ReaderHeader extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              detail.title,
-              style: Theme.of(context).textTheme.headlineSmall,
+            Semantics(
+              header: true,
+              child: Text(
+                detail.title,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
             ),
             const SizedBox(height: 8),
             Text(metadata, style: Theme.of(context).textTheme.bodySmall),
