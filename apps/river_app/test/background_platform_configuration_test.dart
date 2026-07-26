@@ -38,6 +38,16 @@ void main() {
     expect(activity, contains('AudioServiceActivity'));
   });
 
+  test('Android secure sync keys are device-bound and excluded from backup',
+      () {
+    final manifest =
+        File('android/app/src/main/AndroidManifest.xml').readAsStringSync();
+    final gradle = File('android/app/build.gradle.kts').readAsStringSync();
+
+    expect(manifest, contains('android:allowBackup="false"'));
+    expect(gradle, contains('minSdk = 23'));
+  });
+
   test('iOS registers the same permitted background task identifier', () {
     final appDelegate = File('ios/Runner/AppDelegate.swift').readAsStringSync();
     final infoPlist = File('ios/Runner/Info.plist').readAsStringSync();

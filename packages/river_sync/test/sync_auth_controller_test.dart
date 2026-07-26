@@ -387,6 +387,7 @@ WrappedSyncDataKey _wrappedKey({
       recipientDeviceId: recipientDeviceId,
       senderDeviceId: senderDeviceId,
       ephemeralPublicKeyBase64: _bytes(32, 4),
+      kdfSaltBase64: _bytes(32, 8),
       nonceBase64: _bytes(12, 5),
       ciphertextBase64: _bytes(32, 6),
       authenticationTagBase64: _bytes(16, 7),

@@ -31,6 +31,7 @@ void main() {
       recipientDeviceId: device.id,
       senderDeviceId: 'device-b',
       ephemeralPublicKeyBase64: _bytes(32),
+      kdfSaltBase64: _filledBytes(32, 98),
       nonceBase64: _bytes(12),
       ciphertextBase64: _filledBytes(32, 99),
       authenticationTagBase64: _bytes(16),
