@@ -267,6 +267,61 @@ void main() {
     expect(fixture.storeA.records, isEmpty);
   });
 
+  test('duplicate replay is idempotent and mutation collision is rejected',
+      () async {
+    final fixture = _Fixture();
+    await fixture.controllerB.queueUpsert(
+      session: fixture.sessionB,
+      dataKey: fixture.keyB,
+      payload: _payloadFor(0),
+    );
+    await fixture.controllerB.synchronize(
+      session: fixture.sessionB,
+      dataKey: fixture.keyB,
+    );
+    await fixture.controllerA.synchronize(
+      session: fixture.sessionA,
+      dataKey: fixture.keyA,
+    );
+    final original = fixture.server.envelopes.single;
+    fixture.server.forceAppend(original);
+
+    final replayed = await fixture.controllerA.synchronize(
+      session: fixture.sessionA,
+      dataKey: fixture.keyA,
+    ) as IncrementalSyncSuccess;
+
+    expect(replayed.pulled, 1);
+    expect(replayed.applied, 0);
+    expect(replayed.conflicts, 0);
+    expect(replayed.cursor.serverSequence, 2);
+    expect(fixture.storeA.records, hasLength(1));
+
+    final different = _payloadFor(1);
+    final collision = await fixture.cryptoB.encryptEnvelope(
+      mutationId: original.mutationId,
+      accountId: fixture.sessionB.accountId,
+      objectKind: different.objectKind,
+      objectId: different.objectId,
+      payloadKind: SyncPayloadKind.upsert,
+      authorDeviceId: fixture.sessionB.deviceId,
+      versionVector: VersionVector(<String, int>{'device-b': 2}),
+      occurredAt: DateTime.utc(2026, 7, 28),
+      clearText: SyncPayloadCodec.encodeUpsert(different),
+      dataKey: fixture.keyB,
+    );
+    fixture.server.forceAppend(collision);
+
+    final rejected = await fixture.controllerA.synchronize(
+      session: fixture.sessionA,
+      dataKey: fixture.keyA,
+    ) as IncrementalSyncFailure;
+
+    expect(rejected.code, IncrementalSyncFailureCode.incompatibleProtocol);
+    expect((await fixture.storeA.readCursor()).serverSequence, 2);
+    expect(fixture.storeA.records, hasLength(1));
+  });
+
   test('concurrent edits are staged without blocking cursor progress',
       () async {
     final fixture = _Fixture();
@@ -317,6 +372,81 @@ void main() {
     expect(fixture.storeB.conflicts, hasLength(1));
     expect(desktop.cursor.serverSequence, 3);
     expect(phone.cursor.serverSequence, 3);
+  });
+
+  test('concurrent edits to different fields converge through merged mutations',
+      () async {
+    final fixture = _Fixture();
+    final base = _payloadFor(0);
+    await fixture.controllerA.queueUpsert(
+      session: fixture.sessionA,
+      dataKey: fixture.keyA,
+      payload: base,
+    );
+    await fixture.syncBoth();
+    await fixture.controllerA.queueUpsert(
+      session: fixture.sessionA,
+      dataKey: fixture.keyA,
+      payload: SyncObjectPayload.subscription(
+        objectId: base.objectId,
+        canonicalUrl: 'https://example.com/feed/0.xml',
+        title: 'Desktop title',
+        enabled: base.fields['enabled']! as bool,
+        folderId: base.fields['folderId'] as String?,
+      ),
+    );
+    await fixture.controllerB.queueUpsert(
+      session: fixture.sessionB,
+      dataKey: fixture.keyB,
+      payload: SyncObjectPayload.subscription(
+        objectId: base.objectId,
+        canonicalUrl: 'https://example.com/feed/0.xml',
+        title: base.fields['title']! as String,
+        enabled: !(base.fields['enabled']! as bool),
+        folderId: base.fields['folderId'] as String?,
+      ),
+    );
+
+    await fixture.controllerA.synchronize(
+      session: fixture.sessionA,
+      dataKey: fixture.keyA,
+    );
+    await fixture.controllerB.synchronize(
+      session: fixture.sessionB,
+      dataKey: fixture.keyB,
+    );
+    expect(fixture.storeB.outbox, hasLength(1));
+    await fixture.controllerB.synchronize(
+      session: fixture.sessionB,
+      dataKey: fixture.keyB,
+    );
+    await fixture.controllerA.synchronize(
+      session: fixture.sessionA,
+      dataKey: fixture.keyA,
+    );
+    await fixture.controllerA.synchronize(
+      session: fixture.sessionA,
+      dataKey: fixture.keyA,
+    );
+    await fixture.controllerB.synchronize(
+      session: fixture.sessionB,
+      dataKey: fixture.keyB,
+    );
+
+    final desktop = fixture.storeA.upsert(
+      SyncObjectKind.subscription,
+      base.objectId,
+    );
+    final phone = fixture.storeB.upsert(
+      SyncObjectKind.subscription,
+      base.objectId,
+    );
+    expect(desktop.fields['title'], 'Desktop title');
+    expect(desktop.fields['enabled'], isTrue);
+    expect(phone.fields, desktop.fields);
+    expect(phone.fieldVersions, desktop.fieldVersions);
+    expect(fixture.storeA.outbox, isEmpty);
+    expect(fixture.storeB.outbox, isEmpty);
   });
 
   test('random disjoint offline edits converge after bounded paging', () async {
@@ -434,6 +564,8 @@ final class _MemoryStore implements SyncReplicaStore {
   final Map<String, SyncReplicaRecord> records = <String, SyncReplicaRecord>{};
   final List<EncryptedSyncEnvelope> outbox = <EncryptedSyncEnvelope>[];
   final List<SyncReplicaRecord> conflicts = <SyncReplicaRecord>[];
+  final Map<String, EncryptedSyncEnvelope> seen =
+      <String, EncryptedSyncEnvelope>{};
   bool failNextRemoteCommit = false;
 
   @override
@@ -446,6 +578,7 @@ final class _MemoryStore implements SyncReplicaStore {
     records[_keyFor(record.envelope.objectKind, record.envelope.objectId)] =
         record;
     outbox.add(record.envelope);
+    seen[record.envelope.mutationId] = record.envelope;
   }
 
   @override
@@ -462,6 +595,7 @@ final class _MemoryStore implements SyncReplicaStore {
       throw StateError('cursor compare-and-swap failed');
     }
     for (final incoming in records) {
+      seen[incoming.record.envelope.mutationId] = incoming.record.envelope;
       switch (incoming.action) {
         case SyncIncomingAction.accept:
           this.records[_keyFor(
@@ -472,6 +606,17 @@ final class _MemoryStore implements SyncReplicaStore {
           break;
         case SyncIncomingAction.conflict:
           conflicts.add(incoming.record);
+        case SyncIncomingAction.resolve:
+          conflicts.add(incoming.record);
+          final resolved = incoming.resolvedRecord!;
+          this.records[_keyFor(
+            resolved.envelope.objectKind,
+            resolved.envelope.objectId,
+          )] = resolved;
+          if (incoming.uploadResolution) {
+            outbox.add(resolved.envelope);
+            seen[resolved.envelope.mutationId] = resolved.envelope;
+          }
       }
     }
     cursor = nextCursor;
@@ -493,6 +638,10 @@ final class _MemoryStore implements SyncReplicaStore {
   ) async =>
       records[_keyFor(objectKind, objectId)];
 
+  @override
+  Future<EncryptedSyncEnvelope?> readSeenMutation(String mutationId) async =>
+      seen[mutationId];
+
   SyncReplicaRecord record(SyncObjectKind kind, String id) =>
       records[_keyFor(kind, id)]!;
 
@@ -511,6 +660,10 @@ final class _MemoryServer implements IncrementalSyncTransport {
 
   void seed(EncryptedSyncEnvelope envelope) {
     if (_mutationIds.add(envelope.mutationId)) envelopes.add(envelope);
+  }
+
+  void forceAppend(EncryptedSyncEnvelope envelope) {
+    envelopes.add(envelope);
   }
 
   @override

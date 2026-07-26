@@ -41,6 +41,10 @@ void main() {
         (await store.readOutbox(limit: 10)).single.mutationId,
         record.envelope.mutationId,
       );
+      expect(
+        (await store.readSeenMutation(record.envelope.mutationId))?.objectId,
+        record.envelope.objectId,
+      );
       expect((await store.readCursor()).serverSequence, 0);
 
       await store.acknowledgeOutbox(<String>{record.envelope.mutationId});
@@ -157,6 +161,87 @@ void main() {
 
     expect(await storeA.readOutbox(limit: 10), hasLength(1));
     expect(await storeB.readOutbox(limit: 10), hasLength(1));
+  });
+
+  test('resolved merge is audited and queued atomically', () async {
+    final database = RiverDatabase.inMemory();
+    addTearDown(database.close);
+    final store = _store(database, 'device-a');
+    final remote = _record(
+      deviceId: 'device-b',
+      mutationId: 'mutation-b-1',
+      objectId: 'subscription-1',
+      counter: 1,
+    );
+    final merged = _record(
+      deviceId: 'device-a',
+      mutationId: 'mutation-a-merge',
+      objectId: 'subscription-1',
+      counter: 2,
+    );
+
+    await store.commitRemotePage(
+      expectedCursor: SyncCursor.initial(),
+      nextCursor: SyncCursor(serverSequence: 1, opaqueToken: 'cursor-1'),
+      records: <SyncIncomingRecord>[
+        SyncIncomingRecord(
+          record: remote,
+          action: SyncIncomingAction.resolve,
+          resolvedRecord: merged,
+          uploadResolution: true,
+        ),
+      ],
+    );
+
+    final conflict = await database
+        .select(database.syncConflictRows)
+        .getSingle();
+    expect(conflict.resolutionKind, 'merged');
+    expect(conflict.resolutionMutationId, merged.envelope.mutationId);
+    expect(conflict.resolvedAt, isNotNull);
+    expect(
+      (await store.readOutbox(limit: 10)).single.mutationId,
+      merged.envelope.mutationId,
+    );
+    expect(
+      (await store.readRecord(
+        SyncObjectKind.subscription,
+        'subscription-1',
+      ))?.envelope.mutationId,
+      merged.envelope.mutationId,
+    );
+    expect(await store.readSeenMutation(remote.envelope.mutationId), isNotNull);
+    expect(await store.readSeenMutation(merged.envelope.mutationId), isNotNull);
+  });
+
+  test('mutation ID collision rolls back local write', () async {
+    final database = RiverDatabase.inMemory();
+    addTearDown(database.close);
+    final store = _store(database, 'device-a');
+    final original = _record(
+      deviceId: 'device-a',
+      mutationId: 'mutation-a-1',
+      objectId: 'subscription-1',
+      counter: 1,
+    );
+    final collision = _record(
+      deviceId: 'device-a',
+      mutationId: 'mutation-a-1',
+      objectId: 'subscription-2',
+      counter: 2,
+    );
+    await store.commitLocal(original);
+
+    await expectLater(store.commitLocal(collision), throwsStateError);
+
+    expect(
+      await store.readRecord(
+        SyncObjectKind.subscription,
+        collision.envelope.objectId,
+      ),
+      isNull,
+    );
+    expect(await store.readOutbox(limit: 10), hasLength(1));
   });
 }
 

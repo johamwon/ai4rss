@@ -61,6 +61,18 @@ final class DriftSyncReplicaStore implements SyncReplicaStore {
   }
 
   @override
+  Future<EncryptedSyncEnvelope?> readSeenMutation(String mutationId) async {
+    final row =
+        await (_database.select(_database.syncSeenMutationRows)..where(
+              (table) =>
+                  table.mutationId.equals(mutationId) &
+                  table.accountId.equals(accountId),
+            ))
+            .getSingleOrNull();
+    return row == null ? null : SyncWireCodec.decodeEnvelope(row.envelopeJson);
+  }
+
+  @override
   Future<void> commitLocal(SyncReplicaRecord record) =>
       _database.transaction(() async {
         _requireLocalRecordScope(record);
@@ -75,6 +87,7 @@ final class DriftSyncReplicaStore implements SyncReplicaStore {
         if (existing != null && existing.envelopeJson != envelopeJson) {
           throw StateError('Mutation ID collision in sync outbox.');
         }
+        await _rememberSeen(record.envelope);
         await _database
             .into(_database.syncReplicaEntries)
             .insert(
@@ -157,26 +170,49 @@ final class DriftSyncReplicaStore implements SyncReplicaStore {
       if (record.envelope.accountId != accountId) {
         throw StateError('Remote sync record belongs to another account.');
       }
+      await _rememberSeen(record.envelope);
       switch (incoming.action) {
         case SyncIncomingAction.accept:
           await _writeReplicaRecord(record);
         case SyncIncomingAction.ignore:
           break;
         case SyncIncomingAction.conflict:
-          await _database
-              .into(_database.syncConflictRows)
-              .insert(
-                SyncConflictRowsCompanion.insert(
-                  mutationId: record.envelope.mutationId,
-                  accountId: accountId,
-                  objectKind: record.envelope.objectKind.name,
-                  objectId: record.envelope.objectId,
-                  envelopeJson: SyncWireCodec.encodeEnvelope(record.envelope),
-                  clearPayloadJson: _encodePayload(record.decodedPayload),
-                  detectedAt: _now(),
-                ),
-                mode: InsertMode.insertOrIgnore,
-              );
+          await _writeConflict(record, resolutionKind: 'unresolved');
+        case SyncIncomingAction.resolve:
+          final resolved = incoming.resolvedRecord!;
+          if (resolved.envelope.accountId != accountId ||
+              resolved.envelope.objectKind != record.envelope.objectKind ||
+              resolved.envelope.objectId != record.envelope.objectId) {
+            throw StateError('Resolved sync record scope does not match.');
+          }
+          await _writeConflict(
+            record,
+            resolutionKind: incoming.uploadResolution
+                ? 'merged'
+                : resolved.envelope.mutationId == record.envelope.mutationId
+                ? 'remote'
+                : 'local',
+            resolutionMutationId: resolved.envelope.mutationId,
+          );
+          await _writeReplicaRecord(resolved);
+          if (incoming.uploadResolution) {
+            _requireLocalRecordScope(resolved);
+            await _rememberSeen(resolved.envelope);
+            await _database
+                .into(_database.syncOutboxRows)
+                .insert(
+                  SyncOutboxRowsCompanion.insert(
+                    mutationId: resolved.envelope.mutationId,
+                    accountId: accountId,
+                    deviceId: deviceId,
+                    envelopeJson: SyncWireCodec.encodeEnvelope(
+                      resolved.envelope,
+                    ),
+                    queuedAt: _now(),
+                  ),
+                  mode: InsertMode.insertOrIgnore,
+                );
+          }
       }
     }
     await _database
@@ -204,6 +240,55 @@ final class DriftSyncReplicaStore implements SyncReplicaStore {
           envelopeJson: SyncWireCodec.encodeEnvelope(record.envelope),
           clearPayloadJson: _encodePayload(record.decodedPayload),
           updatedAt: record.envelope.occurredAt,
+        ),
+        mode: InsertMode.insertOrReplace,
+      );
+
+  Future<void> _rememberSeen(EncryptedSyncEnvelope envelope) async {
+    final envelopeJson = SyncWireCodec.encodeEnvelope(envelope);
+    final existing =
+        await (_database.select(_database.syncSeenMutationRows)
+              ..where((table) => table.mutationId.equals(envelope.mutationId)))
+            .getSingleOrNull();
+    if (existing != null) {
+      if (existing.accountId != accountId ||
+          existing.envelopeJson != envelopeJson) {
+        throw StateError('Mutation ID collision in sync history.');
+      }
+      return;
+    }
+    await _database
+        .into(_database.syncSeenMutationRows)
+        .insert(
+          SyncSeenMutationRowsCompanion.insert(
+            mutationId: envelope.mutationId,
+            accountId: accountId,
+            envelopeJson: envelopeJson,
+            firstSeenAt: _now(),
+          ),
+        );
+  }
+
+  Future<void> _writeConflict(
+    SyncReplicaRecord record, {
+    required String resolutionKind,
+    String? resolutionMutationId,
+  }) => _database
+      .into(_database.syncConflictRows)
+      .insert(
+        SyncConflictRowsCompanion.insert(
+          mutationId: record.envelope.mutationId,
+          accountId: accountId,
+          objectKind: record.envelope.objectKind.name,
+          objectId: record.envelope.objectId,
+          envelopeJson: SyncWireCodec.encodeEnvelope(record.envelope),
+          clearPayloadJson: _encodePayload(record.decodedPayload),
+          detectedAt: _now(),
+          resolutionKind: Value<String>(resolutionKind),
+          resolutionMutationId: Value<String?>(resolutionMutationId),
+          resolvedAt: resolutionMutationId == null
+              ? const Value<DateTime?>.absent()
+              : Value<DateTime?>(_now()),
         ),
         mode: InsertMode.insertOrReplace,
       );

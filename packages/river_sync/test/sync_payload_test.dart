@@ -88,6 +88,44 @@ void main() {
     expect(decoded.tombstone.deletedByDeviceId, body.deletedByDeviceId);
   });
 
+  test('field versions round trip while legacy upserts remain readable', () {
+    final updatedAt = DateTime.utc(2026, 7, 27, 3);
+    final payload = SyncObjectPayload.folder(
+      objectId: 'folder-1',
+      name: 'Saved',
+      position: 1,
+    ).withFieldVersions(<String, SyncFieldVersion>{
+      'name': SyncFieldVersion(
+        updatedAt: updatedAt,
+        deviceId: 'device-a',
+        mutationId: 'mutation-a-1',
+      ),
+    });
+
+    final decoded = SyncPayloadCodec.decode(
+      SyncPayloadCodec.encodeUpsert(payload),
+    ) as DecodedSyncUpsert;
+    expect(decoded.payload.fieldVersions['name']?.updatedAt, updatedAt);
+
+    final legacy = SyncPayloadCodec.decode(
+      utf8.encode(
+        jsonEncode(<String, Object?>{
+          'schema': 1,
+          'payloadKind': 'upsert',
+          'objectKind': 'folder',
+          'objectId': 'folder-legacy',
+          'fields': <String, Object?>{
+            'name': 'Legacy',
+            'position': 0,
+            'parentId': null,
+          },
+        }),
+      ),
+    ) as DecodedSyncUpsert;
+    expect(legacy.payload.fields['name'], 'Legacy');
+    expect(legacy.payload.fieldVersions, isEmpty);
+  });
+
   test('invalid schema, extra fields, ranges, and local URLs fail closed', () {
     expect(
       () => SyncPayloadCodec.decode(utf8.encode('{"schema":99}')),

@@ -1,4 +1,5 @@
 import 'conflict_model.dart';
+import 'payload_conflict_resolver.dart';
 import 'sync_auth.dart';
 import 'sync_crypto.dart';
 import 'sync_payload.dart';
@@ -31,16 +32,24 @@ final class SyncReplicaRecord {
   final DecodedSyncPayload decodedPayload;
 }
 
-enum SyncIncomingAction { accept, ignore, conflict }
+enum SyncIncomingAction { accept, ignore, conflict, resolve }
 
 final class SyncIncomingRecord {
   const SyncIncomingRecord({
     required this.record,
     required this.action,
-  });
+    this.resolvedRecord,
+    this.uploadResolution = false,
+  }) : assert(
+          action == SyncIncomingAction.resolve
+              ? resolvedRecord != null
+              : resolvedRecord == null && !uploadResolution,
+        );
 
   final SyncReplicaRecord record;
   final SyncIncomingAction action;
+  final SyncReplicaRecord? resolvedRecord;
+  final bool uploadResolution;
 }
 
 abstract interface class SyncReplicaStore {
@@ -50,6 +59,8 @@ abstract interface class SyncReplicaStore {
     SyncObjectKind objectKind,
     String objectId,
   );
+
+  Future<EncryptedSyncEnvelope?> readSeenMutation(String mutationId);
 
   /// Atomically stores the local record and appends its envelope to the outbox.
   Future<void> commitLocal(SyncReplicaRecord record);
@@ -185,6 +196,7 @@ final class IncrementalSyncController {
     required this.authorizer,
     required this.clock,
     required this.mutationIds,
+    this.conflictResolver = const SyncPayloadConflictResolver(),
     this.batchSize = SyncProtocol.maximumBatchItems,
     this.maximumPushPages = 20,
     this.maximumPullPages = 100,
@@ -203,6 +215,7 @@ final class IncrementalSyncController {
   final SyncAuthorizer authorizer;
   final IncrementalSyncClock clock;
   final SyncMutationIdSource mutationIds;
+  final SyncPayloadConflictResolver conflictResolver;
   final int batchSize;
   final int maximumPushPages;
   final int maximumPullPages;
@@ -221,6 +234,26 @@ final class IncrementalSyncController {
     final vector = (previous?.envelope.versionVector ?? VersionVector())
         .incrementedBy(session.deviceId);
     final mutationId = _nextMutationId();
+    final previousPayload = previous?.decodedPayload is DecodedSyncUpsert
+        ? (previous!.decodedPayload as DecodedSyncUpsert).payload
+        : null;
+    final stamp = SyncFieldVersion(
+      updatedAt: occurredAt,
+      deviceId: session.deviceId,
+      mutationId: mutationId,
+    );
+    final fieldVersions = <String, SyncFieldVersion>{};
+    for (final entry in payload.fields.entries) {
+      final previousVersion = previousPayload?.fieldVersions[entry.key];
+      final unchanged = previousPayload != null &&
+          _syncValueEquals(
+            previousPayload.fields[entry.key],
+            entry.value,
+          );
+      fieldVersions[entry.key] =
+          unchanged && previousVersion != null ? previousVersion : stamp;
+    }
+    final stampedPayload = payload.withFieldVersions(fieldVersions);
     final envelope = await crypto.encryptEnvelope(
       mutationId: mutationId,
       accountId: session.accountId,
@@ -230,13 +263,13 @@ final class IncrementalSyncController {
       authorDeviceId: session.deviceId,
       versionVector: vector,
       occurredAt: occurredAt,
-      clearText: SyncPayloadCodec.encodeUpsert(payload),
+      clearText: SyncPayloadCodec.encodeUpsert(stampedPayload),
       dataKey: dataKey,
     );
     await store.commitLocal(
       SyncReplicaRecord(
         envelope: envelope,
-        decodedPayload: DecodedSyncUpsert(payload),
+        decodedPayload: DecodedSyncUpsert(stampedPayload),
       ),
     );
     return envelope;
@@ -366,6 +399,7 @@ final class IncrementalSyncController {
         }
         final incoming = await _decodePage(
           accountId: activeSession.accountId,
+          session: activeSession,
           dataKey: dataKey,
           envelopes: page.envelopes,
         );
@@ -374,7 +408,11 @@ final class IncrementalSyncController {
             .where((item) => item.action == SyncIncomingAction.accept)
             .length;
         conflicts += incoming
-            .where((item) => item.action == SyncIncomingAction.conflict)
+            .where(
+              (item) =>
+                  item.action == SyncIncomingAction.conflict ||
+                  item.action == SyncIncomingAction.resolve,
+            )
             .length;
         await store.commitRemotePage(
           expectedCursor: cursor,
@@ -444,15 +482,23 @@ final class IncrementalSyncController {
 
   Future<List<SyncIncomingRecord>> _decodePage({
     required String accountId,
+    required SyncSession session,
     required SyncDataKeyMaterial dataKey,
     required List<EncryptedSyncEnvelope> envelopes,
   }) async {
     final actions = <SyncIncomingRecord>[];
     final shadow = <_SyncObjectKey, SyncReplicaRecord?>{};
+    final shadowSeen = <String, EncryptedSyncEnvelope>{};
     for (final envelope in envelopes) {
       if (envelope.accountId != accountId) {
         throw const _SyncProtocolViolation();
       }
+      final seen = shadowSeen[envelope.mutationId] ??
+          await store.readSeenMutation(envelope.mutationId);
+      if (seen != null && !_sameEnvelope(seen, envelope)) {
+        throw const _SyncProtocolViolation();
+      }
+      shadowSeen[envelope.mutationId] = envelope;
       final clearText = await crypto.decryptEnvelope(
         envelope: envelope,
         dataKey: dataKey,
@@ -469,9 +515,18 @@ final class IncrementalSyncController {
         final local = shadow.containsKey(key)
             ? shadow[key]
             : await store.readRecord(key.objectKind, key.objectId);
-        final action = _classify(local: local, remote: record);
-        actions.add(SyncIncomingRecord(record: record, action: action));
-        if (action == SyncIncomingAction.accept) shadow[key] = record;
+        final incoming = await _classify(
+          local: local,
+          remote: record,
+          session: session,
+          dataKey: dataKey,
+        );
+        actions.add(incoming);
+        if (incoming.action == SyncIncomingAction.accept) {
+          shadow[key] = record;
+        } else if (incoming.action == SyncIncomingAction.resolve) {
+          shadow[key] = incoming.resolvedRecord;
+        }
         if (!shadow.containsKey(key)) shadow[key] = local;
       } finally {
         _erase(clearText);
@@ -480,20 +535,33 @@ final class IncrementalSyncController {
     return List<SyncIncomingRecord>.unmodifiable(actions);
   }
 
-  SyncIncomingAction _classify({
+  Future<SyncIncomingRecord> _classify({
     required SyncReplicaRecord? local,
     required SyncReplicaRecord remote,
-  }) {
-    if (local == null) return SyncIncomingAction.accept;
+    required SyncSession session,
+    required SyncDataKeyMaterial dataKey,
+  }) async {
+    if (local == null) {
+      return SyncIncomingRecord(
+        record: remote,
+        action: SyncIncomingAction.accept,
+      );
+    }
     final conflict = classifyEnvelopeConflict(
       local: local.envelope,
       remote: remote.envelope,
     );
-    if (conflict.relation == VersionVectorRelation.equal &&
-        local.envelope.mutationId != remote.envelope.mutationId) {
-      return SyncIncomingAction.conflict;
+    if (conflict.relation == VersionVectorRelation.concurrent ||
+        (conflict.relation == VersionVectorRelation.equal &&
+            local.envelope.mutationId != remote.envelope.mutationId)) {
+      return _resolveConflict(
+        local: local,
+        remote: remote,
+        session: session,
+        dataKey: dataKey,
+      );
     }
-    return switch (conflict.decision) {
+    final action = switch (conflict.decision) {
       SyncEnvelopeDecision.identical ||
       SyncEnvelopeDecision.keepLocal =>
         SyncIncomingAction.ignore,
@@ -505,6 +573,74 @@ final class IncrementalSyncController {
             ? SyncIncomingAction.accept
             : SyncIncomingAction.ignore,
     };
+    return SyncIncomingRecord(record: remote, action: action);
+  }
+
+  Future<SyncIncomingRecord> _resolveConflict({
+    required SyncReplicaRecord local,
+    required SyncReplicaRecord remote,
+    required SyncSession session,
+    required SyncDataKeyMaterial dataKey,
+  }) async {
+    final resolution = conflictResolver.resolve(
+      localEnvelope: local.envelope,
+      localPayload: local.decodedPayload,
+      remoteEnvelope: remote.envelope,
+      remotePayload: remote.decodedPayload,
+    );
+    switch (resolution.kind) {
+      case SyncConflictResolutionKind.local:
+        return SyncIncomingRecord(
+          record: remote,
+          action: SyncIncomingAction.resolve,
+          resolvedRecord: local,
+        );
+      case SyncConflictResolutionKind.remote:
+        return SyncIncomingRecord(
+          record: remote,
+          action: SyncIncomingAction.resolve,
+          resolvedRecord: remote,
+        );
+      case SyncConflictResolutionKind.unresolved:
+        return SyncIncomingRecord(
+          record: remote,
+          action: SyncIncomingAction.conflict,
+        );
+      case SyncConflictResolutionKind.merged:
+        final payload = resolution.mergedPayload!;
+        final mutationId = _nextMutationId();
+        final occurredAt = _now();
+        final vector = local.envelope.versionVector
+            .mergedWith(remote.envelope.versionVector)
+            .incrementedBy(session.deviceId);
+        final clearText = switch (payload) {
+          DecodedSyncUpsert(:final payload) =>
+            SyncPayloadCodec.encodeUpsert(payload),
+          DecodedSyncTombstone(:final tombstone) =>
+            SyncPayloadCodec.encodeTombstone(tombstone),
+        };
+        final envelope = await crypto.encryptEnvelope(
+          mutationId: mutationId,
+          accountId: session.accountId,
+          objectKind: payload.objectKind,
+          objectId: payload.objectId,
+          payloadKind: payload.payloadKind,
+          authorDeviceId: session.deviceId,
+          versionVector: vector,
+          occurredAt: occurredAt,
+          clearText: clearText,
+          dataKey: dataKey,
+        );
+        return SyncIncomingRecord(
+          record: remote,
+          action: SyncIncomingAction.resolve,
+          resolvedRecord: SyncReplicaRecord(
+            envelope: envelope,
+            decodedPayload: payload,
+          ),
+          uploadResolution: true,
+        );
+    }
   }
 
   void _requireActiveScope(
@@ -606,8 +742,39 @@ bool _sameCursor(SyncCursor left, SyncCursor right) =>
     left.serverSequence == right.serverSequence &&
     left.opaqueToken == right.opaqueToken;
 
+bool _sameEnvelope(
+  EncryptedSyncEnvelope left,
+  EncryptedSyncEnvelope right,
+) =>
+    left.associatedData == right.associatedData &&
+    left.nonceBase64 == right.nonceBase64 &&
+    left.ciphertextBase64 == right.ciphertextBase64 &&
+    left.authenticationTagBase64 == right.authenticationTagBase64;
+
 void _erase(List<int> bytes) {
   for (var index = 0; index < bytes.length; index += 1) {
     bytes[index] = 0;
   }
+}
+
+bool _syncValueEquals(Object? left, Object? right) {
+  if (identical(left, right) || left == right) return true;
+  if (left is List<Object?> && right is List<Object?>) {
+    if (left.length != right.length) return false;
+    for (var index = 0; index < left.length; index += 1) {
+      if (!_syncValueEquals(left[index], right[index])) return false;
+    }
+    return true;
+  }
+  if (left is Map<Object?, Object?> && right is Map<Object?, Object?>) {
+    if (left.length != right.length) return false;
+    for (final entry in left.entries) {
+      if (!right.containsKey(entry.key) ||
+          !_syncValueEquals(entry.value, right[entry.key])) {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
 }
