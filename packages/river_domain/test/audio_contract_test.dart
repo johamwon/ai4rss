@@ -137,6 +137,8 @@ final class _RecordingAudioEngine implements AudioEngine {
   @override
   Future<AudioEngineCapabilities> capabilities() async =>
       const AudioEngineCapabilities(
+        supportsArticleTts: true,
+        supportsPodcastMedia: false,
         canPause: true,
         canResume: true,
         canSeek: true,
@@ -184,6 +186,9 @@ final class _RecordingAudioEngine implements AudioEngine {
   Future<void> updateSettings(AudioPlaybackSettings settings) async {
     this.settings = settings;
   }
+
+  @override
+  Future<void> dispose() => close();
 
   @override
   Future<List<AudioVoice>> voices() async => const <AudioVoice>[

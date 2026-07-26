@@ -31,6 +31,7 @@
 - READ-006：离线文章下载使用持久任务、租约恢复、稳定幂等键、有限退避和显式失败重试；飞行模式只入队不请求，启动、回到前台及网络恢复后继续处理。任务仅保存文章 ID，成功正文进入现有净化缓存，关闭并重开数据库后可直接阅读。
 - READ-007：应用遵循系统高对比模式，关键文字配色达到 WCAG AA 4.5:1；首页与阅读页提供阅读顺序焦点路径和 Windows 主操作快捷键。文章行暴露单一可操作语义节点，阅读标题标记为标题，状态同时使用图标、文本和实时播报；200% 系统字号窄屏列表、键盘操作和屏幕阅读器语义均有自动覆盖。
 - TTS-001：定义供应商无关的统一 `AudioEngine` 契约，覆盖能力、音色、加载、事件、播放控制、语速/音调，以及媒体时长或文章句内位置；文章语音计划要求稳定正文版本和连续分段。纯 Dart 分句器保留 UTF-16 正文偏移，覆盖中英文标点、闭合引号、小数、常见缩写、超长句安全切分、围栏代码占位和空正文。
+- TTS-002：`river_platform` 通过固定版本的系统 TTS 适配器接入 Android TextToSpeech、iOS AVSpeechSynthesizer 和 Windows 系统语音，并保持领域层无插件类型。支持能力/音色发现、朗读、暂停/恢复、停止、按句及句内位置跳转、语速、音调、语言与音色；进度映射为正文 UTF-16 偏移，原生错误只输出稳定失败码。三端编译及 Windows 真实系统语音 Smoke 已加入 Merge/Nightly CI。
 - 首个纵向切片：添加 Feed URL → 下载 → 解析 → SQLite 幂等写入 → 订阅及文章列表。
 - Windows Debug 构建和真实 Runner Integration Test。
 
@@ -44,8 +45,8 @@
 
 ## 下一批
 
-1. TTS-002：接入 Android TextToSpeech、iOS AVSpeechSynthesizer 和 Windows 系统语音。
-2. TTS-003：播放状态机、跳句、倍速、音色、定时关闭、当前句高亮和进度恢复。
+1. TTS-003：播放状态机、跳句、倍速、音色、定时关闭、当前句高亮和进度恢复。
+2. TTS-004：后台音频、通知/锁屏控制、耳机事件和音频焦点。
 
 ## 最近验证
 
@@ -57,7 +58,7 @@
 - `river_design_system`：2 个测试通过，浅色与深色高对比主题的关键文字组合均达到 WCAG AA 4.5:1。
 - `river_audio`：7 个测试通过，覆盖统一队列以及中英文/混合语言分句、标点/缩写/小数、超长句代理对安全、代码块占位和空正文。
 - `river_extract`：29 个测试通过，新增完整 Feed 零网页请求、摘要静态下载和失败后平台回退编排覆盖。
-- `river_platform`：18 个测试通过，新增外部 HTTP(S) 原文打开、危险 URI 拒绝和平台失败降级覆盖，并继续覆盖链路状态、三端后台调度及动态渲染契约。
+- `river_platform`：26 个测试通过，新增系统 TTS 加载/朗读、绝对句内进度、Android 截断恢复与 iOS/Windows 原生续读坐标、暂停/停止去重、语速/音调/音色、平台能力和错误脱敏覆盖，并继续验证外部原文、链路状态、三端后台调度及动态渲染契约。
 - Harness：fixtures 15/15、feeds 3/3、extraction 7/7、AI replay 1/1、ranking 2/2。
 - 本机 Windows Runner 验证受环境缺少 NuGet 阻断在插件构建阶段；同一集成旅程由安装 NuGet 的 Merge/Nightly Windows CI 执行。
 - 三端构建：最近一次 Android/iOS/Windows 主分支 Debug 构建及产物上传均已通过；READ-002 的 Windows 原生滚动/选区旅程和 FEED-007 计划任务 Smoke 已加入 Merge 与 Nightly CI。

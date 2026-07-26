@@ -112,6 +112,8 @@ final class AudioVoice {
 
 final class AudioEngineCapabilities {
   const AudioEngineCapabilities({
+    required this.supportsArticleTts,
+    required this.supportsPodcastMedia,
     required this.canPause,
     required this.canResume,
     required this.canSeek,
@@ -120,6 +122,8 @@ final class AudioEngineCapabilities {
     required this.canSelectVoice,
   });
 
+  final bool supportsArticleTts;
+  final bool supportsPodcastMedia;
   final bool canPause;
   final bool canResume;
   final bool canSeek;

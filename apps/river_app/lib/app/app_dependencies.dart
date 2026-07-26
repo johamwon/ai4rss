@@ -19,9 +19,11 @@ final class AppDependencies {
     this.automaticRefreshEnabled = true,
     BackgroundRefreshScheduler? backgroundRefresh,
     ExternalUriGateway? externalUri,
+    AudioEngine? audio,
     NetworkMonitor? network,
     OpmlFileGateway? opmlFiles,
   })  : opmlFiles = opmlFiles ?? const PlatformOpmlFileGateway(),
+        audio = audio ?? const UnavailableAudioEngine(),
         network = network ?? const UnknownNetworkMonitor(),
         externalUri = externalUri ?? const UnavailableExternalUriGateway(),
         backgroundRefresh =
@@ -92,6 +94,9 @@ final class AppDependencies {
       ),
       platform: const MethodChannelRiverPlatform(),
       share: SharePlusGateway(),
+      audio: backgroundExecution
+          ? const UnavailableAudioEngine()
+          : SystemTtsAudioEngine(),
       externalUri: UrlLauncherExternalUriGateway(),
       network: ConnectivityNetworkMonitor(),
       http: http,
@@ -105,6 +110,7 @@ final class AppDependencies {
   final RiverPlatformBridge platform;
   final BackgroundRefreshScheduler backgroundRefresh;
   final ShareGateway share;
+  final AudioEngine audio;
   final ExternalUriGateway externalUri;
   final NetworkMonitor network;
   final HttpPort http;
@@ -121,6 +127,7 @@ final class AppDependencies {
   final RiverDatabase _database;
 
   Future<void> close() async {
+    await audio.dispose();
     await offlineArticles.close();
     await feedRefreshCoordinator.close();
     final httpPort = http;
