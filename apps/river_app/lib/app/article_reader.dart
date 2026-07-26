@@ -8,7 +8,13 @@ import 'package:river_feed/river_feed.dart';
 
 enum ArticleReaderLoadPhase { loading, ready, missing, failed }
 
-enum ArticleEnhancementPhase { idle, enhancing, ready, failed }
+enum ArticleEnhancementPhase {
+  idle,
+  enhancing,
+  ready,
+  failed,
+  usingAvailable,
+}
 
 enum ArticleReaderContentSource { feed, cache, extracted }
 
@@ -30,12 +36,25 @@ final class ArticleReaderContent {
       };
 }
 
+final class ArticleEnhancementFailure {
+  const ArticleEnhancementFailure({
+    required this.code,
+    required this.retryable,
+    required this.attempts,
+  });
+
+  final ExtractionFailureCode code;
+  final bool retryable;
+  final List<ExtractionAttempt> attempts;
+}
+
 final class ArticleReaderState {
   const ArticleReaderState({
     required this.loadPhase,
     this.enhancementPhase = ArticleEnhancementPhase.idle,
     this.detail,
     this.content,
+    this.enhancementFailure,
     this.settings = const ReaderSettings(),
     this.operationFailure,
     this.isMutating = false,
@@ -48,6 +67,7 @@ final class ArticleReaderState {
   final ArticleEnhancementPhase enhancementPhase;
   final FeedArticleDetailRecord? detail;
   final ArticleReaderContent? content;
+  final ArticleEnhancementFailure? enhancementFailure;
   final ReaderSettings settings;
   final String? operationFailure;
   final bool isMutating;
@@ -57,6 +77,8 @@ final class ArticleReaderState {
     ArticleEnhancementPhase? enhancementPhase,
     FeedArticleDetailRecord? detail,
     ArticleReaderContent? content,
+    ArticleEnhancementFailure? enhancementFailure,
+    bool clearEnhancementFailure = false,
     ReaderSettings? settings,
     String? operationFailure,
     bool clearOperationFailure = false,
@@ -67,6 +89,9 @@ final class ArticleReaderState {
         enhancementPhase: enhancementPhase ?? this.enhancementPhase,
         detail: detail ?? this.detail,
         content: content ?? this.content,
+        enhancementFailure: clearEnhancementFailure
+            ? null
+            : enhancementFailure ?? this.enhancementFailure,
         settings: settings ?? this.settings,
         operationFailure: clearOperationFailure
             ? null
@@ -82,11 +107,13 @@ final class ArticleReaderController extends ChangeNotifier {
     required FullTextExtractor extractor,
     required ReaderSettingsRepository readerSettings,
     required ShareGateway share,
+    required ExternalUriGateway externalUri,
     required Clock clock,
   })  : _repository = repository,
         _extractor = extractor,
         _readerSettings = readerSettings,
         _share = share,
+        _externalUri = externalUri,
         _clock = clock {
     _subscribeArticle();
     _subscribeSettings();
@@ -97,6 +124,7 @@ final class ArticleReaderController extends ChangeNotifier {
   final FullTextExtractor _extractor;
   final ReaderSettingsRepository _readerSettings;
   final ShareGateway _share;
+  final ExternalUriGateway _externalUri;
   final Clock _clock;
   StreamSubscription<FeedArticleDetailRecord?>? _articleSubscription;
   StreamSubscription<ReaderSettings>? _settingsSubscription;
@@ -144,7 +172,7 @@ final class ArticleReaderController extends ChangeNotifier {
           (settings) => _setState(_state.copyWith(settings: settings)),
           onError: (Object error, StackTrace stackTrace) => _setState(
             _state.copyWith(
-              operationFailure: '闃呰璁剧疆鏆備笉鍙敤锛屽凡浣跨敤榛樿鎺掔増',
+              operationFailure: '阅读设置暂不可用，已使用默认排版',
             ),
           ),
         );
@@ -169,6 +197,7 @@ final class ArticleReaderController extends ChangeNotifier {
         enhancementPhase: _state.enhancementPhase,
         detail: detail,
         content: nextContent,
+        enhancementFailure: _state.enhancementFailure,
         settings: _state.settings,
         operationFailure: _state.operationFailure,
         isMutating: _state.isMutating,
@@ -184,10 +213,16 @@ final class ArticleReaderController extends ChangeNotifier {
     }
   }
 
-  Future<void> _enhance(FeedArticleDetailRecord detail) async {
+  Future<void> _enhance(
+    FeedArticleDetailRecord detail, {
+    bool forceReparse = false,
+  }) async {
     final generation = ++_extractionGeneration;
     _setState(
-      _state.copyWith(enhancementPhase: ArticleEnhancementPhase.enhancing),
+      _state.copyWith(
+        enhancementPhase: ArticleEnhancementPhase.enhancing,
+        clearEnhancementFailure: true,
+      ),
     );
     ExtractionResult result;
     try {
@@ -200,12 +235,20 @@ final class ArticleReaderController extends ChangeNotifier {
           title: detail.title,
           author: detail.author,
           publishedAt: detail.publishedAt,
+          forceReparse: forceReparse,
         ),
       );
     } on Object {
       if (_disposed || generation != _extractionGeneration) return;
       _setState(
-        _state.copyWith(enhancementPhase: ArticleEnhancementPhase.failed),
+        _state.copyWith(
+          enhancementPhase: ArticleEnhancementPhase.failed,
+          enhancementFailure: const ArticleEnhancementFailure(
+            code: ExtractionFailureCode.unexpected,
+            retryable: true,
+            attempts: <ExtractionAttempt>[],
+          ),
+        ),
       );
       return;
     }
@@ -228,12 +271,92 @@ final class ArticleReaderController extends ChangeNotifier {
           _state.copyWith(
             enhancementPhase: ArticleEnhancementPhase.ready,
             content: content.text.isEmpty ? _state.content : content,
+            clearEnhancementFailure: true,
           ),
         );
-      case ExtractionFailureResult():
+      case ExtractionFailureResult(:final failure, :final attempts):
         _setState(
-          _state.copyWith(enhancementPhase: ArticleEnhancementPhase.failed),
+          _state.copyWith(
+            enhancementPhase: ArticleEnhancementPhase.failed,
+            enhancementFailure: ArticleEnhancementFailure(
+              code: failure.code,
+              retryable: failure.retryable,
+              attempts: List<ExtractionAttempt>.unmodifiable(attempts),
+            ),
+          ),
         );
+    }
+  }
+
+  Future<void> retryEnhancement() async {
+    final detail = _state.detail;
+    if (detail == null) return;
+    _extractionStarted = true;
+    await _enhance(detail, forceReparse: true);
+  }
+
+  void useAvailableContent() {
+    if (_state.content == null ||
+        _state.enhancementPhase != ArticleEnhancementPhase.failed) {
+      return;
+    }
+    _setState(
+      _state.copyWith(
+        enhancementPhase: ArticleEnhancementPhase.usingAvailable,
+      ),
+    );
+  }
+
+  Future<void> openOriginal() async {
+    final detail = _state.detail;
+    if (detail == null) return;
+    ExternalUriOpenOutcome outcome;
+    try {
+      outcome = await _externalUri.open(detail.canonicalUrl);
+    } on Object {
+      outcome = ExternalUriOpenOutcome.unavailable;
+    }
+    if (outcome == ExternalUriOpenOutcome.unavailable) {
+      _setState(
+        _state.copyWith(
+          operationFailure: '无法打开原文，请检查系统浏览器设置后重试',
+        ),
+      );
+    }
+  }
+
+  Future<void> reportExtractionIssue({ShareAnchor? anchor}) async {
+    final detail = _state.detail;
+    final failure = _state.enhancementFailure;
+    if (detail == null || failure == null) return;
+    final attempts = failure.attempts.isEmpty
+        ? 'none'
+        : failure.attempts
+            .map(
+              (attempt) => '${attempt.extractor}@${attempt.extractorVersion}:'
+                  '${attempt.outcome.name}',
+            )
+            .join(', ');
+    try {
+      final outcome = await _share.share(
+        ShareRequest(
+          title: 'River 全文提取问题',
+          subject: 'River 全文提取问题：${detail.title}',
+          text: 'River 全文提取问题\n'
+              '原文：${detail.canonicalUrl}\n'
+              '失败类型：${failure.code.name}\n'
+              '可重试：${failure.retryable}\n'
+              '提取阶段：$attempts',
+          anchor: anchor,
+        ),
+      );
+      if (outcome == ShareOutcome.unavailable) {
+        _setState(
+          _state.copyWith(operationFailure: '当前系统暂不支持报告问题'),
+        );
+      }
+    } on Object {
+      _setState(_state.copyWith(operationFailure: '报告问题失败，请重试'));
     }
   }
 
@@ -289,7 +412,7 @@ final class ArticleReaderController extends ChangeNotifier {
       _setState(
         _state.copyWith(
           settings: previous,
-          operationFailure: '闃呰璁剧疆淇濆瓨澶辫触锛岃閲嶈瘯',
+          operationFailure: '阅读设置保存失败，请重试',
         ),
       );
     }
@@ -309,11 +432,11 @@ final class ArticleReaderController extends ChangeNotifier {
       );
       if (outcome == ShareOutcome.unavailable) {
         _setState(
-          _state.copyWith(operationFailure: '褰撳墠绯荤粺鏆備笉鏀寔鍒嗕韩'),
+          _state.copyWith(operationFailure: '当前系统暂不支持分享'),
         );
       }
     } on Object {
-      _setState(_state.copyWith(operationFailure: '鍒嗕韩澶辫触锛岃閲嶈瘯'));
+      _setState(_state.copyWith(operationFailure: '分享失败，请重试'));
     }
   }
 
@@ -361,7 +484,7 @@ final class ArticleReaderController extends ChangeNotifier {
           .onError((Object error, StackTrace stackTrace) {
         if (!_disposed) {
           _setState(
-            _state.copyWith(operationFailure: '闃呰杩涘害淇濆瓨澶辫触'),
+            _state.copyWith(operationFailure: '阅读进度保存失败'),
           );
         }
       }),
@@ -419,6 +542,7 @@ final class ArticleReaderPage extends StatefulWidget {
     required this.extractor,
     required this.readerSettings,
     required this.share,
+    required this.externalUri,
     required this.clock,
     super.key,
   });
@@ -428,6 +552,7 @@ final class ArticleReaderPage extends StatefulWidget {
   final FullTextExtractor extractor;
   final ReaderSettingsRepository readerSettings;
   final ShareGateway share;
+  final ExternalUriGateway externalUri;
   final Clock clock;
 
   @override
@@ -446,6 +571,7 @@ final class _ArticleReaderPageState extends State<ArticleReaderPage> {
       extractor: widget.extractor,
       readerSettings: widget.readerSettings,
       share: widget.share,
+      externalUri: widget.externalUri,
       clock: widget.clock,
     );
   }
@@ -523,13 +649,20 @@ final class _ReaderReady extends StatelessWidget {
               ),
             ],
           ),
+        if (state.enhancementPhase == ArticleEnhancementPhase.failed)
+          _EnhancementFailureBanner(
+            hasAvailableContent: content != null,
+            controller: controller,
+          ),
         _ReaderActions(state: state, controller: controller),
         const Divider(height: 1),
         _ReaderHeader(detail: detail, enhancement: state.enhancementPhase),
         const Divider(height: 1),
         Expanded(
           child: content == null
-              ? const _ReaderContentPending()
+              ? state.enhancementPhase == ArticleEnhancementPhase.failed
+                  ? const _ReaderContentUnavailable()
+                  : const _ReaderContentPending()
               : ArticleDocumentView(
                   content: content,
                   settings: state.settings,
@@ -538,6 +671,80 @@ final class _ReaderReady extends StatelessWidget {
                 ),
         ),
       ],
+    );
+  }
+}
+
+final class _EnhancementFailureBanner extends StatelessWidget {
+  const _EnhancementFailureBanner({
+    required this.hasAvailableContent,
+    required this.controller,
+  });
+
+  final bool hasAvailableContent;
+  final ArticleReaderController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final label =
+        hasAvailableContent ? '未能获取完整正文，Feed 或缓存内容仍可阅读' : '未能获取可阅读正文，可以重试或打开原文';
+    final colors = Theme.of(context).colorScheme;
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: label,
+      child: ColoredBox(
+        color: colors.errorContainer,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Icon(Icons.info_outline, color: colors.onErrorContainer),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(color: colors.onErrorContainer),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 4,
+                runSpacing: 4,
+                children: <Widget>[
+                  if (hasAvailableContent)
+                    TextButton(
+                      onPressed: controller.useAvailableContent,
+                      child: const Text('使用当前内容'),
+                    ),
+                  FilledButton.tonal(
+                    onPressed: () => unawaited(controller.retryEnhancement()),
+                    child: const Text('重试全文'),
+                  ),
+                  TextButton(
+                    onPressed: () => unawaited(controller.openOriginal()),
+                    child: const Text('打开原文'),
+                  ),
+                  TextButton(
+                    onPressed: () => unawaited(
+                      controller.reportExtractionIssue(
+                        anchor: _shareAnchorFor(context),
+                      ),
+                    ),
+                    child: const Text('报告问题'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -588,6 +795,11 @@ final class _ReaderActions extends StatelessWidget {
               tooltip: '分享',
             ),
             IconButton(
+              onPressed: () => unawaited(controller.openOriginal()),
+              icon: const Icon(Icons.open_in_new),
+              tooltip: '打开原文',
+            ),
+            IconButton(
               onPressed: () => unawaited(
                 _showReaderSettings(context, state.settings, controller),
               ),
@@ -601,18 +813,7 @@ final class _ReaderActions extends StatelessWidget {
   }
 
   Future<void> _share(BuildContext context) async {
-    final box = context.findRenderObject();
-    ShareAnchor? anchor;
-    if (box is RenderBox && box.hasSize) {
-      final origin = box.localToGlobal(Offset.zero);
-      anchor = ShareAnchor(
-        left: origin.dx,
-        top: origin.dy,
-        width: box.size.width,
-        height: box.size.height,
-      );
-    }
-    await controller.shareArticle(anchor: anchor);
+    await controller.shareArticle(anchor: _shareAnchorFor(context));
   }
 }
 
@@ -637,9 +838,10 @@ final class _ReaderHeader extends StatelessWidget {
           Icons.downloading_outlined
         ),
       ArticleEnhancementPhase.ready => ('完整正文已就绪', Icons.check_circle_outline),
-      ArticleEnhancementPhase.failed => (
-          '完整正文暂不可用，当前内容仍可阅读',
-          Icons.info_outline
+      ArticleEnhancementPhase.failed => ('完整正文暂不可用', Icons.info_outline),
+      ArticleEnhancementPhase.usingAvailable => (
+          '正在使用 Feed 或缓存内容',
+          Icons.article_outlined
         ),
     };
     return Semantics(
@@ -1085,6 +1287,23 @@ final class _ReaderContentPending extends StatelessWidget {
       );
 }
 
+final class _ReaderContentUnavailable extends StatelessWidget {
+  const _ReaderContentUnavailable();
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: Semantics(
+          container: true,
+          liveRegion: true,
+          label: '未能获取可阅读正文，请重试全文或打开原文',
+          child: const Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('未能获取可阅读正文，请重试全文或打开原文'),
+          ),
+        ),
+      );
+}
+
 final class _ReaderMissing extends StatelessWidget {
   const _ReaderMissing();
 
@@ -1128,4 +1347,16 @@ String _dateLabel(DateTime value) {
   final month = local.month.toString().padLeft(2, '0');
   final day = local.day.toString().padLeft(2, '0');
   return '${local.year}-$month-$day';
+}
+
+ShareAnchor? _shareAnchorFor(BuildContext context) {
+  final box = context.findRenderObject();
+  if (box is! RenderBox || !box.hasSize) return null;
+  final origin = box.localToGlobal(Offset.zero);
+  return ShareAnchor(
+    left: origin.dx,
+    top: origin.dy,
+    width: box.size.width,
+    height: box.size.height,
+  );
 }

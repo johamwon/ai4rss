@@ -315,6 +315,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           extractor: dependencies.fullTextExtractor,
           readerSettings: dependencies.readerSettings,
           share: dependencies.share,
+          externalUri: dependencies.externalUri,
           clock: dependencies.clock,
         ),
       ),
