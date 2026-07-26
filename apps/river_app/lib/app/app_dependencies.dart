@@ -7,6 +7,7 @@ import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
 import 'package:river_feed/river_feed.dart';
 import 'package:river_platform/river_platform.dart';
+import 'package:river_sync/river_sync.dart';
 
 final class AppDependencies {
   AppDependencies({
@@ -26,6 +27,7 @@ final class AppDependencies {
     AudioSegmentPrefetcher? audioSegmentPrefetcher,
     NetworkMonitor? network,
     OpmlFileGateway? opmlFiles,
+    this.syncAccount,
   })  : opmlFiles = opmlFiles ?? const PlatformOpmlFileGateway(),
         audio = audio ?? const UnavailableAudioEngine(),
         audioPlayback = audioPlayback ?? DriftAudioPlaybackRepository(database),
@@ -138,6 +140,7 @@ final class AppDependencies {
   final HttpPort http;
   final bool automaticRefreshEnabled;
   final OpmlFileGateway opmlFiles;
+  final SyncAccountExperience? syncAccount;
   late final PersistentJobQueue jobs;
   late final DriftFeedRepository feeds;
   late final DurableOfflineArticleManager offlineArticles;

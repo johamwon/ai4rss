@@ -347,6 +347,26 @@ void main() {
     expect(vault.session, isNull);
     expect(gateway.devices, hasLength(1));
   });
+
+  test('cloud deletion clears session only after scoped remote success',
+      () async {
+    final vault = _MemorySessionVault()
+      ..session = gateway.seedActiveDevice('device-a', 'Windows');
+    final controller = _controller(
+      gateway: gateway,
+      vault: vault,
+      connectivity: connectivity,
+      clock: clock,
+    );
+    final localArticles = <String>['article-local'];
+
+    final result = await controller.deleteCloudData();
+
+    expect(result, isA<SyncAuthSuccess<CloudDataDeletionReceipt>>());
+    expect(vault.session, isNull);
+    expect(gateway.devices, isEmpty);
+    expect(localArticles, <String>['article-local']);
+  });
 }
 
 SyncAuthController _controller({
@@ -440,6 +460,7 @@ final class _FakeIdentityGateway implements SyncIdentityGateway {
   var registrationWrites = 0;
   var refreshCalls = 0;
   var approvalCalls = 0;
+  var deletionCalls = 0;
   SyncAuthFailureCode? refreshFailure;
   var _challengeSequence = 0;
   var _sessionSequence = 0;
@@ -643,6 +664,22 @@ final class _FakeIdentityGateway implements SyncIdentityGateway {
         remainingActiveDevices:
             devices.values.where((device) => device.canSync).length,
         requiresDataKeyRotation: true,
+      ),
+    );
+  }
+
+  @override
+  Future<SyncAuthResult<CloudDataDeletionReceipt>> deleteCloudData(
+    SyncSession session,
+  ) async {
+    deletionCalls += 1;
+    devices.clear();
+    sessions.clear();
+    return SyncAuthSuccess<CloudDataDeletionReceipt>(
+      CloudDataDeletionReceipt(
+        requestId: 'deletion-$deletionCalls',
+        accountId: session.accountId,
+        completedAt: clock.now(),
       ),
     );
   }

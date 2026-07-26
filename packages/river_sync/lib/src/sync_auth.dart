@@ -194,6 +194,22 @@ final class DeviceRevocation {
   final bool requiresDataKeyRotation;
 }
 
+final class CloudDataDeletionReceipt {
+  CloudDataDeletionReceipt({
+    required this.requestId,
+    required this.accountId,
+    required this.completedAt,
+  }) {
+    _requireId(requestId, 'requestId');
+    _requireId(accountId, 'accountId');
+    _requireUtc(completedAt, 'completedAt');
+  }
+
+  final String requestId;
+  final String accountId;
+  final DateTime completedAt;
+}
+
 enum SyncAuthFailureCode {
   offline,
   signedOut,
@@ -273,6 +289,10 @@ abstract interface class SyncIdentityGateway {
     required SyncSession session,
     required String deviceId,
   });
+
+  Future<SyncAuthResult<CloudDataDeletionReceipt>> deleteCloudData(
+    SyncSession session,
+  );
 }
 
 final class SyncAuthController implements SyncAuthorizer {
@@ -576,6 +596,40 @@ final class SyncAuthController implements SyncAuthorizer {
   }
 
   Future<void> signOut() => _vault.clear();
+
+  Future<SyncAuthResult<CloudDataDeletionReceipt>> deleteCloudData() async {
+    final authorization = await authorizeSync();
+    if (authorization
+        case SyncAuthFailure<SyncSession>(
+          :final code,
+          :final retryable,
+          :final retryAfter,
+        )) {
+      return SyncAuthFailure<CloudDataDeletionReceipt>(
+        code: code,
+        retryable: retryable,
+        retryAfter: retryAfter,
+      );
+    }
+    final session = (authorization as SyncAuthSuccess<SyncSession>).value;
+    try {
+      final result = await _gateway.deleteCloudData(session);
+      if (result case SyncAuthSuccess<CloudDataDeletionReceipt>(:final value)) {
+        if (value.accountId != session.accountId) {
+          return const SyncAuthFailure<CloudDataDeletionReceipt>(
+            code: SyncAuthFailureCode.unexpected,
+          );
+        }
+        await _vault.clear();
+      }
+      return result;
+    } on Object {
+      return const SyncAuthFailure<CloudDataDeletionReceipt>(
+        code: SyncAuthFailureCode.unexpected,
+        retryable: true,
+      );
+    }
+  }
 }
 
 void _requireId(String value, String name) {

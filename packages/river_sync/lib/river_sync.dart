@@ -3,6 +3,7 @@ library;
 export 'src/conflict_model.dart';
 export 'src/incremental_sync.dart';
 export 'src/payload_conflict_resolver.dart';
+export 'src/sync_account_experience.dart';
 export 'src/sync_auth.dart';
 export 'src/sync_crypto.dart';
 export 'src/sync_payload.dart';
