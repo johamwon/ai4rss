@@ -6,8 +6,8 @@
 
 - FND-002：Composition Root，Clock、ID、HTTP、SQLite、全文提取和平台桥均可注入。
 - FND-004：`dart run tool/ci.dart fast` 可在 Windows 独立运行；GitHub 已配置 PR Fast、Merge、Nightly、Release 四条 CI/CD Lane 与 Dependabot。
-- DATA-001：Drift/SQLite v5 十张核心表及本地 FTS5 索引、外键、唯一键和级联规则；v2 新增可空 Feed 正文字段，v3 新增阅读设置单例表，v4 新增文章与知识库全文索引，v5 为音频断点与播放设置增加可空列，并保留旧版本升级兼容。
-- DATA-003：v0、v1、v2、v3、v4 Fixture 与 N-2 升级演练已完成；覆盖 v1/v2/v3/v4→v5、各阶段迁移中断后的幂等恢复和当前 v5 打开。
+- DATA-001：Drift/SQLite v8 本地数据库及 FTS5 索引、外键、唯一键和级联规则；v2～v5 依次增加 Feed 正文、阅读设置、全文索引和音频断点，v6～v7 增加同步副本/冲突历史，v8 分离 Podcast 节目、分集和下载状态，并保留旧版本升级兼容。
+- DATA-003：v0、v1、v2、v3、v4 Fixture 与 N-2 升级演练已完成；覆盖 v1/v2/v3/v4→v8、各阶段迁移中断后的幂等恢复和当前 v8 打开。
 - DATA-004：持久任务队列，支持幂等入队、租约、失败重试和中断恢复。
 - FEED-001 核心：受限 HTTP(S)、超时、手动重定向、循环检测、响应体上限、User-Agent、编码、ETag 与 Last-Modified 条件请求。
 - FEED-002 核心：RSS 2.0、Atom、JSON Feed 统一模型和固定离线语料。
@@ -44,6 +44,7 @@
 - SYNC-007 核心：服务端内核仅接收 E2EE 信封与有界路由元数据，不持有数据密钥或明文解码入口；活跃设备授权、多租户隔离、逐设备 UTC 窗口限流、原子字节/条目配额、精确幂等与 mutation 碰撞拒绝均在存储前后封闭。管理员只可读取条目数、编码字节和最新序号，审计不含信封、密文、令牌或密钥。备份以账号绑定的 SHA-256 校验保护有序密文，恢复校验账号与 mutation 唯一性；灾演在隔离仓库恢复并只报告计数/字节/序号。云删除仅删除密文账号记录并返回同账号完成回执。
 - POD-001 核心：纯 Dart Podcast RSS 解析器提取节目/分集、enclosure、相对 URL、封面、作者、日期、时长、季/集号、类型和显式标记；只接受无凭据的 HTTP(S) 音频，异常可选字段安全降级。刷新服务使用 ETag/Last-Modified 增量请求，同一文档按外部身份去重；GUID 是首选稳定身份，同 GUID 换媒体 URL 时保留 River ID 并只 upsert 变化分集，完全相同的分集不重写。节目级默认倍速与下载策略作为后续播放/持久化的稳定契约。
 - POD-002 流式播放核心：纯 Dart 路由引擎让文章继续使用系统 TTS、Podcast Episode 使用独立媒体引擎，并在切换类型前停止旧引擎；Android/iOS 通过固定 `just_audio`、Windows 通过固定 WinRT MediaPlayer 实现支持 HTTP(S)/本地文件流式播放、暂停、恢复、跳转和 0.5x～3x 倍速。插件错误只映射稳定失败码，媒体 URL 不进入日志；现有统一控制器、进度仓库、后台焦点、锁屏/通知和 Windows SMTC 链路保持复用。耐久下载与断点续传仍在 POD-002 后续切片。
+- POD-002 持久化核心：Drift v8 将 Podcast Show、Episode 和 Download 状态分表；节目/变化分集在同一事务 upsert，跨节目分集整笔回滚，Feed 省略的历史分集不删除。节目默认倍速和下载策略由用户写入并在刷新后保留；`showId + externalId` 唯一键固化 GUID 优先身份，下载状态与媒体 URL、播放断点解耦。v1～v4 旧库升级及只创建节目表后中断的 v8 恢复已覆盖。
 - 首个纵向切片：添加 Feed URL → 下载 → 解析 → SQLite 幂等写入 → 订阅及文章列表。
 - Windows Debug 构建和真实 Runner Integration Test。
 
@@ -65,7 +66,7 @@
 - Fast Lane：通过，静态分析 0 问题。
 - `river_feed`：33 个测试通过，新增 Podcast RSS 节目/分集模型、音频 enclosure 安全筛选、iTunes 元数据、重复 GUID、同 GUID 换媒体 URL、无变化零写入和条件刷新覆盖；继续覆盖搜索、RSS/Atom/JSON Feed、发现、文章刷新、OPML、解析安全与 HTTP 边界。
 - `river_domain`：11 个测试通过，新增系统中断自动恢复授权边界，并继续覆盖统一音频快照的正文/播客位置约束、来源载荷、正文版本/分段索引、播放参数边界、后台刷新策略与核心模型。
-- `river_data`：56 个测试通过，新增按账号/设备隔离的同步状态、未决冲突和有界最新冲突历史查询；继续覆盖 seen-mutation、防碰撞、v1→v7 幂等迁移、持久任务、文章与播客断点及 10,000 篇文章 P95 <500ms 自动门槛。
+- `river_data`：59 个测试通过，新增 Podcast 节目/分集事务持久化、策略保留、跨节目回滚及 v8 中断迁移恢复；继续覆盖同步状态、seen-mutation、防碰撞、v1→v8 幂等迁移、持久任务、文章与播客断点及 10,000 篇文章 P95 <500ms 自动门槛。
 - `river_app`：55 个测试通过，新增同步状态/冲突历史/重试/安全退出与云端删除确认的 Widget 覆盖，并继续覆盖安全仓库恢复码、后台媒体、Windows SMTC、阅读器控制链路与五组跨尺寸 Golden。
 - `river_design_system`：2 个测试通过，浅色与深色高对比主题的关键文字组合均达到 WCAG AA 4.5:1。
 - `river_audio`：31 个测试通过，新增文章/Podcast 引擎能力合并、类型路由、切换清理和事件转发；继续覆盖两小时长文预算、有界预取、焦点拒绝、系统媒体命令、中断恢复、进度写入、定时暂停、统一队列与跨语言分句。

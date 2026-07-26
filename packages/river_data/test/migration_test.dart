@@ -8,7 +8,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:test/test.dart';
 
 void main() {
-  test('v1 fixture migrates to v7 without losing article state', () async {
+  test('v1 fixture migrates to v8 without losing article state', () async {
     final fixture = await _materializeFixture('v001_populated.sql');
     final migrated = await _openFixture(fixture);
 
@@ -17,7 +17,7 @@ void main() {
     expect(article.feedSummary, 'Existing preview survives migration');
     expect(article.starred, isTrue);
     expect(article.feedContentHtml, isNull);
-    expect(await _userVersion(migrated), 7);
+    expect(await _userVersion(migrated), 8);
     expect(
       await _syncTableNames(migrated),
       containsAll(<String>[
@@ -47,7 +47,7 @@ void main() {
 
     final article = await recovered.select(recovered.articles).getSingle();
     expect(article.feedContentHtml, '<p>Recovered body</p>');
-    expect(await _userVersion(recovered), 7);
+    expect(await _userVersion(recovered), 8);
   });
 
   test('v2 fixture creates the settings table and preserves article', () async {
@@ -56,7 +56,7 @@ void main() {
 
     final article = await migrated.select(migrated.articles).getSingle();
     expect(article.feedContentHtml, '<p>Current immediate body</p>');
-    expect(await _userVersion(migrated), 7);
+    expect(await _userVersion(migrated), 8);
     expect(
       await DriftReaderSettingsRepository(migrated).watchSettings().first,
       const ReaderSettings(),
@@ -91,7 +91,7 @@ void main() {
     expect(settings.fontFamily, ReaderFontFamily.serif);
     expect(settings.fontScale, 1.3);
     expect(settings.theme, ReaderThemePreference.dark);
-    expect(await _userVersion(recovered), 7);
+    expect(await _userVersion(recovered), 8);
   });
 
   test('v3 fixture creates a searchable index without data loss', () async {
@@ -118,7 +118,7 @@ void main() {
           .id,
       'article-1',
     );
-    expect(await _userVersion(current), 7);
+    expect(await _userVersion(current), 8);
   });
 
   test('interrupted v4 index creation rebuilds and creates triggers', () async {
@@ -145,7 +145,7 @@ void main() {
       'article-1',
     ]);
     expect(await _searchTriggerCount(recovered), 10);
-    expect(await _userVersion(recovered), 7);
+    expect(await _userVersion(recovered), 8);
   });
 
   test('v4 fixture adds restartable audio state with index intact', () async {
@@ -177,7 +177,7 @@ void main() {
         'language_tag',
       ]),
     );
-    expect(await _userVersion(current), 7);
+    expect(await _userVersion(current), 8);
   });
 
   test('interrupted v5 audio column additions retry idempotently', () async {
@@ -202,7 +202,7 @@ void main() {
         'language_tag',
       ]),
     );
-    expect(await _userVersion(recovered), 7);
+    expect(await _userVersion(recovered), 8);
   });
 
   test('interrupted v6 sync table creation retries idempotently', () async {
@@ -244,7 +244,7 @@ void main() {
         'sync_seen_mutation_rows',
       ]),
     );
-    expect(await _userVersion(recovered), 7);
+    expect(await _userVersion(recovered), 8);
   });
 
   test('interrupted v7 sync history migration retries idempotently', () async {
@@ -284,7 +284,28 @@ void main() {
         'resolved_at',
       ]),
     );
-    expect(await _userVersion(recovered), 7);
+    expect(await _userVersion(recovered), 8);
+  });
+
+  test('interrupted v8 podcast table creation retries idempotently', () async {
+    final fixture = await _materializeFixture('v004_populated.sql');
+    final prepared = RiverDatabase(NativeDatabase(fixture));
+    await prepared.verifyReady();
+    await prepared.close();
+    final raw = sqlite.sqlite3.open(fixture.path);
+    raw
+      ..execute('DROP TABLE podcast_downloads')
+      ..execute('DROP TABLE podcast_episodes')
+      ..execute('PRAGMA user_version = 7')
+      ..close();
+    final recovered = await _openFixture(fixture);
+
+    expect(await _podcastTableNames(recovered), <String>[
+      'podcast_downloads',
+      'podcast_episodes',
+      'podcast_shows',
+    ]);
+    expect(await _userVersion(recovered), 8);
   });
 }
 
@@ -341,6 +362,16 @@ Future<List<String>> _syncTableNames(RiverDatabase database) async =>
       SELECT name
       FROM sqlite_master
       WHERE type = 'table' AND name LIKE 'sync_%'
+      ORDER BY name
+      ''',
+    ).get()).map((row) => row.read<String>('name')).toList(growable: false);
+
+Future<List<String>> _podcastTableNames(RiverDatabase database) async =>
+    (await database.customSelect(
+      '''
+      SELECT name
+      FROM sqlite_master
+      WHERE type = 'table' AND name LIKE 'podcast_%'
       ORDER BY name
       ''',
     ).get()).map((row) => row.read<String>('name')).toList(growable: false);

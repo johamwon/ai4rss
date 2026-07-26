@@ -22,6 +22,9 @@ part 'database.g.dart';
     SyncCursorRows,
     SyncConflictRows,
     SyncSeenMutationRows,
+    PodcastShows,
+    PodcastEpisodes,
+    PodcastDownloads,
   ],
 )
 final class RiverDatabase extends _$RiverDatabase {
@@ -34,7 +37,7 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -117,6 +120,17 @@ final class RiverDatabase extends _$RiverDatabase {
         }
         if (!await _hasTable('sync_seen_mutation_rows')) {
           await migrator.createTable(syncSeenMutationRows);
+        }
+      }
+      if (from < 8) {
+        if (!await _hasTable('podcast_shows')) {
+          await migrator.createTable(podcastShows);
+        }
+        if (!await _hasTable('podcast_episodes')) {
+          await migrator.createTable(podcastEpisodes);
+        }
+        if (!await _hasTable('podcast_downloads')) {
+          await migrator.createTable(podcastDownloads);
         }
       }
     },
