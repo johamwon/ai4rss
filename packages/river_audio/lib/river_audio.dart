@@ -2,6 +2,8 @@ library;
 
 import 'package:river_domain/river_domain.dart';
 
+export 'src/article_speech_segmenter.dart';
+
 final class AudioQueue {
   final List<AudioItem> _items = <AudioItem>[];
 
