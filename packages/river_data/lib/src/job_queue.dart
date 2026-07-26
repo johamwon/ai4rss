@@ -188,6 +188,60 @@ final class PersistentJobQueue {
     });
   }
 
+  Future<bool> failPermanently({
+    required String id,
+    required String errorCode,
+    required DateTime now,
+  }) async {
+    final updated =
+        await (_database.update(_database.backgroundJobs)..where(
+              (BackgroundJobs table) =>
+                  table.id.equals(id) &
+                  table.status.equals(DurableJobStatus.running.name),
+            ))
+            .write(
+              BackgroundJobsCompanion(
+                status: Value<String>(DurableJobStatus.failed.name),
+                leaseUntil: const Value<DateTime?>(null),
+                lastErrorCode: Value<String>(errorCode),
+                updatedAt: Value<DateTime>(now),
+              ),
+            );
+    return updated == 1;
+  }
+
+  Future<bool> retryFailed({
+    required String idempotencyKey,
+    required DateTime now,
+  }) async {
+    final updated =
+        await (_database.update(_database.backgroundJobs)..where(
+              (BackgroundJobs table) =>
+                  table.idempotencyKey.equals(idempotencyKey) &
+                  table.status.equals(DurableJobStatus.failed.name),
+            ))
+            .write(
+              BackgroundJobsCompanion(
+                status: Value<String>(DurableJobStatus.queued.name),
+                attempt: const Value<int>(0),
+                availableAt: Value<DateTime>(now),
+                leaseUntil: const Value<DateTime?>(null),
+                lastErrorCode: const Value<String?>(null),
+                updatedAt: Value<DateTime>(now),
+              ),
+            );
+    return updated == 1;
+  }
+
+  Future<DurableJobRecord?> findByIdempotencyKey(String key) async {
+    final row =
+        await (_database.select(_database.backgroundJobs)..where(
+              (BackgroundJobs table) => table.idempotencyKey.equals(key),
+            ))
+            .getSingleOrNull();
+    return row == null ? null : _toRecord(row);
+  }
+
   Future<int> recoverExpiredLeases(
     DateTime now, {
     String? typePrefix,

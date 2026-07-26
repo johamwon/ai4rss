@@ -137,6 +137,61 @@ void main() {
     expect(find.text('打开原文'), findsOneWidget);
     expect(find.text('报告问题'), findsOneWidget);
     expect(find.textContaining('private network detail'), findsNothing);
+    expect(find.byTooltip('已可离线阅读'), findsOneWidget);
+  });
+
+  testWidgets('offline download queues, exposes failure, and retries', (
+    tester,
+  ) async {
+    final offline = FakeOfflineArticleManager();
+    final controller = buildReaderController(
+      articleId: 'article-1',
+      watch: (_) => Stream<FeedArticleDetailRecord?>.value(
+        _detail(summary: 'Readable Feed preview'),
+      ),
+      extract: (_) => Completer<ExtractionResult>().future,
+      offlineArticles: offline,
+    );
+    addTearDown(() async {
+      controller.dispose();
+      await offline.close();
+    });
+    await tester.pumpWidget(_TestHost(controller: controller));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('离线下载'));
+    await tester.pump();
+
+    expect(offline.enqueued, <String>['article-1']);
+    expect(find.byTooltip('等待离线下载'), findsOneWidget);
+    expect(find.text('已排队，联网后自动完成离线下载'), findsOneWidget);
+
+    offline.emit(
+      const OfflineArticleState(
+        articleId: 'article-1',
+        phase: OfflineArticlePhase.failed,
+        failureCode: 'network',
+      ),
+    );
+    await tester.pump();
+    expect(find.byTooltip('重试离线下载'), findsOneWidget);
+    expect(find.text('离线下载失败，可以重试'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('重试离线下载'));
+    await tester.pump();
+    expect(offline.retried, <String>['article-1']);
+    expect(find.byTooltip('等待离线下载'), findsOneWidget);
+
+    offline.emit(
+      const OfflineArticleState(
+        articleId: 'article-1',
+        phase: OfflineArticlePhase.available,
+      ),
+    );
+    await tester.pump();
+    expect(find.byTooltip('已可离线阅读'), findsOneWidget);
+    expect(find.text('已可离线阅读'), findsOneWidget);
   });
 
   testWidgets('full-text retry forces reparse and replaces the fallback',

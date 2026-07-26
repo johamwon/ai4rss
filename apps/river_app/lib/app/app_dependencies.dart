@@ -29,6 +29,14 @@ final class AppDependencies {
         _database = database {
     jobs = PersistentJobQueue(database);
     feeds = DriftFeedRepository(database);
+    offlineArticles = DurableOfflineArticleManager(
+      jobs: jobs,
+      loadArticle: (articleId) => feeds.watchArticle(articleId).first,
+      extractor: fullTextExtractor,
+      network: this.network,
+      clock: clock,
+      ids: ids,
+    );
     feedRefresh = FeedRefreshService(
       http: http,
       repository: feeds,
@@ -104,6 +112,7 @@ final class AppDependencies {
   final OpmlFileGateway opmlFiles;
   late final PersistentJobQueue jobs;
   late final DriftFeedRepository feeds;
+  late final DurableOfflineArticleManager offlineArticles;
   late final FeedRefreshService feedRefresh;
   late final FeedRefreshCoordinator feedRefreshCoordinator;
   late final FeedDiscoveryService feedDiscovery;
@@ -112,6 +121,7 @@ final class AppDependencies {
   final RiverDatabase _database;
 
   Future<void> close() async {
+    await offlineArticles.close();
     await feedRefreshCoordinator.close();
     final httpPort = http;
     if (httpPort is BoundedHttpPort) {
