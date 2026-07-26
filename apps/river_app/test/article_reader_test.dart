@@ -127,8 +127,144 @@ void main() {
     await tester.pump();
 
     expect(find.text('Offline cached body'), findsOneWidget);
-    expect(find.text('完整正文暂不可用，当前内容仍可阅读'), findsOneWidget);
+    expect(find.text('完整正文暂不可用'), findsOneWidget);
+    expect(
+      find.text('未能获取完整正文，Feed 或缓存内容仍可阅读'),
+      findsOneWidget,
+    );
+    expect(find.text('使用当前内容'), findsOneWidget);
+    expect(find.text('重试全文'), findsOneWidget);
+    expect(find.text('打开原文'), findsOneWidget);
+    expect(find.text('报告问题'), findsOneWidget);
     expect(find.textContaining('private network detail'), findsNothing);
+  });
+
+  testWidgets('full-text retry forces reparse and replaces the fallback',
+      (tester) async {
+    final requests = <ExtractionRequest>[];
+    var calls = 0;
+    final controller = buildReaderController(
+      articleId: 'article-1',
+      watch: (_) => Stream<FeedArticleDetailRecord?>.value(
+        _detail(summary: 'Readable Feed fallback'),
+      ),
+      extract: (request) async {
+        requests.add(request);
+        calls += 1;
+        if (calls == 1) {
+          return const ExtractionFailureResult(
+            failure: ExtractionFailure(
+              code: ExtractionFailureCode.timeout,
+              message: 'private timeout detail',
+              retryable: true,
+            ),
+            attempts: <ExtractionAttempt>[],
+          );
+        }
+        return _success('Recovered full article');
+      },
+    );
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(_TestHost(controller: controller));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Readable Feed fallback'), findsOneWidget);
+    await tester.tap(find.text('重试全文'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(requests, hasLength(2));
+    expect(requests.first.forceReparse, isFalse);
+    expect(requests.last.forceReparse, isTrue);
+    expect(find.text('Recovered full article'), findsOneWidget);
+    expect(find.text('完整正文已就绪'), findsOneWidget);
+    expect(find.text('重试全文'), findsNothing);
+  });
+
+  testWidgets('failure actions open original and report only safe diagnostics',
+      (tester) async {
+    final external = FakeExternalUriGateway();
+    final share = FakeShareGateway();
+    final controller = buildReaderController(
+      articleId: 'article-1',
+      watch: (_) => Stream<FeedArticleDetailRecord?>.value(
+        _detail(summary: 'Sensitive fallback body'),
+      ),
+      extract: (_) async => const ExtractionFailureResult(
+        failure: ExtractionFailure(
+          code: ExtractionFailureCode.network,
+          message: 'private network detail',
+          retryable: true,
+        ),
+        attempts: <ExtractionAttempt>[
+          ExtractionAttempt(
+            extractor: 'readability',
+            extractorVersion: '2',
+            outcome: ExtractionAttemptOutcome.failed,
+            failureCode: ExtractionFailureCode.network,
+          ),
+        ],
+      ),
+      externalUri: external,
+      share: share,
+    );
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(_TestHost(controller: controller));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('打开原文'));
+    await tester.pump();
+    expect(external.lastUri, Uri.parse('https://example.test/article'));
+
+    await tester.tap(find.text('报告问题'));
+    await tester.pump();
+    final report = share.lastRequest!;
+    expect(report.title, 'River 全文提取问题');
+    expect(report.text, contains('https://example.test/article'));
+    expect(report.text, contains('network'));
+    expect(report.text, contains('readability@2:failed'));
+    expect(report.text, isNot(contains('private network detail')));
+    expect(report.text, isNot(contains('Sensitive fallback body')));
+
+    external.outcome = ExternalUriOpenOutcome.unavailable;
+    await tester.tap(find.byTooltip('打开原文'));
+    await tester.pump();
+    expect(find.text('无法打开原文，请检查系统浏览器设置后重试'), findsOneWidget);
+
+    await tester.tap(find.text('使用当前内容'));
+    await tester.pump();
+    expect(find.text('正在使用 Feed 或缓存内容'), findsOneWidget);
+    expect(find.text('报告问题'), findsNothing);
+    expect(find.text('Sensitive fallback body'), findsOneWidget);
+  });
+
+  testWidgets('missing fallback exposes recovery instead of a spinner',
+      (tester) async {
+    final controller = buildReaderController(
+      articleId: 'article-1',
+      watch: (_) => Stream<FeedArticleDetailRecord?>.value(
+        _detail(summary: ''),
+      ),
+      extract: (_) async => const ExtractionFailureResult(
+        failure: ExtractionFailure(
+          code: ExtractionFailureCode.articleBodyMissing,
+          message: 'private parser detail',
+        ),
+        attempts: <ExtractionAttempt>[],
+      ),
+    );
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(_TestHost(controller: controller));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('未能获取可阅读正文，请重试全文或打开原文'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('使用当前内容'), findsNothing);
+    expect(find.text('重试全文'), findsOneWidget);
+    expect(find.textContaining('private parser detail'), findsNothing);
   });
 
   testWidgets('detail load failure is private and retryable', (tester) async {

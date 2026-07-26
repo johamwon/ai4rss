@@ -18,10 +18,12 @@ final class AppDependencies {
     required RiverDatabase database,
     this.automaticRefreshEnabled = true,
     BackgroundRefreshScheduler? backgroundRefresh,
+    ExternalUriGateway? externalUri,
     NetworkMonitor? network,
     OpmlFileGateway? opmlFiles,
   })  : opmlFiles = opmlFiles ?? const PlatformOpmlFileGateway(),
         network = network ?? const UnknownNetworkMonitor(),
+        externalUri = externalUri ?? const UnavailableExternalUriGateway(),
         backgroundRefresh =
             backgroundRefresh ?? PlatformBackgroundRefreshScheduler(),
         _database = database {
@@ -82,6 +84,7 @@ final class AppDependencies {
       ),
       platform: const MethodChannelRiverPlatform(),
       share: SharePlusGateway(),
+      externalUri: UrlLauncherExternalUriGateway(),
       network: ConnectivityNetworkMonitor(),
       http: http,
       database: database,
@@ -94,6 +97,7 @@ final class AppDependencies {
   final RiverPlatformBridge platform;
   final BackgroundRefreshScheduler backgroundRefresh;
   final ShareGateway share;
+  final ExternalUriGateway externalUri;
   final NetworkMonitor network;
   final HttpPort http;
   final bool automaticRefreshEnabled;

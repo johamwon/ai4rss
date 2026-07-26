@@ -79,6 +79,20 @@ abstract interface class ShareGateway {
   Future<ShareOutcome> share(ShareRequest request);
 }
 
+enum ExternalUriOpenOutcome { opened, unavailable }
+
+abstract interface class ExternalUriGateway {
+  Future<ExternalUriOpenOutcome> open(Uri uri);
+}
+
+final class UnavailableExternalUriGateway implements ExternalUriGateway {
+  const UnavailableExternalUriGateway();
+
+  @override
+  Future<ExternalUriOpenOutcome> open(Uri uri) async =>
+      ExternalUriOpenOutcome.unavailable;
+}
+
 abstract interface class AudioEngine {
   Future<void> load(AudioItem item);
   Future<void> play();

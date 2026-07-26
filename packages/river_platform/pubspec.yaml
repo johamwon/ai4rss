@@ -21,6 +21,7 @@ dependencies:
   river_feed:
     path: ../river_feed
   share_plus: 12.0.2
+  url_launcher: 6.3.2
   workmanager: 0.9.0+3
 dev_dependencies:
   flutter_test:

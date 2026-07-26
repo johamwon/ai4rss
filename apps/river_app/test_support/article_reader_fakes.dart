@@ -103,6 +103,17 @@ final class FakeShareGateway implements ShareGateway {
   }
 }
 
+final class FakeExternalUriGateway implements ExternalUriGateway {
+  Uri? lastUri;
+  ExternalUriOpenOutcome outcome = ExternalUriOpenOutcome.opened;
+
+  @override
+  Future<ExternalUriOpenOutcome> open(Uri uri) async {
+    lastUri = uri;
+    return outcome;
+  }
+}
+
 final class FixedReaderClock implements Clock {
   const FixedReaderClock();
 
@@ -117,6 +128,7 @@ ArticleReaderController buildReaderController({
   FakeArticleReaderRepository? repository,
   FakeReaderSettingsRepository? settings,
   FakeShareGateway? share,
+  FakeExternalUriGateway? externalUri,
 }) =>
     ArticleReaderController(
       articleId: articleId,
@@ -124,5 +136,6 @@ ArticleReaderController buildReaderController({
       extractor: FakeExtractor(extract),
       readerSettings: settings ?? FakeReaderSettingsRepository(),
       share: share ?? FakeShareGateway(),
+      externalUri: externalUri ?? FakeExternalUriGateway(),
       clock: const FixedReaderClock(),
     );
