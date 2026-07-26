@@ -7,8 +7,8 @@ Windows 开发机需要使用非默认 Flutter 入口时，可以设置 `RIVER_F
 | 工作流 | 触发 | 阻断/产物 |
 |---|---|---|
 | PR Fast | 面向 `master` 的 PR、手动 | 格式、静态分析、全部单元/Widget 测试、Fixture 与 Replay Harness |
-| Merge | 推送 `master`、手动 | Fast Lane 后并行生成 Android、iOS、Windows Debug 构建；Windows 执行阅读旅程、真实计划任务 Smoke 与原生契约测试，产物保留 7 天 |
-| Nightly | 每日 02:23（Asia/Shanghai）、手动 | 确定性回归、Windows Integration Journey/计划任务 Smoke、三端 Release Candidate，保留 14 天 |
+| Merge | 推送 `master`、手动 | Fast Lane 后并行生成 Android、iOS、Windows Debug 构建；Windows 执行阅读旅程、真实计划任务、系统 TTS 与 SMTC Smoke 及原生契约测试，产物保留 7 天 |
+| Nightly | 每日 02:23（Asia/Shanghai）、手动 | 确定性回归、Windows Integration Journey/计划任务/系统媒体会话 Smoke、三端 Release Candidate，保留 14 天 |
 | Release | `v*` 标签、手动 | Fast Gate、三端打包、SHA-256 清单和草稿 GitHub Release |
 
 ## 发布方式

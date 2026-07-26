@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:river_audio/river_audio.dart';
 import 'package:river_data/river_data.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
@@ -21,11 +22,14 @@ final class AppDependencies {
     ExternalUriGateway? externalUri,
     AudioEngine? audio,
     AudioPlaybackRepository? audioPlayback,
+    AudioSystemSession? audioSystemSession,
     NetworkMonitor? network,
     OpmlFileGateway? opmlFiles,
   })  : opmlFiles = opmlFiles ?? const PlatformOpmlFileGateway(),
         audio = audio ?? const UnavailableAudioEngine(),
         audioPlayback = audioPlayback ?? DriftAudioPlaybackRepository(database),
+        audioSystemSession =
+            audioSystemSession ?? const UnavailableAudioSystemSession(),
         network = network ?? const UnknownNetworkMonitor(),
         externalUri = externalUri ?? const UnavailableExternalUriGateway(),
         backgroundRefresh =
@@ -63,6 +67,12 @@ final class AppDependencies {
       ids: ids,
     );
     readerSettings = DriftReaderSettingsRepository(database);
+    audioController = AudioPlaybackController(
+      engine: this.audio,
+      repository: this.audioPlayback,
+      systemSession: this.audioSystemSession,
+      clock: clock,
+    );
   }
 
   static Future<AppDependencies> production({
@@ -82,6 +92,12 @@ final class AppDependencies {
         : LayeredFullTextExtractor.withDynamicPageRenderer(
             InAppWebViewDynamicPageRenderer(),
           );
+    final audio = backgroundExecution
+        ? const UnavailableAudioEngine()
+        : SystemTtsAudioEngine();
+    final audioSystemSession = backgroundExecution
+        ? const UnavailableAudioSystemSession()
+        : await SystemAudioSession.create();
     return AppDependencies(
       clock: clock,
       ids: SecureIdGenerator(),
@@ -96,9 +112,8 @@ final class AppDependencies {
       ),
       platform: const MethodChannelRiverPlatform(),
       share: SharePlusGateway(),
-      audio: backgroundExecution
-          ? const UnavailableAudioEngine()
-          : SystemTtsAudioEngine(),
+      audio: audio,
+      audioSystemSession: audioSystemSession,
       externalUri: UrlLauncherExternalUriGateway(),
       network: ConnectivityNetworkMonitor(),
       http: http,
@@ -114,6 +129,7 @@ final class AppDependencies {
   final ShareGateway share;
   final AudioEngine audio;
   final AudioPlaybackRepository audioPlayback;
+  final AudioSystemSession audioSystemSession;
   final ExternalUriGateway externalUri;
   final NetworkMonitor network;
   final HttpPort http;
@@ -127,9 +143,12 @@ final class AppDependencies {
   late final FeedDiscoveryService feedDiscovery;
   late final SubscriptionOrganizerService subscriptionOrganizer;
   late final DriftReaderSettingsRepository readerSettings;
+  late final AudioPlaybackController audioController;
   final RiverDatabase _database;
 
   Future<void> close() async {
+    await audioController.dispose();
+    await audioSystemSession.dispose();
     await audio.dispose();
     await offlineArticles.close();
     await feedRefreshCoordinator.close();

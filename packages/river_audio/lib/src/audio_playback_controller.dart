@@ -126,11 +126,13 @@ final class AudioPlaybackController {
     required AudioEngine engine,
     required AudioPlaybackRepository repository,
     required Clock clock,
+    AudioSystemSession systemSession = const UnavailableAudioSystemSession(),
     AudioScheduler scheduler = const DartAudioScheduler(),
     this.persistenceDelay = const Duration(milliseconds: 400),
   })  : _engine = engine,
         _repository = repository,
         _clock = clock,
+        _systemSession = systemSession,
         _scheduler = scheduler {
     _engineSubscription = _engine.events.listen(
       _handleEngineEvent,
@@ -138,21 +140,30 @@ final class AudioPlaybackController {
         _fail('audio_event_stream_failed');
       },
     );
+    _systemSubscription = _systemSession.events.listen(
+      _handleSystemEvent,
+      onError: (Object error, StackTrace stackTrace) {
+        _emit(_state.copyWith(failureCode: 'audio_system_events_failed'));
+      },
+    );
   }
 
   final AudioEngine _engine;
   final AudioPlaybackRepository _repository;
   final Clock _clock;
+  final AudioSystemSession _systemSession;
   final AudioScheduler _scheduler;
   final Duration persistenceDelay;
   final StreamController<AudioPlaybackState> _states =
       StreamController<AudioPlaybackState>.broadcast(sync: true);
   late final StreamSubscription<AudioEngineEvent> _engineSubscription;
+  late final StreamSubscription<AudioSystemEvent> _systemSubscription;
   AudioPlaybackState _state = const AudioPlaybackState.initial();
   AudioTimerHandle? _persistenceTimer;
   AudioTimerHandle? _sleepTimer;
   var _generation = 0;
   var _restoring = false;
+  var _resumeAfterInterruption = false;
   var _disposed = false;
 
   AudioPlaybackState get state => _state;
@@ -240,6 +251,12 @@ final class AudioPlaybackController {
   Future<void> play() async {
     if (_disposed || _state.request == null) return;
     try {
+      final activated = await _systemSession.activate();
+      if (!activated) {
+        _fail('audio_focus_denied');
+        return;
+      }
+      _resumeAfterInterruption = false;
       if (_state.phase == AudioEnginePhase.completed) {
         await _engine.seek(_initialPosition(_state.request!));
       }
@@ -255,9 +272,11 @@ final class AudioPlaybackController {
 
   Future<void> pause() async {
     if (_disposed || _state.request == null) return;
+    _resumeAfterInterruption = false;
     try {
       await _engine.pause();
       await _persistNow();
+      await _systemSession.deactivate();
     } on Object {
       _fail('audio_pause_failed');
     }
@@ -265,9 +284,11 @@ final class AudioPlaybackController {
 
   Future<void> stop() async {
     if (_disposed || _state.request == null) return;
+    _resumeAfterInterruption = false;
     try {
       await _engine.stop();
       await _persistNow();
+      await _systemSession.deactivate();
     } on Object {
       _fail('audio_stop_failed');
     }
@@ -415,11 +436,59 @@ final class AudioPlaybackController {
       case AudioEnginePhase.completed:
         _cancelPersistenceTimer();
         _cancelSleepTimer();
+        unawaited(_systemSession.deactivate().catchError((_) {}));
         unawaited(_repository.clear(request.item.id).catchError((_) {}));
       case AudioEnginePhase.idle ||
             AudioEnginePhase.loading ||
             AudioEnginePhase.ready:
         break;
+    }
+  }
+
+  void _handleSystemEvent(AudioSystemEvent event) {
+    if (_disposed) return;
+    switch (event.type) {
+      case AudioSystemEventType.play:
+        unawaited(play());
+      case AudioSystemEventType.pause:
+        unawaited(pause());
+      case AudioSystemEventType.stop:
+        unawaited(stop());
+      case AudioSystemEventType.skipNext:
+        unawaited(skipNext());
+      case AudioSystemEventType.skipPrevious:
+        unawaited(skipPrevious());
+      case AudioSystemEventType.interruptionBegan:
+        unawaited(_pauseForInterruption());
+      case AudioSystemEventType.interruptionEnded:
+        if (_resumeAfterInterruption && event.mayResume) {
+          _resumeAfterInterruption = false;
+          unawaited(play());
+        } else {
+          _resumeAfterInterruption = false;
+        }
+      case AudioSystemEventType.becomingNoisy:
+        _resumeAfterInterruption = false;
+        unawaited(pause());
+    }
+  }
+
+  Future<void> _pauseForInterruption() async {
+    if (_state.phase != AudioEnginePhase.playing) return;
+    _resumeAfterInterruption = true;
+    try {
+      await _engine.pause();
+      await _persistNow();
+      await _systemSession.deactivate();
+      _emit(
+        _state.copyWith(
+          phase: AudioEnginePhase.interrupted,
+          clearFailure: true,
+        ),
+      );
+    } on Object {
+      _resumeAfterInterruption = false;
+      _fail('audio_interruption_pause_failed');
     }
   }
 
@@ -574,6 +643,26 @@ final class AudioPlaybackController {
     if (_disposed) return;
     _state = state;
     _states.add(state);
+    final item = state.item;
+    final position = state.position;
+    if (item == null || position == null) {
+      unawaited(_systemSession.clear().catchError((_) {}));
+      return;
+    }
+    unawaited(
+      _systemSession
+          .publish(
+            AudioSystemPlaybackState(
+              item: item,
+              phase: state.phase,
+              position: position,
+              settings: state.settings,
+              canSkipPrevious: state.canSkipPrevious,
+              canSkipNext: state.canSkipNext,
+            ),
+          )
+          .catchError((_) {}),
+    );
   }
 
   Future<void> dispose() async {
@@ -585,6 +674,8 @@ final class AudioPlaybackController {
     _sleepTimer?.cancel();
     _sleepTimer = null;
     await _engineSubscription.cancel();
+    await _systemSubscription.cancel();
+    await _systemSession.clear().catchError((_) {});
     await _states.close();
   }
 }

@@ -8,6 +8,7 @@ export 'src/external_uri_gateway.dart';
 export 'src/network_monitor.dart';
 export 'src/opml_file_gateway.dart';
 export 'src/share_gateway.dart';
+export 'src/system_audio_session.dart';
 export 'src/system_tts_audio_engine.dart';
 
 abstract interface class RiverPlatformBridge {

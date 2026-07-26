@@ -33,6 +33,7 @@
 - TTS-001：定义供应商无关的统一 `AudioEngine` 契约，覆盖能力、音色、加载、事件、播放控制、语速/音调，以及媒体时长或文章句内位置；文章语音计划要求稳定正文版本和连续分段。纯 Dart 分句器保留 UTF-16 正文偏移，覆盖中英文标点、闭合引号、小数、常见缩写、超长句安全切分、围栏代码占位和空正文。
 - TTS-002：`river_platform` 通过固定版本的系统 TTS 适配器接入 Android TextToSpeech、iOS AVSpeechSynthesizer 和 Windows 系统语音，并保持领域层无插件类型。支持能力/音色发现、朗读、暂停/恢复、停止、按句及句内位置跳转、语速、音调、语言与音色；进度映射为正文 UTF-16 偏移，原生错误只输出稳定失败码。三端编译及 Windows 真实系统语音 Smoke 已加入 Merge/Nightly CI。
 - TTS-003：统一播放控制器支持加载、播放/暂停、前后句、重读、自动续句、倍速、音色、两小时内定时停止、过期事件隔离和稳定失败态。SQLite v5 按正文版本保存句子/字符断点与播放设置，暂停、跳转、设置变更及退出立即落盘，最终完成清除断点。阅读页按需创建语音计划，提供可换行的跨尺寸控制条，并在原有可选中文档内高亮当前句；正文版本变化时拒绝旧断点和旧高亮。
+- TTS-004 核心：进程级共享播放控制器接入统一 `AudioSystemSession`，Android/iOS 通过固定版本的 `audio_service` 与 `audio_session` 提供后台服务、通知/锁屏、耳机命令、音频焦点、中断和拔耳机事件；Windows 由仓库内 C++/WinRT `SystemMediaTransportControls` 适配器提供系统媒体控制。只有中断前正在播放且系统明确许可时才能自动恢复，拔耳机只暂停。Windows Debug 原生编译、Runner 测试、隐藏启动 Smoke 和真实 SMTC MethodChannel Integration Test 已通过；Android/iOS 注册已纳入 CI 构建验证。
 - 首个纵向切片：添加 Feed URL → 下载 → 解析 → SQLite 幂等写入 → 订阅及文章列表。
 - Windows Debug 构建和真实 Runner Integration Test。
 
@@ -46,20 +47,20 @@
 
 ## 下一批
 
-1. TTS-004：后台音频、通知/锁屏控制、耳机事件和音频焦点。
+1. TTS-004 真机验收：Android/iOS 锁屏、来电/其他音频中断、蓝牙和进程后台矩阵。
 2. TTS-005：长文章流式预取、云端高质量音色可选后端与播客队列复用。
 
 ## 最近验证
 
 - Fast Lane：通过，静态分析 0 问题。
 - `river_feed`：27 个测试通过，新增搜索查询约束、大小写无关字面量高亮与 Unicode 索引安全覆盖。
-- `river_domain`：10 个测试通过，新增统一音频快照的正文/播客位置约束，并继续覆盖来源载荷、正文版本/分段索引、播放参数边界、后台刷新策略与核心模型。
+- `river_domain`：11 个测试通过，新增系统中断自动恢复授权边界，并继续覆盖统一音频快照的正文/播客位置约束、来源载荷、正文版本/分段索引、播放参数边界、后台刷新策略与核心模型。
 - `river_data`：47 个测试通过，新增文章与播客断点往返、播放设置净化、清除完成进度、v4→v5 和中断后幂等迁移，并继续覆盖持久任务、旧版本升级及 10,000 篇文章 P95 1.2ms 基准。
-- `river_app`：48 个测试通过，新增真实阅读器控制链路中的断点恢复、当前句高亮、倍速、定时与暂停覆盖；五组手机、平板及 Windows 宽窄窗口 Golden 已更新并通过。
+- `river_app`：50 个测试通过，新增 Android 后台媒体注册、iOS 音频后台模式、Windows SMTC 构建契约，并继续覆盖真实阅读器控制链路中的断点恢复、当前句高亮、倍速、定时与暂停；五组手机、平板及 Windows 宽窄窗口 Golden 已通过。
 - `river_design_system`：2 个测试通过，浅色与深色高对比主题的关键文字组合均达到 WCAG AA 4.5:1。
-- `river_audio`：15 个测试通过，新增正文版本断点恢复、无效音色回退、自动续句、显式跳句、播放态保持、进度写入防抖、暂停即时落盘、定时暂停和过期事件隔离，并继续覆盖统一队列与跨语言分句。
+- `river_audio`：19 个测试通过，新增焦点拒绝、系统媒体命令路由、系统状态发布、中断许可恢复和拔耳机只暂停，并继续覆盖正文版本断点恢复、无效音色回退、自动续句、显式跳句、播放态保持、进度写入防抖、暂停即时落盘、定时暂停、过期事件隔离、统一队列与跨语言分句。
 - `river_extract`：29 个测试通过，新增完整 Feed 零网页请求、摘要静态下载和失败后平台回退编排覆盖。
-- `river_platform`：26 个测试通过，新增系统 TTS 加载/朗读、绝对句内进度、Android 截断恢复与 iOS/Windows 原生续读坐标、暂停/停止去重、语速/音调/音色、平台能力和错误脱敏覆盖，并继续验证外部原文、链路状态、三端后台调度及动态渲染契约。
+- `river_platform`：28 个测试通过，新增系统音频会话委托与 Windows MethodChannel 状态/命令映射，并继续覆盖系统 TTS 加载/朗读、绝对句内进度、Android 截断恢复与 iOS/Windows 原生续读坐标、暂停/停止去重、语速/音调/音色、平台能力、错误脱敏、外部原文、链路状态、三端后台调度及动态渲染契约。
 - Harness：fixtures 15/15、feeds 3/3、extraction 7/7、AI replay 1/1、ranking 2/2。
-- 本机 Windows Runner 验证受环境缺少 NuGet 阻断在插件构建阶段；同一集成旅程由安装 NuGet 的 Merge/Nightly Windows CI 执行。
+- 本机 Windows Debug 构建通过；原生命令行测试 1/1、隐藏启动 Smoke 与真实 SMTC MethodChannel Integration Test 均通过。Windows 统一启用 `/utf-8` 并保留 `/WX`，避免非英文系统代码页造成第三方插件误失败。
 - 三端构建：最近一次 Android/iOS/Windows 主分支 Debug 构建及产物上传均已通过；READ-002 的 Windows 原生滚动/选区旅程和 FEED-007 计划任务 Smoke 已加入 Merge 与 Nightly CI。

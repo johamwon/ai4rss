@@ -150,6 +150,22 @@ void main() {
     expect(snapshot.settings.rate, 1.5);
     expect(snapshot.contentRevision, 'sha256:article-1');
   });
+
+  test('system playback events bound automatic resume authorization', () {
+    expect(
+      () => AudioSystemEvent(
+        type: AudioSystemEventType.pause,
+        mayResume: true,
+      ),
+      throwsA(isA<AssertionError>()),
+    );
+
+    const ended = AudioSystemEvent(
+      type: AudioSystemEventType.interruptionEnded,
+      mayResume: true,
+    );
+    expect(ended.mayResume, isTrue);
+  });
 }
 
 final class _RecordingAudioEngine implements AudioEngine {

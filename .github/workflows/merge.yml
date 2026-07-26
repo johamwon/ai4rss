@@ -76,6 +76,7 @@ jobs:
           flutter test integration_test/progressive_reader_test.dart -d windows
           flutter test integration_test/background_refresh_scheduler_test.dart -d windows
           flutter test integration_test/system_tts_engine_test.dart -d windows
+          flutter test integration_test/system_audio_session_test.dart -d windows
         working-directory: apps/river_app
 
       - name: Build ${{ matrix.target }}

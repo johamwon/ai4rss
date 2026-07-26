@@ -263,6 +263,125 @@ void main() {
     expect(controller.state.phase, AudioEnginePhase.ready);
     expect(controller.state.failureCode, isNull);
   });
+
+  test('refuses playback when the operating system denies audio focus',
+      () async {
+    final engine = _FakeAudioEngine();
+    final systemSession = _FakeAudioSystemSession()..activationAllowed = false;
+    final controller = AudioPlaybackController(
+      engine: engine,
+      repository: _MemoryAudioPlaybackRepository(),
+      systemSession: systemSession,
+      clock: _MutableClock(DateTime.utc(2026, 7, 26)),
+    );
+    addTearDown(controller.dispose);
+    await controller.load(_request());
+
+    await controller.play();
+
+    expect(systemSession.activateCalls, 1);
+    expect(engine.playCalls, 0);
+    expect(controller.state.phase, AudioEnginePhase.failed);
+    expect(controller.state.failureCode, 'audio_focus_denied');
+  });
+
+  test('routes system media commands and publishes skip capabilities',
+      () async {
+    final engine = _FakeAudioEngine();
+    final systemSession = _FakeAudioSystemSession();
+    final controller = AudioPlaybackController(
+      engine: engine,
+      repository: _MemoryAudioPlaybackRepository(),
+      systemSession: systemSession,
+      clock: _MutableClock(DateTime.utc(2026, 7, 26)),
+    );
+    addTearDown(controller.dispose);
+    await controller.load(_request());
+    await controller.play();
+
+    systemSession.emit(AudioSystemEventType.skipNext);
+    await _flushMicrotasks();
+    expect(controller.state.position?.segmentIndex, 1);
+    expect(systemSession.published.last.canSkipPrevious, isTrue);
+    expect(systemSession.published.last.canSkipNext, isFalse);
+
+    systemSession.emit(AudioSystemEventType.pause);
+    await _flushMicrotasks();
+    expect(controller.state.phase, AudioEnginePhase.paused);
+    expect(systemSession.deactivateCalls, 1);
+
+    systemSession.emit(AudioSystemEventType.play);
+    await _flushMicrotasks();
+    expect(controller.state.phase, AudioEnginePhase.playing);
+    expect(systemSession.activateCalls, 2);
+
+    systemSession.emit(AudioSystemEventType.stop);
+    await _flushMicrotasks();
+    expect(controller.state.phase, AudioEnginePhase.stopped);
+    expect(engine.stopCalls, 1);
+  });
+
+  test('resumes only an active playback interrupted with system permission',
+      () async {
+    final engine = _FakeAudioEngine();
+    final systemSession = _FakeAudioSystemSession();
+    final controller = AudioPlaybackController(
+      engine: engine,
+      repository: _MemoryAudioPlaybackRepository(),
+      systemSession: systemSession,
+      clock: _MutableClock(DateTime.utc(2026, 7, 26)),
+    );
+    addTearDown(controller.dispose);
+    await controller.load(_request());
+    await controller.play();
+
+    systemSession.emit(AudioSystemEventType.interruptionBegan);
+    await _flushMicrotasks();
+    expect(controller.state.phase, AudioEnginePhase.interrupted);
+    expect(engine.pauseCalls, 1);
+
+    systemSession.emit(
+      AudioSystemEventType.interruptionEnded,
+      mayResume: true,
+    );
+    await _flushMicrotasks();
+    expect(controller.state.phase, AudioEnginePhase.playing);
+    expect(engine.playCalls, 2);
+
+    systemSession.emit(AudioSystemEventType.interruptionBegan);
+    await _flushMicrotasks();
+    systemSession.emit(AudioSystemEventType.interruptionEnded);
+    await _flushMicrotasks();
+    expect(controller.state.phase, AudioEnginePhase.interrupted);
+    expect(engine.playCalls, 2);
+  });
+
+  test('becoming noisy pauses and cannot trigger a later automatic resume',
+      () async {
+    final engine = _FakeAudioEngine();
+    final systemSession = _FakeAudioSystemSession();
+    final controller = AudioPlaybackController(
+      engine: engine,
+      repository: _MemoryAudioPlaybackRepository(),
+      systemSession: systemSession,
+      clock: _MutableClock(DateTime.utc(2026, 7, 26)),
+    );
+    addTearDown(controller.dispose);
+    await controller.load(_request());
+    await controller.play();
+
+    systemSession.emit(AudioSystemEventType.becomingNoisy);
+    await _flushMicrotasks();
+    systemSession.emit(
+      AudioSystemEventType.interruptionEnded,
+      mayResume: true,
+    );
+    await _flushMicrotasks();
+
+    expect(controller.state.phase, AudioEnginePhase.paused);
+    expect(engine.pauseCalls, 1);
+    expect(engine.playCalls, 1);
+  });
 }
 
 AudioItem _articleItem(String id) => AudioItem(
@@ -449,6 +568,47 @@ final class _FakeAudioEngine implements AudioEngine {
   void emit(AudioEngineEvent event) {
     if (event.position != null) position = event.position;
     _events.add(event);
+  }
+}
+
+final class _FakeAudioSystemSession implements AudioSystemSession {
+  final StreamController<AudioSystemEvent> _events =
+      StreamController<AudioSystemEvent>.broadcast(sync: true);
+  final List<AudioSystemPlaybackState> published = <AudioSystemPlaybackState>[];
+  var activationAllowed = true;
+  var activateCalls = 0;
+  var deactivateCalls = 0;
+  var clearCalls = 0;
+
+  @override
+  Stream<AudioSystemEvent> get events => _events.stream;
+
+  @override
+  Future<bool> activate() async {
+    activateCalls += 1;
+    return activationAllowed;
+  }
+
+  @override
+  Future<void> clear() async {
+    clearCalls += 1;
+  }
+
+  @override
+  Future<void> deactivate() async {
+    deactivateCalls += 1;
+  }
+
+  @override
+  Future<void> dispose() => _events.close();
+
+  @override
+  Future<void> publish(AudioSystemPlaybackState state) async {
+    published.add(state);
+  }
+
+  void emit(AudioSystemEventType type, {bool mayResume = false}) {
+    _events.add(AudioSystemEvent(type: type, mayResume: mayResume));
   }
 }
 

@@ -6,6 +6,8 @@ resolution: workspace
 environment:
   sdk: '>=3.6.0 <4.0.0'
 dependencies:
+  audio_service: 0.18.19
+  audio_session: 0.2.4
   connectivity_plus: 7.3.0
   # Vendored 11.0.2 keeps its path-traversal fix and iOS 13 support while
   # applying the upstream AGP 9 legacy-KGP compatibility patch.
