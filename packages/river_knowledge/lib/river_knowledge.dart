@@ -5,6 +5,8 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:river_domain/river_domain.dart';
 
+export 'src/knowledge_markdown.dart';
+
 final class KnowledgeExportService {
   const KnowledgeExportService(this._connector);
 
