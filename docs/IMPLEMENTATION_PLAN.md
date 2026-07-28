@@ -189,10 +189,11 @@ Milestone A退出门槛：阶段0～6全部通过；三端用同一真实Feed完
 |---|---|---|
 | KB-001 | 实现高亮、笔记、DOM定位、文本锚点和正文重解析恢复 | 正文版本变化、重复文本和锚点丢失测试 |
 | KB-002 | 实现统一KnowledgeItem、来源引用、内容哈希和外部映射 | Repository、迁移和去重测试 |
-| KB-003 | 定义连接器Create/Update/Delete/Status协议和幂等任务队列 | Fake Connector契约；退避、死信和人工重试 |
-| KB-004 | 实现单篇/批量Markdown、YAML Front Matter和图片策略 | 往返、文件名冲突、非法字符和大批量导出 |
-| KB-005 | 实现Notion OAuth、目标选择、Page/Block映射和River ID | Sandbox契约；重复保存不生成副本 |
-| KB-006 | 构建知识列表、详情、同步状态和失败恢复UI | Widget与端到端：文章→高亮→知识→Notion |
+| KB-003 | 将文章、摘要、高亮和笔记确定性渲染为规范Markdown文档 | 字节稳定、Front Matter注入、换行和安全文件名测试 |
+| KB-004 | 定义连接器Create/Update/Delete/Status协议和幂等任务队列 | Fake Connector契约；退避、死信和人工重试 |
+| KB-005 | 实现单篇/批量Markdown文件导出和远程/本地图片策略 | 往返、文件名冲突、非法字符和大批量导出 |
+| KB-006 | 实现Notion OAuth、目标选择、Page/Block映射和River ID | Sandbox契约；重复保存不生成副本 |
+| KB-007 | 构建知识列表、详情、同步状态和失败恢复UI | Widget与端到端：文章→高亮→知识→Notion |
 
 退出条件：同一文章重复保存只更新一个知识对象和一个Notion页面；连接器失败不影响本地数据。
 
