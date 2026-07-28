@@ -13,6 +13,7 @@ final class PodcastLibraryPage extends StatefulWidget {
     required this.downloads,
     required this.audio,
     required this.clock,
+    this.queue,
     super.key,
   });
 
@@ -22,6 +23,7 @@ final class PodcastLibraryPage extends StatefulWidget {
   final PodcastDownloadManager downloads;
   final AudioPlaybackController audio;
   final Clock clock;
+  final PersistentAudioQueue? queue;
 
   @override
   State<PodcastLibraryPage> createState() => _PodcastLibraryPageState();
@@ -168,6 +170,7 @@ final class _PodcastLibraryPageState extends State<PodcastLibraryPage> {
                       downloads: widget.downloads,
                       audio: widget.audio,
                       clock: widget.clock,
+                      queue: widget.queue,
                     ),
                   ),
                 ),
@@ -191,6 +194,7 @@ final class PodcastShowPage extends StatefulWidget {
     required this.downloads,
     required this.audio,
     required this.clock,
+    this.queue,
     super.key,
   });
 
@@ -201,6 +205,7 @@ final class PodcastShowPage extends StatefulWidget {
   final PodcastDownloadManager downloads;
   final AudioPlaybackController audio;
   final Clock clock;
+  final PersistentAudioQueue? queue;
 
   @override
   State<PodcastShowPage> createState() => _PodcastShowPageState();
@@ -297,6 +302,22 @@ final class _PodcastShowPageState extends State<PodcastShowPage> {
     }
   }
 
+  Future<void> _enqueueEpisode(PodcastEpisodeRecord episode) async {
+    final queue = widget.queue;
+    if (queue == null) return;
+    final added = await queue.enqueue(
+      AudioItem(
+        id: episode.id,
+        kind: AudioKind.podcastEpisode,
+        title: episode.title,
+        sourceUri: episode.mediaUrl,
+      ),
+    );
+    if (mounted) {
+      _message(added ? '已加入收听队列' : '已在收听队列中');
+    }
+  }
+
   void _message(String value) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -370,9 +391,21 @@ final class _PodcastShowPageState extends State<PodcastShowPage> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    trailing: PodcastDownloadButton(
-                      episodeId: episode.id,
-                      downloads: widget.downloads,
+                    trailing: Wrap(
+                      spacing: 0,
+                      children: <Widget>[
+                        IconButton(
+                          onPressed: widget.queue == null
+                              ? null
+                              : () => _enqueueEpisode(episode),
+                          icon: const Icon(Icons.playlist_add),
+                          tooltip: '加入收听队列',
+                        ),
+                        PodcastDownloadButton(
+                          episodeId: episode.id,
+                          downloads: widget.downloads,
+                        ),
+                      ],
                     ),
                   );
                 },

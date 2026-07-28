@@ -53,4 +53,52 @@ void main() {
       throwsA(isA<AssertionError>()),
     );
   });
+
+  test('audio queue keeps one cross-source current item and stable revision',
+      () {
+    final now = DateTime.utc(2026, 7, 28);
+    final article = AudioQueueEntry(
+      item: AudioItem(
+        id: 'article-1',
+        kind: AudioKind.articleTts,
+        title: 'Article',
+        sourceUri: Uri.parse('https://example.test/article'),
+      ),
+      position: 0,
+      isCurrent: true,
+      contentRevision: 'sha256:article-v1',
+      enqueuedAt: now,
+      updatedAt: now,
+    );
+    final podcast = AudioQueueEntry(
+      item: AudioItem(
+        id: 'podcast-1',
+        kind: AudioKind.podcastEpisode,
+        title: 'Podcast',
+        sourceUri: Uri.parse('https://example.test/podcast.mp3'),
+      ),
+      position: 1,
+      isCurrent: false,
+      enqueuedAt: now,
+      updatedAt: now,
+    );
+    final queue = AudioQueueSnapshot(<AudioQueueEntry>[article, podcast]);
+
+    expect(queue.current?.item.id, article.item.id);
+    expect(queue.currentIndex, 0);
+    expect(queue.entries.map((entry) => entry.item.kind), <AudioKind>[
+      AudioKind.articleTts,
+      AudioKind.podcastEpisode,
+    ]);
+    expect(
+      () => AudioQueueEntry(
+        item: article.item,
+        position: 0,
+        isCurrent: true,
+        enqueuedAt: now,
+        updatedAt: now,
+      ),
+      throwsA(isA<AssertionError>()),
+    );
+  });
 }

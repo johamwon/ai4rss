@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:river_audio/river_audio.dart';
-import 'package:river_data/river_data.dart';
+import 'package:river_data/river_data.dart' hide AudioItem, AudioQueueEntry;
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
 import 'package:river_feed/river_feed.dart';
@@ -94,6 +94,11 @@ final class AppDependencies {
       ids: ids,
     );
     readerSettings = DriftReaderSettingsRepository(database);
+    audioQueueRepository = DriftAudioQueueRepository(database);
+    audioQueue = PersistentAudioQueue(
+      repository: audioQueueRepository,
+      clock: clock,
+    );
     audioController = AudioPlaybackController(
       engine: this.audio,
       repository: this.audioPlayback,
@@ -101,6 +106,11 @@ final class AppDependencies {
       segmentPrefetcher:
           audioSegmentPrefetcher ?? const UnavailableAudioSegmentPrefetcher(),
       clock: clock,
+    );
+    audioQueuePlayer = AudioQueuePlaybackCoordinator(
+      queue: audioQueue,
+      playback: audioController,
+      resolve: _resolveQueuedAudio,
     );
   }
 
@@ -183,10 +193,14 @@ final class AppDependencies {
   late final FeedDiscoveryService feedDiscovery;
   late final SubscriptionOrganizerService subscriptionOrganizer;
   late final DriftReaderSettingsRepository readerSettings;
+  late final DriftAudioQueueRepository audioQueueRepository;
+  late final PersistentAudioQueue audioQueue;
   late final AudioPlaybackController audioController;
+  late final AudioQueuePlaybackCoordinator audioQueuePlayer;
   final RiverDatabase _database;
 
   Future<void> close() async {
+    await audioQueuePlayer.dispose();
     await audioController.dispose();
     await audioSystemSession.dispose();
     await audio.dispose();
@@ -198,6 +212,65 @@ final class AppDependencies {
       httpPort.close();
     }
     await _database.close();
+  }
+
+  Future<ResolvedAudioQueueItem?> _resolveQueuedAudio(
+    AudioQueueEntry entry,
+  ) async {
+    switch (entry.item.kind) {
+      case AudioKind.articleTts:
+        final detail = await feeds.watchArticle(entry.item.id).first;
+        if (detail == null) return null;
+        String text;
+        String revision;
+        final cached = detail.content;
+        if (cached != null && cached.isReadable) {
+          text = cached.plainText.trim();
+          revision = cached.contentHash ??
+              '${cached.extractorName}@${cached.extractorVersion}:'
+                  '${cached.extractedAt.microsecondsSinceEpoch}';
+        } else {
+          final assessed = const FeedContentAssessor().assess(
+            contentHtml: detail.feedContentHtml,
+            summary: detail.summary,
+            sourceUri: detail.canonicalUrl,
+          );
+          text = assessed.content.plainText.trim();
+          revision = 'feed:${text.hashCode}';
+        }
+        if (text.isEmpty || revision != entry.contentRevision) return null;
+        final segments = const ArticleSpeechSegmenter().segment(text);
+        if (segments.isEmpty) return null;
+        return ResolvedAudioQueueItem(
+          request: AudioLoadRequest(
+            item: AudioItem(
+              id: detail.id,
+              kind: AudioKind.articleTts,
+              title: detail.title,
+              sourceUri: detail.canonicalUrl,
+            ),
+            speechSegments: segments,
+            contentRevision: revision,
+          ),
+        );
+      case AudioKind.podcastEpisode:
+        final episode = await podcasts.findEpisodeById(entry.item.id);
+        if (episode == null) return null;
+        final show = await podcasts.findShowById(episode.showId);
+        if (show == null) return null;
+        final download = await podcastDownloads.status(episode.id);
+        return ResolvedAudioQueueItem(
+          request: AudioLoadRequest(
+            item: AudioItem(
+              id: episode.id,
+              kind: AudioKind.podcastEpisode,
+              title: episode.title,
+              sourceUri: download.playbackUri ?? episode.mediaUrl,
+            ),
+          ),
+          settings: AudioPlaybackSettings(rate: show.defaultPlaybackRate),
+        );
+    }
   }
 }
 

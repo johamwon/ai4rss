@@ -182,6 +182,13 @@ void main() {
     expect(find.text('还没有订阅源'), findsOneWidget);
     expect(find.byTooltip('添加订阅源'), findsOneWidget);
     expect(find.byTooltip('播客'), findsOneWidget);
+    expect(find.byTooltip('收听队列'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('收听队列'));
+    await tester.pumpAndSettle();
+    expect(find.text('收听队列为空'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('播客'));
     await tester.pumpAndSettle();

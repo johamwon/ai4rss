@@ -124,6 +124,7 @@ final class ArticleReaderController extends ChangeNotifier {
     AudioPlaybackRepository audioPlayback =
         const UnavailableAudioPlaybackRepository(),
     AudioPlaybackController? audioController,
+    PersistentAudioQueue? audioQueue,
   })  : _repository = repository,
         _extractor = extractor,
         _readerSettings = readerSettings,
@@ -131,6 +132,7 @@ final class ArticleReaderController extends ChangeNotifier {
         _externalUri = externalUri,
         _offlineArticles = offlineArticles,
         _clock = clock,
+        _audioQueue = audioQueue,
         _audioController = audioController ??
             AudioPlaybackController(
               engine: audio,
@@ -152,6 +154,7 @@ final class ArticleReaderController extends ChangeNotifier {
   final ExternalUriGateway _externalUri;
   final OfflineArticleManager _offlineArticles;
   final Clock _clock;
+  final PersistentAudioQueue? _audioQueue;
   final AudioPlaybackController _audioController;
   final bool _ownsAudioController;
   StreamSubscription<FeedArticleDetailRecord?>? _articleSubscription;
@@ -168,6 +171,8 @@ final class ArticleReaderController extends ChangeNotifier {
   var _disposed = false;
 
   ArticleReaderState get state => _state;
+  bool get canQueueSpeech =>
+      _audioQueue != null && _state.detail != null && _state.content != null;
 
   void retry() {
     _extractionStarted = false;
@@ -575,6 +580,26 @@ final class ArticleReaderController extends ChangeNotifier {
     }
   }
 
+  Future<bool?> enqueueSpeech() async {
+    final queue = _audioQueue;
+    final detail = _state.detail;
+    final content = _state.content;
+    if (queue == null || detail == null || content == null) return null;
+    if (const ArticleSpeechSegmenter().segment(content.text).isEmpty) {
+      _setState(_state.copyWith(operationFailure: '当前文章没有可朗读的正文'));
+      return null;
+    }
+    return queue.enqueue(
+      AudioItem(
+        id: detail.id,
+        kind: AudioKind.articleTts,
+        title: detail.title,
+        sourceUri: detail.canonicalUrl,
+      ),
+      contentRevision: content.revision,
+    );
+  }
+
   Future<void> skipSpeechNext() => _audioController.skipNext();
 
   Future<void> skipSpeechPrevious() => _audioController.skipPrevious();
@@ -768,6 +793,7 @@ final class ArticleReaderPage extends StatefulWidget {
     this.audio = const UnavailableAudioEngine(),
     this.audioPlayback = const UnavailableAudioPlaybackRepository(),
     this.audioController,
+    this.audioQueue,
     super.key,
   });
 
@@ -782,6 +808,7 @@ final class ArticleReaderPage extends StatefulWidget {
   final AudioEngine audio;
   final AudioPlaybackRepository audioPlayback;
   final AudioPlaybackController? audioController;
+  final PersistentAudioQueue? audioQueue;
 
   @override
   State<ArticleReaderPage> createState() => _ArticleReaderPageState();
@@ -805,6 +832,7 @@ final class _ArticleReaderPageState extends State<ArticleReaderPage> {
       audio: widget.audio,
       audioPlayback: widget.audioPlayback,
       audioController: widget.audioController,
+      audioQueue: widget.audioQueue,
     );
   }
 
@@ -1034,6 +1062,13 @@ final class _ArticleTtsControls extends StatelessWidget {
                             : '继续朗读',
                   ),
                   IconButton(
+                    onPressed: controller.canQueueSpeech
+                        ? () => _enqueue(context)
+                        : null,
+                    icon: const Icon(Icons.playlist_add),
+                    tooltip: '加入收听队列',
+                  ),
+                  IconButton(
                     onPressed: audio.canSkipPrevious && !busy
                         ? () => unawaited(controller.skipSpeechPrevious())
                         : null,
@@ -1168,6 +1203,16 @@ final class _ArticleTtsControls extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _enqueue(BuildContext context) async {
+    final added = await controller.enqueueSpeech();
+    if (!context.mounted || added == null) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(added ? '已加入收听队列' : '已在收听队列中')),
+      );
   }
 
   static String _statusLabel(
