@@ -1,5 +1,6 @@
 library;
 
+export 'src/annotations.dart';
 export 'src/audio.dart';
 export 'src/background_refresh.dart';
 export 'src/models.dart';

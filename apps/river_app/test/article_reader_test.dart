@@ -95,6 +95,173 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
   });
 
+  testWidgets('newer progressive content clears a stale pending replacement', (
+    tester,
+  ) async {
+    const selected = 'stable selected quote';
+    const preview = 'Preview begins. $selected Preview ends.';
+    const incompatible = 'Intermediate content no longer contains the quote.';
+    const latest = 'Latest introduction. $preview';
+
+    Widget host(ArticleReaderContent content) => MaterialApp(
+          home: Scaffold(
+            body: ArticleDocumentView(
+              content: content,
+              settings: const ReaderSettings(),
+              initialProgress: 0,
+              onProgressChanged: (_) {},
+            ),
+          ),
+        );
+
+    await tester.pumpWidget(
+      host(
+        const ArticleReaderContent(
+          text: preview,
+          source: ArticleReaderContentSource.feed,
+          revision: 'preview',
+        ),
+      ),
+    );
+    final document = tester.state<ArticleDocumentViewState>(
+      find.byType(ArticleDocumentView),
+    );
+    final selectedStart = preview.indexOf(selected);
+    document.selectRange(selectedStart, selectedStart + selected.length);
+    await tester.pump();
+
+    await tester.pumpWidget(
+      host(
+        const ArticleReaderContent(
+          text: incompatible,
+          source: ArticleReaderContentSource.cache,
+          revision: 'intermediate',
+        ),
+      ),
+    );
+    expect(document.documentText, preview);
+
+    await tester.pumpWidget(
+      host(
+        const ArticleReaderContent(
+          text: latest,
+          source: ArticleReaderContentSource.extracted,
+          revision: 'latest',
+        ),
+      ),
+    );
+    expect(document.documentText, latest);
+    expect(document.selectedText, selected);
+
+    document.selectRange(document.selection.end, document.selection.end);
+    await tester.pump();
+    expect(document.documentText, latest);
+  });
+
+  testWidgets('selected text becomes a durable highlight with a note', (
+    tester,
+  ) async {
+    const selected = 'knowledge-worthy sentence';
+    const preview = 'Opening context. $selected. Closing context.';
+    final details = StreamController<FeedArticleDetailRecord?>();
+    final extraction = Completer<ExtractionResult>();
+    final annotations = FakeArticleAnnotationRepository();
+    final controller = buildReaderController(
+      articleId: 'article-1',
+      watch: (_) => details.stream,
+      extract: (_) => extraction.future,
+      annotations: annotations,
+      ids: SequentialReaderIds(),
+    );
+    addTearDown(() async {
+      controller.dispose();
+      await details.close();
+      await annotations.close();
+    });
+    await tester.pumpWidget(_TestHost(controller: controller));
+    details.add(_detail(summary: preview));
+    await tester.pump();
+    await tester.pump();
+
+    final document = tester.state<ArticleDocumentViewState>(
+      find.byType(ArticleDocumentView),
+    );
+    final start = preview.indexOf(selected);
+    document.selectRange(start, start + selected.length);
+    await tester.pump();
+
+    expect(find.text('高亮'), findsOneWidget);
+    expect(find.text('高亮并添加笔记'), findsOneWidget);
+    await tester.tap(find.text('高亮并添加笔记'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, '连接到产品决策');
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    expect(annotations.annotations, hasLength(1));
+    expect(annotations.annotations.single.anchor.exact, selected);
+    expect(annotations.annotations.single.note, '连接到产品决策');
+    expect(annotations.annotations.single.anchor.contentRevision, isNotEmpty);
+    expect(find.byTooltip('高亮与笔记'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('高亮与笔记'));
+    await tester.pumpAndSettle();
+    expect(find.text(selected), findsOneWidget);
+    expect(find.text('连接到产品决策'), findsOneWidget);
+    expect(find.text('正文变化后已失联'), findsNothing);
+  });
+
+  testWidgets('highlight capture uses the revision still visible to selection',
+      (
+    tester,
+  ) async {
+    const selected = 'old-only quote';
+    const preview = 'Preview prefix $selected preview suffix.';
+    final details = StreamController<FeedArticleDetailRecord?>();
+    final extraction = Completer<ExtractionResult>();
+    final annotations = FakeArticleAnnotationRepository();
+    final controller = buildReaderController(
+      articleId: 'article-1',
+      watch: (_) => details.stream,
+      extract: (_) => extraction.future,
+      annotations: annotations,
+      ids: SequentialReaderIds(),
+    );
+    addTearDown(() async {
+      controller.dispose();
+      await details.close();
+      await annotations.close();
+    });
+    await tester.pumpWidget(_TestHost(controller: controller));
+    details.add(_detail(summary: preview));
+    await tester.pump();
+    await tester.pump();
+
+    final document = tester.state<ArticleDocumentViewState>(
+      find.byType(ArticleDocumentView),
+    );
+    final start = preview.indexOf(selected);
+    document.selectRange(start, start + selected.length);
+    await tester.pump();
+
+    extraction.complete(_success('Replacement without the selected words.'));
+    await tester.pump();
+    await tester.pump();
+    expect(document.documentText, preview);
+    final latestRevision = controller.state.content!.revision;
+
+    await tester.tap(find.text('高亮'));
+    await tester.pumpAndSettle();
+
+    expect(annotations.annotations.single.anchor.exact, selected);
+    expect(
+      annotations.annotations.single.anchor.contentRevision,
+      isNot(latestRevision),
+    );
+    expect(document.documentText, 'Replacement without the selected words.');
+    expect(find.textContaining('部分高亮因正文变化已失联'), findsOneWidget);
+  });
+
   testWidgets('cached article is readable when enhancement fails', (
     tester,
   ) async {

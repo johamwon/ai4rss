@@ -14,6 +14,7 @@ part 'database.g.dart';
     ReadingEvents,
     ReaderSettingsRows,
     KnowledgeItems,
+    ArticleAnnotations,
     AudioItems,
     AudioQueueEntries,
     BackgroundJobs,
@@ -38,7 +39,7 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -156,6 +157,9 @@ final class RiverDatabase extends _$RiverDatabase {
           'transcripts_json',
           podcastEpisodes.transcriptsJson,
         );
+      }
+      if (from < 12 && !await _hasTable('article_annotations')) {
+        await migrator.createTable(articleAnnotations);
       }
     },
     beforeOpen: (OpeningDetails details) async {
