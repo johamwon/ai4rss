@@ -11,6 +11,49 @@ enum PodcastEpisodeType { full, trailer, bonus, unknown }
 
 enum PodcastDownloadPolicy { manual, newestOnly, all }
 
+final class PodcastChapterSource {
+  const PodcastChapterSource({required this.url, required this.mimeType});
+
+  final Uri url;
+  final String mimeType;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PodcastChapterSource &&
+      other.url == url &&
+      other.mimeType == mimeType;
+
+  @override
+  int get hashCode => Object.hash(url, mimeType);
+}
+
+final class PodcastTranscriptReference {
+  const PodcastTranscriptReference({
+    required this.url,
+    required this.mimeType,
+    this.language,
+    this.rel,
+  });
+
+  final Uri url;
+  final String mimeType;
+  final String? language;
+  final String? rel;
+
+  bool get isCaptions => rel?.toLowerCase() == 'captions';
+
+  @override
+  bool operator ==(Object other) =>
+      other is PodcastTranscriptReference &&
+      other.url == url &&
+      other.mimeType == mimeType &&
+      other.language == language &&
+      other.rel == rel;
+
+  @override
+  int get hashCode => Object.hash(url, mimeType, language, rel);
+}
+
 final class ParsedPodcastFeed {
   const ParsedPodcastFeed({
     required this.title,
@@ -52,6 +95,8 @@ final class ParsedPodcastEpisode {
     this.duration,
     this.episodeNumber,
     this.seasonNumber,
+    this.chapterSource,
+    this.transcripts = const <PodcastTranscriptReference>[],
   });
 
   final String externalId;
@@ -67,6 +112,8 @@ final class ParsedPodcastEpisode {
   final Duration? duration;
   final int? episodeNumber;
   final int? seasonNumber;
+  final PodcastChapterSource? chapterSource;
+  final List<PodcastTranscriptReference> transcripts;
   final PodcastExplicitRating explicitRating;
   final PodcastEpisodeType episodeType;
 }
@@ -130,6 +177,8 @@ final class PodcastEpisodeRecord {
     this.duration,
     this.episodeNumber,
     this.seasonNumber,
+    this.chapterSource,
+    this.transcripts = const <PodcastTranscriptReference>[],
   });
 
   final String id;
@@ -147,6 +196,8 @@ final class PodcastEpisodeRecord {
   final Duration? duration;
   final int? episodeNumber;
   final int? seasonNumber;
+  final PodcastChapterSource? chapterSource;
+  final List<PodcastTranscriptReference> transcripts;
   final PodcastExplicitRating explicitRating;
   final PodcastEpisodeType episodeType;
   final DateTime createdAt;
@@ -297,6 +348,8 @@ final class PodcastFeedParser {
       duration: _duration(_itunesText(item, 'duration')),
       episodeNumber: _positiveInt(_itunesText(item, 'episode')),
       seasonNumber: _positiveInt(_itunesText(item, 'season')),
+      chapterSource: _chapterSource(item, sourceUri),
+      transcripts: _transcriptReferences(item, sourceUri),
       explicitRating: episodeExplicit == PodcastExplicitRating.unknown
           ? showExplicit
           : episodeExplicit,
@@ -540,6 +593,8 @@ PodcastEpisodeRecord _episodeRecord(
       duration: episode.duration,
       episodeNumber: episode.episodeNumber,
       seasonNumber: episode.seasonNumber,
+      chapterSource: episode.chapterSource,
+      transcripts: episode.transcripts,
       explicitRating: episode.explicitRating,
       episodeType: episode.episodeType,
       createdAt: createdAt,
@@ -564,8 +619,21 @@ bool _sameEpisodeContent(
     first.duration == second.duration &&
     first.episodeNumber == second.episodeNumber &&
     first.seasonNumber == second.seasonNumber &&
+    first.chapterSource == second.chapterSource &&
+    _sameTranscripts(first.transcripts, second.transcripts) &&
     first.explicitRating == second.explicitRating &&
     first.episodeType == second.episodeType;
+
+bool _sameTranscripts(
+  List<PodcastTranscriptReference> first,
+  List<PodcastTranscriptReference> second,
+) {
+  if (first.length != second.length) return false;
+  for (var index = 0; index < first.length; index += 1) {
+    if (first[index] != second[index]) return false;
+  }
+  return true;
+}
 
 XmlElement? _firstChild(XmlElement parent, String local) {
   for (final child in _children(parent, local)) {
@@ -588,6 +656,84 @@ XmlElement? _itunesChild(XmlElement parent, String local) {
     }
   }
   return null;
+}
+
+Iterable<XmlElement> _podcastChildren(XmlElement parent, String local) =>
+    _children(parent, local).where((child) {
+      final namespace = child.name.namespaceUri?.toLowerCase() ?? '';
+      return namespace == 'https://podcastindex.org/namespace/1.0';
+    });
+
+PodcastChapterSource? _chapterSource(XmlElement item, Uri sourceUri) {
+  for (final child in _podcastChildren(item, 'chapters')) {
+    final url = _safePodcastResourceUri(
+      child.getAttribute('url'),
+      sourceUri,
+    );
+    final mimeType = _normalizedMimeType(child.getAttribute('type'));
+    if (url != null && mimeType == 'application/json+chapters') {
+      return PodcastChapterSource(url: url, mimeType: mimeType!);
+    }
+  }
+  return null;
+}
+
+List<PodcastTranscriptReference> _transcriptReferences(
+  XmlElement item,
+  Uri sourceUri,
+) {
+  const supported = <String>{
+    'text/plain',
+    'text/html',
+    'text/vtt',
+    'application/json',
+    'application/x-subrip',
+  };
+  final references = <PodcastTranscriptReference>[];
+  final identities = <String>{};
+  for (final child in _podcastChildren(item, 'transcript')) {
+    if (references.length >= 8) break;
+    final url = _safePodcastResourceUri(
+      child.getAttribute('url'),
+      sourceUri,
+    );
+    final mimeType = _normalizedMimeType(child.getAttribute('type'));
+    if (url == null || mimeType == null || !supported.contains(mimeType)) {
+      continue;
+    }
+    final language = _boundedAttribute(child.getAttribute('language'), 64);
+    final rel = _boundedAttribute(child.getAttribute('rel'), 64);
+    final identity = '$url\u0000$mimeType\u0000$language\u0000$rel';
+    if (!identities.add(identity)) continue;
+    references.add(
+      PodcastTranscriptReference(
+        url: url,
+        mimeType: mimeType,
+        language: language,
+        rel: rel,
+      ),
+    );
+  }
+  return List<PodcastTranscriptReference>.unmodifiable(references);
+}
+
+Uri? _safePodcastResourceUri(String? value, Uri base) {
+  final uri = _safeWebUri(value, base);
+  if (uri == null || uri.scheme != 'https' || uri.toString().length > 4096) {
+    return null;
+  }
+  return uri;
+}
+
+String? _normalizedMimeType(String? value) {
+  final normalized = _normalizedText(value)?.toLowerCase();
+  if (normalized == null) return null;
+  return normalized.split(';').first.trim();
+}
+
+String? _boundedAttribute(String? value, int maximum) {
+  final normalized = _normalizedText(value);
+  return normalized == null || normalized.length > maximum ? null : normalized;
 }
 
 String? _itunesText(XmlElement parent, String local) =>

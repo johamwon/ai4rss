@@ -143,6 +143,40 @@ void main() {
     expect(controller.state.position?.segmentIndex, 0);
   });
 
+  test('Podcast chapter seek preserves active playback and progress', () async {
+    final engine = _FakeAudioEngine();
+    final repository = _MemoryAudioPlaybackRepository();
+    final controller = AudioPlaybackController(
+      engine: engine,
+      repository: repository,
+      clock: _MutableClock(DateTime.utc(2026, 7, 26)),
+    );
+    addTearDown(controller.dispose);
+    await controller.load(
+      AudioLoadRequest(
+        item: AudioItem(
+          id: 'podcast-1',
+          kind: AudioKind.podcastEpisode,
+          title: 'Podcast',
+          sourceUri: Uri.parse('https://example.test/podcast.mp3'),
+        ),
+      ),
+    );
+    await controller.play();
+
+    await controller.seekToMedia(const Duration(minutes: 12, seconds: 30));
+
+    expect(
+      engine.seeks.single.mediaPosition,
+      const Duration(minutes: 12, seconds: 30),
+    );
+    expect(engine.playCalls, 2);
+    expect(
+      repository.saved.last.position.mediaPosition,
+      const Duration(minutes: 12, seconds: 30),
+    );
+  });
+
   test('playing progress is debounced while pause flushes immediately',
       () async {
     final engine = _FakeAudioEngine();

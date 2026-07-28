@@ -38,7 +38,7 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -140,6 +140,23 @@ final class RiverDatabase extends _$RiverDatabase {
       if (from < 10 && !await _hasTable('audio_queue_entries')) {
         await migrator.createTable(audioQueueEntries);
       }
+      if (from < 11) {
+        await _addPodcastEpisodeColumnIfMissing(
+          migrator,
+          'chapters_url',
+          podcastEpisodes.chaptersUrl,
+        );
+        await _addPodcastEpisodeColumnIfMissing(
+          migrator,
+          'chapters_mime_type',
+          podcastEpisodes.chaptersMimeType,
+        );
+        await _addPodcastEpisodeColumnIfMissing(
+          migrator,
+          'transcripts_json',
+          podcastEpisodes.transcriptsJson,
+        );
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -167,6 +184,16 @@ final class RiverDatabase extends _$RiverDatabase {
   ) async {
     if (!await _hasColumn('audio_items', columnName)) {
       await migrator.addColumn(audioItems, column);
+    }
+  }
+
+  Future<void> _addPodcastEpisodeColumnIfMissing(
+    Migrator migrator,
+    String columnName,
+    GeneratedColumn<Object> column,
+  ) async {
+    if (!await _hasColumn('podcast_episodes', columnName)) {
+      await migrator.addColumn(podcastEpisodes, column);
     }
   }
 

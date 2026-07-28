@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:river_feed/river_feed.dart' as feed;
 
@@ -135,6 +137,15 @@ final class DriftPodcastRepository implements feed.PodcastCatalogRepository {
                 durationMs: Value<int?>(episode.duration?.inMilliseconds),
                 episodeNumber: Value<int?>(episode.episodeNumber),
                 seasonNumber: Value<int?>(episode.seasonNumber),
+                chaptersUrl: Value<String?>(
+                  episode.chapterSource?.url.toString(),
+                ),
+                chaptersMimeType: Value<String?>(
+                  episode.chapterSource?.mimeType,
+                ),
+                transcriptsJson: Value<String>(
+                  _encodeTranscripts(episode.transcripts),
+                ),
                 explicitRating: episode.explicitRating.name,
                 episodeType: episode.episodeType.name,
                 createdAt: episode.createdAt,
@@ -232,6 +243,8 @@ feed.PodcastEpisodeRecord _episode(PodcastEpisode row) =>
           : Duration(milliseconds: row.durationMs!),
       episodeNumber: row.episodeNumber,
       seasonNumber: row.seasonNumber,
+      chapterSource: _chapterSource(row),
+      transcripts: _decodeTranscripts(row.transcriptsJson),
       explicitRating: feed.PodcastExplicitRating.values.byName(
         row.explicitRating,
       ),
@@ -241,6 +254,70 @@ feed.PodcastEpisodeRecord _episode(PodcastEpisode row) =>
     );
 
 Uri? _uri(String? value) => value == null ? null : Uri.tryParse(value);
+
+feed.PodcastChapterSource? _chapterSource(PodcastEpisode row) {
+  final url = _uri(row.chaptersUrl);
+  final mimeType = row.chaptersMimeType;
+  if (url == null || mimeType == null) return null;
+  return feed.PodcastChapterSource(url: url, mimeType: mimeType);
+}
+
+String _encodeTranscripts(List<feed.PodcastTranscriptReference> references) =>
+    jsonEncode(
+      references
+          .map(
+            (reference) => <String, String?>{
+              'url': reference.url.toString(),
+              'type': reference.mimeType,
+              'language': reference.language,
+              'rel': reference.rel,
+            },
+          )
+          .toList(growable: false),
+    );
+
+List<feed.PodcastTranscriptReference> _decodeTranscripts(String encoded) {
+  try {
+    final decoded = jsonDecode(encoded);
+    if (decoded is! List<Object?> || decoded.length > 8) {
+      return const <feed.PodcastTranscriptReference>[];
+    }
+    final references = <feed.PodcastTranscriptReference>[];
+    for (final value in decoded) {
+      if (value is! Map<String, Object?>) {
+        return const <feed.PodcastTranscriptReference>[];
+      }
+      final urlValue = value['url'];
+      final type = value['type'];
+      final language = value['language'];
+      final rel = value['rel'];
+      if (urlValue is! String ||
+          type is! String ||
+          (language != null && language is! String) ||
+          (rel != null && rel is! String)) {
+        return const <feed.PodcastTranscriptReference>[];
+      }
+      final url = Uri.tryParse(urlValue);
+      if (url == null ||
+          url.scheme != 'https' ||
+          !url.hasAuthority ||
+          url.userInfo.isNotEmpty) {
+        return const <feed.PodcastTranscriptReference>[];
+      }
+      references.add(
+        feed.PodcastTranscriptReference(
+          url: url,
+          mimeType: type,
+          language: language as String?,
+          rel: rel as String?,
+        ),
+      );
+    }
+    return List<feed.PodcastTranscriptReference>.unmodifiable(references);
+  } on FormatException {
+    return const <feed.PodcastTranscriptReference>[];
+  }
+}
 
 String _limited(String value, int maximum) =>
     value.length <= maximum ? value : value.substring(0, maximum);

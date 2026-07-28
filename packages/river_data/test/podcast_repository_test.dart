@@ -19,6 +19,8 @@ void main() {
       episodeUpserts: <PodcastEpisodeRecord>[
         _episode(
           mediaUrl: Uri.parse('https://media.example.test/original.mp3'),
+          chapterSource: _chapters,
+          transcripts: _transcripts,
           updatedAt: firstAt,
         ),
       ],
@@ -44,6 +46,8 @@ void main() {
       episodeUpserts: <PodcastEpisodeRecord>[
         _episode(
           mediaUrl: Uri.parse('https://media.example.test/rehosted.m4a'),
+          chapterSource: _chapters,
+          transcripts: _transcripts,
           updatedAt: secondAt,
         ),
       ],
@@ -62,6 +66,8 @@ void main() {
       episodes.single.mediaUrl,
       Uri.parse('https://media.example.test/rehosted.m4a'),
     );
+    expect(episodes.single.chapterSource, _chapters);
+    expect(episodes.single.transcripts, _transcripts);
   });
 
   test(
@@ -131,6 +137,9 @@ PodcastShowRecord _show({
 PodcastEpisodeRecord _episode({
   String showId = 'show-1',
   required Uri mediaUrl,
+  PodcastChapterSource? chapterSource,
+  List<PodcastTranscriptReference> transcripts =
+      const <PodcastTranscriptReference>[],
   required DateTime updatedAt,
 }) => PodcastEpisodeRecord(
   id: 'episode-1',
@@ -138,8 +147,24 @@ PodcastEpisodeRecord _episode({
   externalId: 'guid-1',
   title: 'Episode',
   mediaUrl: mediaUrl,
+  chapterSource: chapterSource,
+  transcripts: transcripts,
   explicitRating: PodcastExplicitRating.clean,
   episodeType: PodcastEpisodeType.full,
   createdAt: DateTime.utc(2026, 7, 26),
   updatedAt: updatedAt,
 );
+
+final _chapters = PodcastChapterSource(
+  url: Uri.parse('https://media.example.test/chapters.json'),
+  mimeType: 'application/json+chapters',
+);
+
+final _transcripts = <PodcastTranscriptReference>[
+  PodcastTranscriptReference(
+    url: Uri.parse('https://media.example.test/transcript.vtt'),
+    mimeType: 'text/vtt',
+    language: 'en',
+    rel: 'captions',
+  ),
+];

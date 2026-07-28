@@ -10207,6 +10207,40 @@ class $PodcastEpisodesTable extends PodcastEpisodes
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _chaptersUrlMeta = const VerificationMeta(
+    'chaptersUrl',
+  );
+  @override
+  late final GeneratedColumn<String> chaptersUrl = GeneratedColumn<String>(
+    'chapters_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _chaptersMimeTypeMeta = const VerificationMeta(
+    'chaptersMimeType',
+  );
+  @override
+  late final GeneratedColumn<String> chaptersMimeType = GeneratedColumn<String>(
+    'chapters_mime_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _transcriptsJsonMeta = const VerificationMeta(
+    'transcriptsJson',
+  );
+  @override
+  late final GeneratedColumn<String> transcriptsJson = GeneratedColumn<String>(
+    'transcripts_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
   static const VerificationMeta _explicitRatingMeta = const VerificationMeta(
     'explicitRating',
   );
@@ -10268,6 +10302,9 @@ class $PodcastEpisodesTable extends PodcastEpisodes
     durationMs,
     episodeNumber,
     seasonNumber,
+    chaptersUrl,
+    chaptersMimeType,
+    transcriptsJson,
     explicitRating,
     episodeType,
     createdAt,
@@ -10400,6 +10437,33 @@ class $PodcastEpisodesTable extends PodcastEpisodes
         ),
       );
     }
+    if (data.containsKey('chapters_url')) {
+      context.handle(
+        _chaptersUrlMeta,
+        chaptersUrl.isAcceptableOrUnknown(
+          data['chapters_url']!,
+          _chaptersUrlMeta,
+        ),
+      );
+    }
+    if (data.containsKey('chapters_mime_type')) {
+      context.handle(
+        _chaptersMimeTypeMeta,
+        chaptersMimeType.isAcceptableOrUnknown(
+          data['chapters_mime_type']!,
+          _chaptersMimeTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('transcripts_json')) {
+      context.handle(
+        _transcriptsJsonMeta,
+        transcriptsJson.isAcceptableOrUnknown(
+          data['transcripts_json']!,
+          _transcriptsJsonMeta,
+        ),
+      );
+    }
     if (data.containsKey('explicit_rating')) {
       context.handle(
         _explicitRatingMeta,
@@ -10511,6 +10575,18 @@ class $PodcastEpisodesTable extends PodcastEpisodes
         DriftSqlType.int,
         data['${effectivePrefix}season_number'],
       ),
+      chaptersUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}chapters_url'],
+      ),
+      chaptersMimeType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}chapters_mime_type'],
+      ),
+      transcriptsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}transcripts_json'],
+      )!,
       explicitRating: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}explicit_rating'],
@@ -10552,6 +10628,9 @@ class PodcastEpisode extends DataClass implements Insertable<PodcastEpisode> {
   final int? durationMs;
   final int? episodeNumber;
   final int? seasonNumber;
+  final String? chaptersUrl;
+  final String? chaptersMimeType;
+  final String transcriptsJson;
   final String explicitRating;
   final String episodeType;
   final DateTime createdAt;
@@ -10572,6 +10651,9 @@ class PodcastEpisode extends DataClass implements Insertable<PodcastEpisode> {
     this.durationMs,
     this.episodeNumber,
     this.seasonNumber,
+    this.chaptersUrl,
+    this.chaptersMimeType,
+    required this.transcriptsJson,
     required this.explicitRating,
     required this.episodeType,
     required this.createdAt,
@@ -10615,6 +10697,13 @@ class PodcastEpisode extends DataClass implements Insertable<PodcastEpisode> {
     if (!nullToAbsent || seasonNumber != null) {
       map['season_number'] = Variable<int>(seasonNumber);
     }
+    if (!nullToAbsent || chaptersUrl != null) {
+      map['chapters_url'] = Variable<String>(chaptersUrl);
+    }
+    if (!nullToAbsent || chaptersMimeType != null) {
+      map['chapters_mime_type'] = Variable<String>(chaptersMimeType);
+    }
+    map['transcripts_json'] = Variable<String>(transcriptsJson);
     map['explicit_rating'] = Variable<String>(explicitRating);
     map['episode_type'] = Variable<String>(episodeType);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -10659,6 +10748,13 @@ class PodcastEpisode extends DataClass implements Insertable<PodcastEpisode> {
       seasonNumber: seasonNumber == null && nullToAbsent
           ? const Value.absent()
           : Value(seasonNumber),
+      chaptersUrl: chaptersUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(chaptersUrl),
+      chaptersMimeType: chaptersMimeType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(chaptersMimeType),
+      transcriptsJson: Value(transcriptsJson),
       explicitRating: Value(explicitRating),
       episodeType: Value(episodeType),
       createdAt: Value(createdAt),
@@ -10687,6 +10783,9 @@ class PodcastEpisode extends DataClass implements Insertable<PodcastEpisode> {
       durationMs: serializer.fromJson<int?>(json['durationMs']),
       episodeNumber: serializer.fromJson<int?>(json['episodeNumber']),
       seasonNumber: serializer.fromJson<int?>(json['seasonNumber']),
+      chaptersUrl: serializer.fromJson<String?>(json['chaptersUrl']),
+      chaptersMimeType: serializer.fromJson<String?>(json['chaptersMimeType']),
+      transcriptsJson: serializer.fromJson<String>(json['transcriptsJson']),
       explicitRating: serializer.fromJson<String>(json['explicitRating']),
       episodeType: serializer.fromJson<String>(json['episodeType']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -10712,6 +10811,9 @@ class PodcastEpisode extends DataClass implements Insertable<PodcastEpisode> {
       'durationMs': serializer.toJson<int?>(durationMs),
       'episodeNumber': serializer.toJson<int?>(episodeNumber),
       'seasonNumber': serializer.toJson<int?>(seasonNumber),
+      'chaptersUrl': serializer.toJson<String?>(chaptersUrl),
+      'chaptersMimeType': serializer.toJson<String?>(chaptersMimeType),
+      'transcriptsJson': serializer.toJson<String>(transcriptsJson),
       'explicitRating': serializer.toJson<String>(explicitRating),
       'episodeType': serializer.toJson<String>(episodeType),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -10735,6 +10837,9 @@ class PodcastEpisode extends DataClass implements Insertable<PodcastEpisode> {
     Value<int?> durationMs = const Value.absent(),
     Value<int?> episodeNumber = const Value.absent(),
     Value<int?> seasonNumber = const Value.absent(),
+    Value<String?> chaptersUrl = const Value.absent(),
+    Value<String?> chaptersMimeType = const Value.absent(),
+    String? transcriptsJson,
     String? explicitRating,
     String? episodeType,
     DateTime? createdAt,
@@ -10761,6 +10866,11 @@ class PodcastEpisode extends DataClass implements Insertable<PodcastEpisode> {
         ? episodeNumber.value
         : this.episodeNumber,
     seasonNumber: seasonNumber.present ? seasonNumber.value : this.seasonNumber,
+    chaptersUrl: chaptersUrl.present ? chaptersUrl.value : this.chaptersUrl,
+    chaptersMimeType: chaptersMimeType.present
+        ? chaptersMimeType.value
+        : this.chaptersMimeType,
+    transcriptsJson: transcriptsJson ?? this.transcriptsJson,
     explicitRating: explicitRating ?? this.explicitRating,
     episodeType: episodeType ?? this.episodeType,
     createdAt: createdAt ?? this.createdAt,
@@ -10801,6 +10911,15 @@ class PodcastEpisode extends DataClass implements Insertable<PodcastEpisode> {
       seasonNumber: data.seasonNumber.present
           ? data.seasonNumber.value
           : this.seasonNumber,
+      chaptersUrl: data.chaptersUrl.present
+          ? data.chaptersUrl.value
+          : this.chaptersUrl,
+      chaptersMimeType: data.chaptersMimeType.present
+          ? data.chaptersMimeType.value
+          : this.chaptersMimeType,
+      transcriptsJson: data.transcriptsJson.present
+          ? data.transcriptsJson.value
+          : this.transcriptsJson,
       explicitRating: data.explicitRating.present
           ? data.explicitRating.value
           : this.explicitRating,
@@ -10830,6 +10949,9 @@ class PodcastEpisode extends DataClass implements Insertable<PodcastEpisode> {
           ..write('durationMs: $durationMs, ')
           ..write('episodeNumber: $episodeNumber, ')
           ..write('seasonNumber: $seasonNumber, ')
+          ..write('chaptersUrl: $chaptersUrl, ')
+          ..write('chaptersMimeType: $chaptersMimeType, ')
+          ..write('transcriptsJson: $transcriptsJson, ')
           ..write('explicitRating: $explicitRating, ')
           ..write('episodeType: $episodeType, ')
           ..write('createdAt: $createdAt, ')
@@ -10839,7 +10961,7 @@ class PodcastEpisode extends DataClass implements Insertable<PodcastEpisode> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     showId,
     externalId,
@@ -10855,11 +10977,14 @@ class PodcastEpisode extends DataClass implements Insertable<PodcastEpisode> {
     durationMs,
     episodeNumber,
     seasonNumber,
+    chaptersUrl,
+    chaptersMimeType,
+    transcriptsJson,
     explicitRating,
     episodeType,
     createdAt,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -10879,6 +11004,9 @@ class PodcastEpisode extends DataClass implements Insertable<PodcastEpisode> {
           other.durationMs == this.durationMs &&
           other.episodeNumber == this.episodeNumber &&
           other.seasonNumber == this.seasonNumber &&
+          other.chaptersUrl == this.chaptersUrl &&
+          other.chaptersMimeType == this.chaptersMimeType &&
+          other.transcriptsJson == this.transcriptsJson &&
           other.explicitRating == this.explicitRating &&
           other.episodeType == this.episodeType &&
           other.createdAt == this.createdAt &&
@@ -10901,6 +11029,9 @@ class PodcastEpisodesCompanion extends UpdateCompanion<PodcastEpisode> {
   final Value<int?> durationMs;
   final Value<int?> episodeNumber;
   final Value<int?> seasonNumber;
+  final Value<String?> chaptersUrl;
+  final Value<String?> chaptersMimeType;
+  final Value<String> transcriptsJson;
   final Value<String> explicitRating;
   final Value<String> episodeType;
   final Value<DateTime> createdAt;
@@ -10922,6 +11053,9 @@ class PodcastEpisodesCompanion extends UpdateCompanion<PodcastEpisode> {
     this.durationMs = const Value.absent(),
     this.episodeNumber = const Value.absent(),
     this.seasonNumber = const Value.absent(),
+    this.chaptersUrl = const Value.absent(),
+    this.chaptersMimeType = const Value.absent(),
+    this.transcriptsJson = const Value.absent(),
     this.explicitRating = const Value.absent(),
     this.episodeType = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -10944,6 +11078,9 @@ class PodcastEpisodesCompanion extends UpdateCompanion<PodcastEpisode> {
     this.durationMs = const Value.absent(),
     this.episodeNumber = const Value.absent(),
     this.seasonNumber = const Value.absent(),
+    this.chaptersUrl = const Value.absent(),
+    this.chaptersMimeType = const Value.absent(),
+    this.transcriptsJson = const Value.absent(),
     required String explicitRating,
     required String episodeType,
     required DateTime createdAt,
@@ -10974,6 +11111,9 @@ class PodcastEpisodesCompanion extends UpdateCompanion<PodcastEpisode> {
     Expression<int>? durationMs,
     Expression<int>? episodeNumber,
     Expression<int>? seasonNumber,
+    Expression<String>? chaptersUrl,
+    Expression<String>? chaptersMimeType,
+    Expression<String>? transcriptsJson,
     Expression<String>? explicitRating,
     Expression<String>? episodeType,
     Expression<DateTime>? createdAt,
@@ -10996,6 +11136,9 @@ class PodcastEpisodesCompanion extends UpdateCompanion<PodcastEpisode> {
       if (durationMs != null) 'duration_ms': durationMs,
       if (episodeNumber != null) 'episode_number': episodeNumber,
       if (seasonNumber != null) 'season_number': seasonNumber,
+      if (chaptersUrl != null) 'chapters_url': chaptersUrl,
+      if (chaptersMimeType != null) 'chapters_mime_type': chaptersMimeType,
+      if (transcriptsJson != null) 'transcripts_json': transcriptsJson,
       if (explicitRating != null) 'explicit_rating': explicitRating,
       if (episodeType != null) 'episode_type': episodeType,
       if (createdAt != null) 'created_at': createdAt,
@@ -11020,6 +11163,9 @@ class PodcastEpisodesCompanion extends UpdateCompanion<PodcastEpisode> {
     Value<int?>? durationMs,
     Value<int?>? episodeNumber,
     Value<int?>? seasonNumber,
+    Value<String?>? chaptersUrl,
+    Value<String?>? chaptersMimeType,
+    Value<String>? transcriptsJson,
     Value<String>? explicitRating,
     Value<String>? episodeType,
     Value<DateTime>? createdAt,
@@ -11042,6 +11188,9 @@ class PodcastEpisodesCompanion extends UpdateCompanion<PodcastEpisode> {
       durationMs: durationMs ?? this.durationMs,
       episodeNumber: episodeNumber ?? this.episodeNumber,
       seasonNumber: seasonNumber ?? this.seasonNumber,
+      chaptersUrl: chaptersUrl ?? this.chaptersUrl,
+      chaptersMimeType: chaptersMimeType ?? this.chaptersMimeType,
+      transcriptsJson: transcriptsJson ?? this.transcriptsJson,
       explicitRating: explicitRating ?? this.explicitRating,
       episodeType: episodeType ?? this.episodeType,
       createdAt: createdAt ?? this.createdAt,
@@ -11098,6 +11247,15 @@ class PodcastEpisodesCompanion extends UpdateCompanion<PodcastEpisode> {
     if (seasonNumber.present) {
       map['season_number'] = Variable<int>(seasonNumber.value);
     }
+    if (chaptersUrl.present) {
+      map['chapters_url'] = Variable<String>(chaptersUrl.value);
+    }
+    if (chaptersMimeType.present) {
+      map['chapters_mime_type'] = Variable<String>(chaptersMimeType.value);
+    }
+    if (transcriptsJson.present) {
+      map['transcripts_json'] = Variable<String>(transcriptsJson.value);
+    }
     if (explicitRating.present) {
       map['explicit_rating'] = Variable<String>(explicitRating.value);
     }
@@ -11134,6 +11292,9 @@ class PodcastEpisodesCompanion extends UpdateCompanion<PodcastEpisode> {
           ..write('durationMs: $durationMs, ')
           ..write('episodeNumber: $episodeNumber, ')
           ..write('seasonNumber: $seasonNumber, ')
+          ..write('chaptersUrl: $chaptersUrl, ')
+          ..write('chaptersMimeType: $chaptersMimeType, ')
+          ..write('transcriptsJson: $transcriptsJson, ')
           ..write('explicitRating: $explicitRating, ')
           ..write('episodeType: $episodeType, ')
           ..write('createdAt: $createdAt, ')
@@ -18099,6 +18260,9 @@ typedef $$PodcastEpisodesTableCreateCompanionBuilder =
       Value<int?> durationMs,
       Value<int?> episodeNumber,
       Value<int?> seasonNumber,
+      Value<String?> chaptersUrl,
+      Value<String?> chaptersMimeType,
+      Value<String> transcriptsJson,
       required String explicitRating,
       required String episodeType,
       required DateTime createdAt,
@@ -18122,6 +18286,9 @@ typedef $$PodcastEpisodesTableUpdateCompanionBuilder =
       Value<int?> durationMs,
       Value<int?> episodeNumber,
       Value<int?> seasonNumber,
+      Value<String?> chaptersUrl,
+      Value<String?> chaptersMimeType,
+      Value<String> transcriptsJson,
       Value<String> explicitRating,
       Value<String> episodeType,
       Value<DateTime> createdAt,
@@ -18253,6 +18420,21 @@ class $$PodcastEpisodesTableFilterComposer
 
   ColumnFilters<int> get seasonNumber => $composableBuilder(
     column: $table.seasonNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get chaptersUrl => $composableBuilder(
+    column: $table.chaptersUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get chaptersMimeType => $composableBuilder(
+    column: $table.chaptersMimeType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get transcriptsJson => $composableBuilder(
+    column: $table.transcriptsJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18404,6 +18586,21 @@ class $$PodcastEpisodesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get chaptersUrl => $composableBuilder(
+    column: $table.chaptersUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get chaptersMimeType => $composableBuilder(
+    column: $table.chaptersMimeType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get transcriptsJson => $composableBuilder(
+    column: $table.transcriptsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get explicitRating => $composableBuilder(
     column: $table.explicitRating,
     builder: (column) => ColumnOrderings(column),
@@ -18517,6 +18714,21 @@ class $$PodcastEpisodesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get chaptersUrl => $composableBuilder(
+    column: $table.chaptersUrl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get chaptersMimeType => $composableBuilder(
+    column: $table.chaptersMimeType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get transcriptsJson => $composableBuilder(
+    column: $table.transcriptsJson,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get explicitRating => $composableBuilder(
     column: $table.explicitRating,
     builder: (column) => column,
@@ -18627,6 +18839,9 @@ class $$PodcastEpisodesTableTableManager
                 Value<int?> durationMs = const Value.absent(),
                 Value<int?> episodeNumber = const Value.absent(),
                 Value<int?> seasonNumber = const Value.absent(),
+                Value<String?> chaptersUrl = const Value.absent(),
+                Value<String?> chaptersMimeType = const Value.absent(),
+                Value<String> transcriptsJson = const Value.absent(),
                 Value<String> explicitRating = const Value.absent(),
                 Value<String> episodeType = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -18648,6 +18863,9 @@ class $$PodcastEpisodesTableTableManager
                 durationMs: durationMs,
                 episodeNumber: episodeNumber,
                 seasonNumber: seasonNumber,
+                chaptersUrl: chaptersUrl,
+                chaptersMimeType: chaptersMimeType,
+                transcriptsJson: transcriptsJson,
                 explicitRating: explicitRating,
                 episodeType: episodeType,
                 createdAt: createdAt,
@@ -18671,6 +18889,9 @@ class $$PodcastEpisodesTableTableManager
                 Value<int?> durationMs = const Value.absent(),
                 Value<int?> episodeNumber = const Value.absent(),
                 Value<int?> seasonNumber = const Value.absent(),
+                Value<String?> chaptersUrl = const Value.absent(),
+                Value<String?> chaptersMimeType = const Value.absent(),
+                Value<String> transcriptsJson = const Value.absent(),
                 required String explicitRating,
                 required String episodeType,
                 required DateTime createdAt,
@@ -18692,6 +18913,9 @@ class $$PodcastEpisodesTableTableManager
                 durationMs: durationMs,
                 episodeNumber: episodeNumber,
                 seasonNumber: seasonNumber,
+                chaptersUrl: chaptersUrl,
+                chaptersMimeType: chaptersMimeType,
+                transcriptsJson: transcriptsJson,
                 explicitRating: explicitRating,
                 episodeType: episodeType,
                 createdAt: createdAt,

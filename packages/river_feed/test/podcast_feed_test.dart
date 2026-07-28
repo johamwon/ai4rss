@@ -178,6 +178,80 @@ void main() {
     expect(episode.episodeType, PodcastEpisodeType.unknown);
   });
 
+  test('parses bounded Podcasting 2.0 chapter and transcript references', () {
+    final fixture = File(
+      '../../fixtures/feeds/podcast_2_0.xml',
+    ).readAsStringSync();
+
+    final episode = parser
+        .parse(
+          fixture,
+          sourceUri: Uri.parse('https://podcast.example.test/feed.xml'),
+        )
+        .episodes
+        .single;
+
+    expect(
+      episode.chapterSource,
+      PodcastChapterSource(
+        url: Uri.parse(
+          'https://podcast.example.test/meta/chapters.json',
+        ),
+        mimeType: 'application/json+chapters',
+      ),
+    );
+    expect(episode.transcripts, <PodcastTranscriptReference>[
+      PodcastTranscriptReference(
+        url: Uri.parse(
+          'https://podcast.example.test/meta/captions.vtt',
+        ),
+        mimeType: 'text/vtt',
+        language: 'zh-CN',
+        rel: 'captions',
+      ),
+      PodcastTranscriptReference(
+        url: Uri.parse(
+          'https://podcast.example.test/meta/transcript.txt',
+        ),
+        mimeType: 'text/plain',
+        language: 'en',
+      ),
+    ]);
+    expect(episode.transcripts.first.isCaptions, isTrue);
+  });
+
+  test('ignores lookalike namespaces and unsafe optional resources', () {
+    const document = '''
+      <rss version="2.0"
+        xmlns:fake="https://example.test/not-podcasting"
+        xmlns:podcast="https://podcastindex.org/namespace/1.0">
+        <channel><title>Optional metadata</title>
+          <item><guid>one</guid><title>One</title>
+            <enclosure url="https://example.test/one.mp3"
+              type="audio/mpeg" />
+            <fake:chapters url="https://example.test/fake.json"
+              type="application/json+chapters" />
+            <podcast:chapters url="https://user:secret@example.test/real.json"
+              type="application/json+chapters" />
+            <podcast:transcript url="file:///private/transcript.vtt"
+              type="text/vtt" />
+          </item>
+        </channel>
+      </rss>
+    ''';
+
+    final episode = parser
+        .parse(
+          document,
+          sourceUri: Uri.parse('https://example.test/feed.xml'),
+        )
+        .episodes
+        .single;
+
+    expect(episode.chapterSource, isNull);
+    expect(episode.transcripts, isEmpty);
+  });
+
   test('same GUID keeps its River id when the media URL changes', () async {
     final repository = _Repository();
     final http = _Http(

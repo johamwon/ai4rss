@@ -14,6 +14,8 @@ final class PodcastLibraryPage extends StatefulWidget {
     required this.audio,
     required this.clock,
     this.queue,
+    this.chapterLoader,
+    this.externalUri,
     super.key,
   });
 
@@ -24,6 +26,8 @@ final class PodcastLibraryPage extends StatefulWidget {
   final AudioPlaybackController audio;
   final Clock clock;
   final PersistentAudioQueue? queue;
+  final PodcastChapterLoader? chapterLoader;
+  final ExternalUriGateway? externalUri;
 
   @override
   State<PodcastLibraryPage> createState() => _PodcastLibraryPageState();
@@ -171,6 +175,8 @@ final class _PodcastLibraryPageState extends State<PodcastLibraryPage> {
                       audio: widget.audio,
                       clock: widget.clock,
                       queue: widget.queue,
+                      chapterLoader: widget.chapterLoader,
+                      externalUri: widget.externalUri,
                     ),
                   ),
                 ),
@@ -195,6 +201,8 @@ final class PodcastShowPage extends StatefulWidget {
     required this.audio,
     required this.clock,
     this.queue,
+    this.chapterLoader,
+    this.externalUri,
     super.key,
   });
 
@@ -206,6 +214,8 @@ final class PodcastShowPage extends StatefulWidget {
   final AudioPlaybackController audio;
   final Clock clock;
   final PersistentAudioQueue? queue;
+  final PodcastChapterLoader? chapterLoader;
+  final ExternalUriGateway? externalUri;
 
   @override
   State<PodcastShowPage> createState() => _PodcastShowPageState();
@@ -318,6 +328,44 @@ final class _PodcastShowPageState extends State<PodcastShowPage> {
     }
   }
 
+  Future<void> _openEpisodeMetadata(PodcastEpisodeRecord episode) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => _EpisodeMetadataSheet(
+        episode: episode,
+        chapterLoader: widget.chapterLoader,
+        onChapterSelected: (chapter) => _seekChapter(episode, chapter),
+        onTranscriptSelected: _openTranscript,
+      ),
+    );
+  }
+
+  Future<void> _seekChapter(
+    PodcastEpisodeRecord episode,
+    PodcastChapter chapter,
+  ) async {
+    if (widget.audio.state.item?.id != episode.id) {
+      await _togglePlayback(episode, widget.audio.state);
+    }
+    if (widget.audio.state.item?.id == episode.id) {
+      await widget.audio.seekToMedia(chapter.start);
+    }
+  }
+
+  Future<void> _openTranscript(PodcastTranscriptReference transcript) async {
+    final gateway = widget.externalUri;
+    if (gateway == null) {
+      if (mounted) _message('当前平台无法打开文字稿');
+      return;
+    }
+    final outcome = await gateway.open(transcript.url);
+    if (mounted && outcome != ExternalUriOpenOutcome.opened) {
+      _message('当前平台无法打开文字稿');
+    }
+  }
+
   void _message(String value) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -394,6 +442,13 @@ final class _PodcastShowPageState extends State<PodcastShowPage> {
                     trailing: Wrap(
                       spacing: 0,
                       children: <Widget>[
+                        if (episode.chapterSource != null ||
+                            episode.transcripts.isNotEmpty)
+                          IconButton(
+                            onPressed: () => _openEpisodeMetadata(episode),
+                            icon: const Icon(Icons.menu_book_outlined),
+                            tooltip: '章节与文字稿',
+                          ),
                         IconButton(
                           onPressed: widget.queue == null
                               ? null
@@ -414,6 +469,115 @@ final class _PodcastShowPageState extends State<PodcastShowPage> {
           ),
         );
       },
+    );
+  }
+}
+
+final class _EpisodeMetadataSheet extends StatelessWidget {
+  const _EpisodeMetadataSheet({
+    required this.episode,
+    required this.chapterLoader,
+    required this.onChapterSelected,
+    required this.onTranscriptSelected,
+  });
+
+  final PodcastEpisodeRecord episode;
+  final PodcastChapterLoader? chapterLoader;
+  final ValueChanged<PodcastChapter> onChapterSelected;
+  final ValueChanged<PodcastTranscriptReference> onTranscriptSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final source = episode.chapterSource;
+    return SafeArea(
+      child: FractionallySizedBox(
+        heightFactor: 0.82,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          children: <Widget>[
+            Text(
+              episode.title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            if (source != null) ...<Widget>[
+              const SizedBox(height: 20),
+              Text('章节', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              if (chapterLoader case final loader?)
+                FutureBuilder<List<PodcastChapter>>(
+                  future: loader.load(source),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(20),
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    }
+                    final chapters = snapshot.data;
+                    if (snapshot.hasError || chapters == null) {
+                      return const ListTile(
+                        leading: Icon(Icons.error_outline),
+                        title: Text('章节暂时无法读取'),
+                        subtitle: Text('稍后可以重新打开重试'),
+                      );
+                    }
+                    if (chapters.isEmpty) {
+                      return const ListTile(title: Text('这一集没有可显示章节'));
+                    }
+                    return Column(
+                      children: chapters
+                          .map(
+                            (chapter) => ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Text(_chapterTime(chapter.start)),
+                              title: Text(chapter.title),
+                              trailing: const Icon(Icons.play_arrow),
+                              onTap: () => onChapterSelected(chapter),
+                            ),
+                          )
+                          .toList(growable: false),
+                    );
+                  },
+                )
+              else
+                const ListTile(
+                  leading: Icon(Icons.cloud_off_outlined),
+                  title: Text('章节读取服务不可用'),
+                ),
+            ],
+            if (episode.transcripts.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 20),
+              Text('文字稿', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              ...episode.transcripts.map(
+                (transcript) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    transcript.isCaptions
+                        ? Icons.closed_caption_outlined
+                        : Icons.description_outlined,
+                  ),
+                  title: Text(
+                    transcript.language == null
+                        ? _transcriptType(transcript.mimeType)
+                        : '${transcript.language} · '
+                            '${_transcriptType(transcript.mimeType)}',
+                  ),
+                  subtitle: Text(
+                    transcript.isCaptions ? '带时间轴字幕' : '官方文字稿',
+                  ),
+                  trailing: const Icon(Icons.open_in_new),
+                  onTap: () => onTranscriptSelected(transcript),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -703,3 +867,19 @@ String _episodeSubtitle(PodcastEpisodeRecord episode) {
   }
   return parts.isEmpty ? episode.author ?? 'Podcast' : parts.join(' · ');
 }
+
+String _chapterTime(Duration position) {
+  final hours = position.inHours;
+  final minutes = position.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final seconds = position.inSeconds.remainder(60).toString().padLeft(2, '0');
+  return hours == 0 ? '$minutes:$seconds' : '$hours:$minutes:$seconds';
+}
+
+String _transcriptType(String mimeType) => switch (mimeType) {
+      'text/vtt' => 'WebVTT',
+      'application/x-subrip' => 'SRT',
+      'text/plain' => '纯文本',
+      'text/html' => '网页',
+      'application/json' => 'JSON 字幕',
+      _ => mimeType,
+    };

@@ -442,6 +442,8 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           audio: dependencies.audioController,
           queue: dependencies.audioQueue,
           clock: dependencies.clock,
+          chapterLoader: PodcastChapterLoader(http: dependencies.http),
+          externalUri: dependencies.externalUri,
         ),
       ),
     );
