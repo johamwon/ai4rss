@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 export 'src/background_refresh_scheduler.dart';
 export 'src/dynamic_page_renderer.dart';
 export 'src/external_uri_gateway.dart';
+export 'src/knowledge_markdown_file_gateway.dart';
 export 'src/network_monitor.dart';
 export 'src/opml_file_gateway.dart';
 export 'src/podcast_audio_engine.dart';

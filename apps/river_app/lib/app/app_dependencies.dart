@@ -6,6 +6,7 @@ import 'package:river_data/river_data.dart' hide AudioItem, AudioQueueEntry;
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
 import 'package:river_feed/river_feed.dart';
+import 'package:river_knowledge/river_knowledge.dart';
 import 'package:river_platform/river_platform.dart';
 import 'package:river_sync/river_sync.dart';
 
@@ -28,8 +29,13 @@ final class AppDependencies {
     PodcastTransferBackend? podcastTransfer,
     NetworkMonitor? network,
     OpmlFileGateway? opmlFiles,
+    KnowledgeMarkdownFileGateway? knowledgeFiles,
+    KnowledgeImageFetcher? knowledgeImages,
     this.syncAccount,
-  })  : opmlFiles = opmlFiles ?? const PlatformOpmlFileGateway(),
+  })  : knowledgeFiles =
+            knowledgeFiles ?? const PlatformKnowledgeMarkdownFileGateway(),
+        knowledgeImages = knowledgeImages ?? IoKnowledgeImageFetcher(),
+        opmlFiles = opmlFiles ?? const PlatformOpmlFileGateway(),
         audio = audio ?? const UnavailableAudioEngine(),
         audioPlayback = audioPlayback ?? DriftAudioPlaybackRepository(database),
         audioSystemSession =
@@ -43,6 +49,7 @@ final class AppDependencies {
         _database = database {
     jobs = PersistentJobQueue(database);
     feeds = DriftFeedRepository(database);
+    knowledge = DriftKnowledgeRepository(database);
     podcasts = DriftPodcastRepository(database);
     podcastDownloadStore = DriftPodcastDownloadStore(database);
     podcastDownloads = DurablePodcastDownloadManager(
@@ -180,9 +187,12 @@ final class AppDependencies {
   final HttpPort http;
   final bool automaticRefreshEnabled;
   final OpmlFileGateway opmlFiles;
+  final KnowledgeMarkdownFileGateway knowledgeFiles;
+  final KnowledgeImageFetcher knowledgeImages;
   final SyncAccountExperience? syncAccount;
   late final PersistentJobQueue jobs;
   late final DriftFeedRepository feeds;
+  late final DriftKnowledgeRepository knowledge;
   late final DriftPodcastRepository podcasts;
   late final DriftPodcastDownloadStore podcastDownloadStore;
   late final DurablePodcastDownloadManager podcastDownloads;

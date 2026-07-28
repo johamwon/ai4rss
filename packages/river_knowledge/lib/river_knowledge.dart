@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:river_domain/river_domain.dart';
 
 export 'src/knowledge_markdown.dart';
+export 'src/knowledge_markdown_export.dart';
 
 final class KnowledgeExportService {
   const KnowledgeExportService(this._manager);

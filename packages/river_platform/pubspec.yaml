@@ -28,6 +28,8 @@ dependencies:
     path: ../river_domain
   river_feed:
     path: ../river_feed
+  river_knowledge:
+    path: ../river_knowledge
   river_sync:
     path: ../river_sync
   share_plus: 12.0.2
