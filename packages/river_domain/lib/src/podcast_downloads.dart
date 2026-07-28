@@ -168,6 +168,8 @@ abstract interface class PodcastTransferBackend {
     String? partialPath,
     String? availablePath,
   });
+
+  Future<bool> isAvailable(String availablePath);
 }
 
 final class UnavailablePodcastTransferBackend
@@ -176,6 +178,9 @@ final class UnavailablePodcastTransferBackend
 
   @override
   Future<void> discard({String? partialPath, String? availablePath}) async {}
+
+  @override
+  Future<bool> isAvailable(String availablePath) async => false;
 
   @override
   Future<PodcastTransferResult> transfer(

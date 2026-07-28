@@ -82,6 +82,13 @@ final class DurablePodcastDownloadManager implements PodcastDownloadManager {
   Future<PodcastDownloadState> status(String episodeId) async {
     final normalized = _normalizeEpisodeId(episodeId);
     final saved = await _store.read(normalized);
+    if (saved?.isAvailable ?? false) {
+      final exists = await _backend.isAvailable(saved!.availablePath!);
+      if (!exists) {
+        await _store.remove(normalized);
+        return PodcastDownloadState.notDownloaded(normalized);
+      }
+    }
     if (saved != null && saved.sourceUri != null) {
       final episode = await _safeLoadEpisode(normalized);
       if (episode != null && saved.sourceUri != episode.mediaUrl) {
@@ -144,7 +151,7 @@ final class DurablePodcastDownloadManager implements PodcastDownloadManager {
       );
     }
     _emit((await _store.read(normalized))!);
-    await resumePending();
+    unawaited(resumePending());
   }
 
   @override

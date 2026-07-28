@@ -8,6 +8,12 @@ void main() {
     addTearDown(database.close);
     final repository = DriftPodcastRepository(database);
     final firstAt = DateTime.utc(2026, 7, 26);
+    final watchedShows = repository.watchShows().firstWhere(
+      (shows) => shows.isNotEmpty,
+    );
+    final watchedEpisodes = repository
+        .watchEpisodes('show-1')
+        .firstWhere((episodes) => episodes.isNotEmpty);
     await repository.applyRefresh(
       show: _show(updatedAt: firstAt),
       episodeUpserts: <PodcastEpisodeRecord>[
@@ -17,6 +23,8 @@ void main() {
         ),
       ],
     );
+    expect((await watchedShows).single.title, 'River Show');
+    expect((await watchedEpisodes).single.id, 'episode-1');
     await repository.updateShowPolicy(
       showId: 'show-1',
       defaultPlaybackRate: 1.75,
@@ -80,6 +88,27 @@ void main() {
       expect(await repository.findShowById('show-1'), isNull);
     },
   );
+
+  test('deleting a show cascades its episodes', () async {
+    final database = RiverDatabase.inMemory();
+    addTearDown(database.close);
+    final repository = DriftPodcastRepository(database);
+    final now = DateTime.utc(2026, 7, 26);
+    await repository.applyRefresh(
+      show: _show(updatedAt: now),
+      episodeUpserts: <PodcastEpisodeRecord>[
+        _episode(
+          mediaUrl: Uri.parse('https://media.example.test/episode.mp3'),
+          updatedAt: now,
+        ),
+      ],
+    );
+
+    await repository.deleteShow('show-1');
+
+    expect(await repository.findShowById('show-1'), isNull);
+    expect(await repository.listEpisodes('show-1'), isEmpty);
+  });
 }
 
 PodcastShowRecord _show({

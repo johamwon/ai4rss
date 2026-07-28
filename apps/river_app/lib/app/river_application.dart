@@ -7,6 +7,7 @@ import 'package:river_design_system/river_design_system.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
 
+import '../podcast/podcast_library_page.dart';
 import '../sync/sync_account_page.dart';
 import 'app_dependencies.dart';
 import 'article_list.dart';
@@ -362,6 +363,22 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
     );
   }
 
+  Future<void> _openPodcasts() async {
+    final dependencies = RiverDependenciesScope.of(context);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => PodcastLibraryPage(
+          repository: dependencies.podcasts,
+          refresh: dependencies.podcastRefresh,
+          policies: dependencies.podcastPolicies,
+          downloads: dependencies.podcastDownloads,
+          audio: dependencies.audioController,
+          clock: dependencies.clock,
+        ),
+      ),
+    );
+  }
+
   Future<void> _run(Future<String?> Function() operation) async {
     setState(() => _busy = true);
     try {
@@ -570,6 +587,11 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
                   appBar: AppBar(
                     title: const Text('River'),
                     actions: <Widget>[
+                      IconButton(
+                        onPressed: () => unawaited(_openPodcasts()),
+                        icon: const Icon(Icons.podcasts_outlined),
+                        tooltip: '播客',
+                      ),
                       if (_dependencies?.syncAccount != null)
                         IconButton(
                           onPressed: () => unawaited(_openSyncAccount()),

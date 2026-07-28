@@ -9,6 +9,30 @@ final class DriftPodcastRepository implements feed.PodcastCatalogRepository {
   final RiverDatabase database;
 
   @override
+  Stream<List<feed.PodcastShowRecord>> watchShows() {
+    final query = database.select(database.podcastShows)
+      ..orderBy(<OrderingTerm Function($PodcastShowsTable)>[
+        (table) => OrderingTerm.desc(table.lastRefreshedAt),
+        (table) => OrderingTerm.asc(table.title),
+      ]);
+    return query.watch().map((rows) => rows.map(_show).toList(growable: false));
+  }
+
+  @override
+  Stream<List<feed.PodcastEpisodeRecord>> watchEpisodes(String showId) {
+    final query = database.select(database.podcastEpisodes)
+      ..where((table) => table.showId.equals(showId))
+      ..orderBy(<OrderingTerm Function($PodcastEpisodesTable)>[
+        (table) => OrderingTerm.desc(table.publishedAt),
+        (table) => OrderingTerm.desc(table.updatedAt),
+        (table) => OrderingTerm.asc(table.id),
+      ]);
+    return query.watch().map(
+      (rows) => rows.map(_episode).toList(growable: false),
+    );
+  }
+
+  @override
   Future<feed.PodcastShowRecord?> findShowByCanonicalUrl(
     Uri canonicalFeedUrl,
   ) async {
@@ -47,6 +71,13 @@ final class DriftPodcastRepository implements feed.PodcastCatalogRepository {
       database.podcastEpisodes,
     )..where((table) => table.id.equals(episodeId))).getSingleOrNull();
     return row == null ? null : _episode(row);
+  }
+
+  @override
+  Future<void> deleteShow(String showId) async {
+    await (database.delete(
+      database.podcastShows,
+    )..where((table) => table.id.equals(showId))).go();
   }
 
   @override

@@ -54,6 +54,16 @@ final class AppDependencies {
       clock: clock,
       ids: ids,
     );
+    podcastRefresh = PodcastRefreshService(
+      http: http,
+      repository: podcasts,
+      clock: clock,
+      ids: ids,
+    );
+    podcastPolicies = PodcastDownloadPolicyService(
+      repository: podcasts,
+      downloads: podcastDownloads,
+    );
     offlineArticles = DurableOfflineArticleManager(
       jobs: jobs,
       loadArticle: (articleId) => feeds.watchArticle(articleId).first,
@@ -165,6 +175,8 @@ final class AppDependencies {
   late final DriftPodcastRepository podcasts;
   late final DriftPodcastDownloadStore podcastDownloadStore;
   late final DurablePodcastDownloadManager podcastDownloads;
+  late final PodcastRefreshService podcastRefresh;
+  late final PodcastDownloadPolicyService podcastPolicies;
   late final DurableOfflineArticleManager offlineArticles;
   late final FeedRefreshService feedRefresh;
   late final FeedRefreshCoordinator feedRefreshCoordinator;
