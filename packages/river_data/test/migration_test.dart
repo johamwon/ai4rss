@@ -8,7 +8,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:test/test.dart';
 
 void main() {
-  test('v1 fixture migrates to v12 without losing article state', () async {
+  test('v1 fixture migrates to v13 without losing article state', () async {
     final fixture = await _materializeFixture('v001_populated.sql');
     final migrated = await _openFixture(fixture);
 
@@ -17,7 +17,7 @@ void main() {
     expect(article.feedSummary, 'Existing preview survives migration');
     expect(article.starred, isTrue);
     expect(article.feedContentHtml, isNull);
-    expect(await _userVersion(migrated), 12);
+    expect(await _userVersion(migrated), 13);
     expect(
       await _syncTableNames(migrated),
       containsAll(<String>[
@@ -47,7 +47,7 @@ void main() {
 
     final article = await recovered.select(recovered.articles).getSingle();
     expect(article.feedContentHtml, '<p>Recovered body</p>');
-    expect(await _userVersion(recovered), 12);
+    expect(await _userVersion(recovered), 13);
   });
 
   test('v2 fixture creates the settings table and preserves article', () async {
@@ -56,7 +56,7 @@ void main() {
 
     final article = await migrated.select(migrated.articles).getSingle();
     expect(article.feedContentHtml, '<p>Current immediate body</p>');
-    expect(await _userVersion(migrated), 12);
+    expect(await _userVersion(migrated), 13);
     expect(
       await DriftReaderSettingsRepository(migrated).watchSettings().first,
       const ReaderSettings(),
@@ -91,7 +91,7 @@ void main() {
     expect(settings.fontFamily, ReaderFontFamily.serif);
     expect(settings.fontScale, 1.3);
     expect(settings.theme, ReaderThemePreference.dark);
-    expect(await _userVersion(recovered), 12);
+    expect(await _userVersion(recovered), 13);
   });
 
   test('v3 fixture creates a searchable index without data loss', () async {
@@ -118,7 +118,7 @@ void main() {
           .id,
       'article-1',
     );
-    expect(await _userVersion(current), 12);
+    expect(await _userVersion(current), 13);
   });
 
   test('interrupted v4 index creation rebuilds and creates triggers', () async {
@@ -145,7 +145,7 @@ void main() {
       'article-1',
     ]);
     expect(await _searchTriggerCount(recovered), 10);
-    expect(await _userVersion(recovered), 12);
+    expect(await _userVersion(recovered), 13);
   });
 
   test('v4 fixture adds restartable audio state with index intact', () async {
@@ -177,7 +177,7 @@ void main() {
         'language_tag',
       ]),
     );
-    expect(await _userVersion(current), 12);
+    expect(await _userVersion(current), 13);
   });
 
   test('interrupted v5 audio column additions retry idempotently', () async {
@@ -202,7 +202,7 @@ void main() {
         'language_tag',
       ]),
     );
-    expect(await _userVersion(recovered), 12);
+    expect(await _userVersion(recovered), 13);
   });
 
   test('interrupted v6 sync table creation retries idempotently', () async {
@@ -244,7 +244,7 @@ void main() {
         'sync_seen_mutation_rows',
       ]),
     );
-    expect(await _userVersion(recovered), 12);
+    expect(await _userVersion(recovered), 13);
   });
 
   test('interrupted v7 sync history migration retries idempotently', () async {
@@ -284,7 +284,7 @@ void main() {
         'resolved_at',
       ]),
     );
-    expect(await _userVersion(recovered), 12);
+    expect(await _userVersion(recovered), 13);
   });
 
   test('interrupted v8 podcast table creation retries idempotently', () async {
@@ -309,7 +309,7 @@ void main() {
       await _columnNames(recovered, 'podcast_downloads'),
       contains('source_url'),
     );
-    expect(await _userVersion(recovered), 12);
+    expect(await _userVersion(recovered), 13);
   });
 
   test('v8 source binding migration adds the missing column', () async {
@@ -328,7 +328,7 @@ void main() {
       await _columnNames(recovered, 'podcast_downloads'),
       contains('source_url'),
     );
-    expect(await _userVersion(recovered), 12);
+    expect(await _userVersion(recovered), 13);
   });
 
   test('interrupted v9 source binding retries idempotently', () async {
@@ -346,7 +346,7 @@ void main() {
       await _columnNames(recovered, 'podcast_downloads'),
       contains('source_url'),
     );
-    expect(await _userVersion(recovered), 12);
+    expect(await _userVersion(recovered), 13);
   });
 
   test('v9 fixture adds an empty queue without losing audio state', () async {
@@ -366,7 +366,7 @@ void main() {
       isA<AudioQueueSnapshot>(),
     );
     expect((await DriftAudioQueueRepository(migrated).read()).entries, isEmpty);
-    expect(await _userVersion(migrated), 12);
+    expect(await _userVersion(migrated), 13);
   });
 
   test('interrupted v10 queue creation retries without losing rows', () async {
@@ -399,7 +399,7 @@ void main() {
     final queue = await DriftAudioQueueRepository(recovered).read();
     expect(queue.entries.single.item.id, 'queued-v9');
     expect(queue.current?.item.id, 'queued-v9');
-    expect(await _userVersion(recovered), 12);
+    expect(await _userVersion(recovered), 13);
   });
 
   test('v10 fixture adds empty Podcasting 2.0 metadata safely', () async {
@@ -420,7 +420,7 @@ void main() {
         'transcripts_json',
       ]),
     );
-    expect(await _userVersion(migrated), 12);
+    expect(await _userVersion(migrated), 13);
   });
 
   test(
@@ -447,7 +447,7 @@ void main() {
         'https://example.test/chapters-v10.json',
       );
       expect(row.read<String>('transcripts_json'), '[]');
-      expect(await _userVersion(recovered), 12);
+      expect(await _userVersion(recovered), 13);
     },
   );
 
@@ -466,7 +466,7 @@ void main() {
         ).watchArticleAnnotations('article-v11').first,
         isEmpty,
       );
-      expect(await _userVersion(migrated), 12);
+      expect(await _userVersion(migrated), 13);
     },
   );
 
@@ -513,7 +513,89 @@ void main() {
       ).watchArticleAnnotations('article-v11').first).single;
       expect(annotation.anchor.exact, 'selected fact');
       expect(annotation.note, 'Survives interruption');
-      expect(await _userVersion(recovered), 12);
+      expect(await _userVersion(recovered), 13);
+    },
+  );
+
+  test(
+    'v12 fixture backfills a stable knowledge source and mapping schema',
+    () async {
+      final fixture = await _materializeFixture('v012_knowledge_model.sql');
+      final migrated = await _openFixture(fixture);
+      final repository = DriftKnowledgeRepository(migrated);
+
+      final items = await repository.watchItems().first;
+      final item = items.singleWhere((item) => item.id == 'knowledge-v12');
+      final duplicate = items.singleWhere(
+        (item) => item.id == 'knowledge-v12-duplicate',
+      );
+      expect(items, hasLength(2));
+      expect(item.id, 'knowledge-v12');
+      expect(item.source.kind, KnowledgeSourceKind.article);
+      expect(item.source.sourceId, 'article-v12');
+      expect(item.source.sourceTitle, 'Legacy knowledge');
+      expect(item.contentHash, 'legacy-hash');
+      expect(duplicate.source.kind, KnowledgeSourceKind.manual);
+      expect(duplicate.source.sourceId, 'legacy:knowledge-v12-duplicate');
+      expect(await repository.watchExternalMappings(item.id).first, isEmpty);
+      expect(
+        await _indexNames(migrated, 'knowledge_items'),
+        contains('knowledge_items_source_unique'),
+      );
+      expect(await _userVersion(migrated), 13);
+    },
+  );
+
+  test(
+    'interrupted v13 knowledge migration preserves an external mapping',
+    () async {
+      final fixture = await _materializeFixture('v012_knowledge_model.sql');
+      final raw = sqlite.sqlite3.open(fixture.path);
+      raw
+        ..execute(
+          "ALTER TABLE knowledge_items ADD source_kind "
+          "TEXT NOT NULL DEFAULT 'article'",
+        )
+        ..execute('ALTER TABLE knowledge_items ADD source_id TEXT')
+        ..execute('UPDATE knowledge_items SET source_id = article_id')
+        ..execute('''
+          CREATE TABLE knowledge_external_mappings (
+            knowledge_item_id TEXT NOT NULL
+              REFERENCES knowledge_items(id) ON DELETE CASCADE,
+            connector_id TEXT NOT NULL,
+            destination_id TEXT NOT NULL,
+            external_object_id TEXT NOT NULL,
+            external_url TEXT,
+            exported_content_hash TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            PRIMARY KEY (
+              knowledge_item_id,
+              connector_id,
+              destination_id
+            )
+          )
+        ''')
+        ..execute('''
+          INSERT INTO knowledge_external_mappings VALUES (
+            'knowledge-v12', 'notion', 'database-v12', 'page-v12',
+            'https://notion.so/page-v12', 'legacy-hash',
+            1785211200, 1785211200
+          )
+        ''')
+        ..close();
+      final recovered = await _openFixture(fixture);
+      final repository = DriftKnowledgeRepository(recovered);
+
+      final item = (await repository.watchItems().first).singleWhere(
+        (item) => item.id == 'knowledge-v12',
+      );
+      final mapping =
+          (await repository.watchExternalMappings(item.id).first).single;
+      expect(item.source.sourceId, 'article-v12');
+      expect(mapping.externalObjectId, 'page-v12');
+      expect(mapping.destinationId, 'database-v12');
+      expect(await _userVersion(recovered), 13);
     },
   );
 }
@@ -562,6 +644,13 @@ Future<List<String>> _columnNames(
   RiverDatabase database,
   String tableName,
 ) async => (await database.customSelect('PRAGMA table_info($tableName)').get())
+    .map((row) => row.read<String>('name'))
+    .toList(growable: false);
+
+Future<List<String>> _indexNames(
+  RiverDatabase database,
+  String tableName,
+) async => (await database.customSelect('PRAGMA index_list($tableName)').get())
     .map((row) => row.read<String>('name'))
     .toList(growable: false);
 

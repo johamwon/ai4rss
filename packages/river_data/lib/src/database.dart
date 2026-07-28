@@ -14,6 +14,7 @@ part 'database.g.dart';
     ReadingEvents,
     ReaderSettingsRows,
     KnowledgeItems,
+    KnowledgeExternalMappings,
     ArticleAnnotations,
     AudioItems,
     AudioQueueEntries,
@@ -39,13 +40,14 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (Migrator migrator) async {
       await migrator.createAll();
       await _createArticleSearchInfrastructure();
+      await _createKnowledgeSourceIndex();
       await rebuildArticleSearchIndex();
     },
     onUpgrade: (Migrator migrator, int from, int to) async {
@@ -161,6 +163,88 @@ final class RiverDatabase extends _$RiverDatabase {
       if (from < 12 && !await _hasTable('article_annotations')) {
         await migrator.createTable(articleAnnotations);
       }
+      if (from < 13) {
+        if (!await _hasTable('knowledge_items')) {
+          await migrator.createTable(knowledgeItems);
+        } else {
+          await _addKnowledgeColumnIfMissing(
+            migrator,
+            'source_kind',
+            knowledgeItems.sourceKind,
+          );
+          await _addKnowledgeColumnIfMissing(
+            migrator,
+            'source_id',
+            knowledgeItems.sourceId,
+          );
+          await _addKnowledgeColumnIfMissing(
+            migrator,
+            'source_title',
+            knowledgeItems.sourceTitle,
+          );
+          await _addKnowledgeColumnIfMissing(
+            migrator,
+            'author',
+            knowledgeItems.author,
+          );
+          await _addKnowledgeColumnIfMissing(
+            migrator,
+            'published_at',
+            knowledgeItems.publishedAt,
+          );
+          await _addKnowledgeColumnIfMissing(
+            migrator,
+            'sanitized_html',
+            knowledgeItems.sanitizedHtml,
+          );
+          await _addKnowledgeColumnIfMissing(
+            migrator,
+            'highlights_json',
+            knowledgeItems.highlightsJson,
+          );
+          await _addKnowledgeColumnIfMissing(
+            migrator,
+            'notes_json',
+            knowledgeItems.notesJson,
+          );
+          await _addKnowledgeColumnIfMissing(
+            migrator,
+            'topics_json',
+            knowledgeItems.topicsJson,
+          );
+          await _addKnowledgeColumnIfMissing(
+            migrator,
+            'entities_json',
+            knowledgeItems.entitiesJson,
+          );
+        }
+        await customStatement('''
+          UPDATE knowledge_items
+          SET source_kind = CASE
+                WHEN article_id IS NULL THEN 'manual'
+                ELSE 'article'
+              END,
+              source_id = COALESCE(source_id, article_id, 'legacy:' || id),
+              source_title = COALESCE(source_title, title)
+          WHERE source_id IS NULL OR source_title IS NULL
+        ''');
+        await customStatement('''
+          UPDATE knowledge_items
+          SET source_kind = 'manual',
+              source_id = 'legacy:' || id
+          WHERE source_id IS NOT NULL
+            AND rowid NOT IN (
+              SELECT MIN(rowid)
+              FROM knowledge_items
+              WHERE source_id IS NOT NULL
+              GROUP BY source_kind, source_id
+            )
+        ''');
+        await _createKnowledgeSourceIndex();
+        if (!await _hasTable('knowledge_external_mappings')) {
+          await migrator.createTable(knowledgeExternalMappings);
+        }
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -200,6 +284,22 @@ final class RiverDatabase extends _$RiverDatabase {
       await migrator.addColumn(podcastEpisodes, column);
     }
   }
+
+  Future<void> _addKnowledgeColumnIfMissing(
+    Migrator migrator,
+    String columnName,
+    GeneratedColumn<Object> column,
+  ) async {
+    if (!await _hasColumn('knowledge_items', columnName)) {
+      await migrator.addColumn(knowledgeItems, column);
+    }
+  }
+
+  Future<void> _createKnowledgeSourceIndex() => customStatement('''
+        CREATE UNIQUE INDEX IF NOT EXISTS knowledge_items_source_unique
+        ON knowledge_items(source_kind, source_id)
+        WHERE source_id IS NOT NULL
+      ''');
 
   Future<void> rebuildArticleSearchIndex() async {
     await customStatement('DELETE FROM article_search_index');

@@ -74,10 +74,10 @@ final class FakeKnowledgeConnector implements KnowledgeConnector {
   final Map<String, Uri> exports = <String, Uri>{};
 
   @override
-  Future<Uri> upsert(Article article, ArticleSummary? summary) async {
+  Future<Uri> upsert(KnowledgeItem item) async {
     return exports.putIfAbsent(
-      article.id,
-      () => Uri.parse('https://knowledge.test/${article.id}'),
+      item.id,
+      () => Uri.parse('https://knowledge.test/${item.id}'),
     );
   }
 }
