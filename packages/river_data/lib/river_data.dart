@@ -8,6 +8,7 @@ export 'src/extraction_cache.dart';
 export 'src/feed_refresh_coordinator.dart';
 export 'src/feed_repository.dart';
 export 'src/job_queue.dart';
+export 'src/knowledge_export_coordinator.dart';
 export 'src/knowledge_repository.dart';
 export 'src/offline_article_coordinator.dart';
 export 'src/podcast_download_coordinator.dart';

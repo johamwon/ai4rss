@@ -2,22 +2,66 @@ import 'package:river_domain/river_domain.dart';
 import 'package:river_knowledge/river_knowledge.dart';
 import 'package:test/test.dart';
 
-final class _Connector implements KnowledgeConnector {
-  @override
-  String get id => 'test-notion';
+final class _Manager implements KnowledgeExportManager {
+  KnowledgeExportTarget? upserted;
+  KnowledgeExportTarget? deleted;
 
   @override
-  Future<Uri> upsert(KnowledgeItem item) async {
-    return Uri.parse('https://notion.test/${item.id}');
+  Future<void> enqueueDelete(KnowledgeExportTarget target) async {
+    deleted = target;
   }
+
+  @override
+  Future<void> enqueueUpsert(KnowledgeExportTarget target) async {
+    upserted = target;
+  }
+
+  @override
+  Future<void> retry(
+    KnowledgeExportTarget target,
+    KnowledgeExportOperation operation,
+  ) async {}
+
+  @override
+  Future<KnowledgeExportState> status(
+    KnowledgeExportTarget target,
+    KnowledgeExportOperation operation,
+  ) async {
+    return KnowledgeExportState(
+      target: target,
+      operation: operation,
+      phase: KnowledgeExportPhase.notQueued,
+    );
+  }
+
+  @override
+  Stream<KnowledgeExportState> watch(
+    KnowledgeExportTarget target,
+    KnowledgeExportOperation operation,
+  ) =>
+      const Stream<KnowledgeExportState>.empty();
 }
 
 void main() {
-  test('connector idempotency key is stable per knowledge object', () {
-    final service = KnowledgeExportService(_Connector());
+  test('export service always submits work through the durable manager',
+      () async {
+    final manager = _Manager();
+    final service = KnowledgeExportService(manager);
     final item = _item();
 
-    expect(service.idempotencyKey(item), 'test-notion:knowledge-1');
+    await service.export(
+      item,
+      connectorId: 'notion',
+      destinationId: 'database-1',
+    );
+    await service.delete(
+      item,
+      connectorId: 'notion',
+      destinationId: 'database-1',
+    );
+
+    expect(manager.upserted?.stableKey, '11:knowledge-16:notion10:database-1');
+    expect(manager.deleted?.stableKey, manager.upserted?.stableKey);
   });
 
   test('content hash is canonical for metadata sets and changes with notes',

@@ -144,4 +144,61 @@ void main() {
     );
     expect((await queue.claimNext(now: now))?.type, 'extract');
   });
+
+  test(
+    'type-prefix claims preserve queue order across related operations',
+    () async {
+      final now = DateTime.utc(2026, 7, 15);
+      await queue.enqueue(
+        NewDurableJob(
+          id: 'delete',
+          type: 'knowledge-export/v1/delete',
+          idempotencyKey: 'delete-1',
+          payloadJson: '{}',
+          availableAt: now,
+        ),
+        now,
+      );
+      await queue.enqueue(
+        NewDurableJob(
+          id: 'other',
+          type: 'refresh',
+          idempotencyKey: 'refresh-1',
+          payloadJson: '{}',
+          availableAt: now,
+        ),
+        now,
+      );
+      await queue.enqueue(
+        NewDurableJob(
+          id: 'upsert',
+          type: 'knowledge-export/v1/upsert',
+          idempotencyKey: 'upsert-1',
+          payloadJson: '{}',
+          availableAt: now,
+        ),
+        now.add(const Duration(microseconds: 1)),
+      );
+
+      final first = await queue.claimNext(
+        now: now,
+        typePrefix: 'knowledge-export/v1/',
+      );
+      final second = await queue.claimNext(
+        now: now,
+        typePrefix: 'knowledge-export/v1/',
+      );
+
+      expect(first?.id, 'delete');
+      expect(second?.id, 'upsert');
+      expect(
+        () => queue.claimNext(
+          now: now,
+          type: 'refresh',
+          typePrefix: 'knowledge-',
+        ),
+        throwsArgumentError,
+      );
+    },
+  );
 }

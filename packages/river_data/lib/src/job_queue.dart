@@ -97,7 +97,11 @@ final class PersistentJobQueue {
     required DateTime now,
     Duration leaseDuration = const Duration(minutes: 2),
     String? type,
+    String? typePrefix,
   }) {
+    if (type != null && typePrefix != null) {
+      throw ArgumentError('Only one of type or typePrefix may be provided.');
+    }
     return _database.transaction(() async {
       final query = _database.select(_database.backgroundJobs);
       query.where(
@@ -108,9 +112,13 @@ final class PersistentJobQueue {
       if (type != null) {
         query.where((BackgroundJobs table) => table.type.equals(type));
       }
+      if (typePrefix != null) {
+        query.where((BackgroundJobs table) => table.type.like('$typePrefix%'));
+      }
       query
         ..orderBy(<OrderingTerm Function(BackgroundJobs)>[
           (BackgroundJobs table) => OrderingTerm.asc(table.availableAt),
+          (BackgroundJobs table) => OrderingTerm.asc(table.updatedAt),
           (BackgroundJobs table) => OrderingTerm.asc(table.createdAt),
         ])
         ..limit(1);

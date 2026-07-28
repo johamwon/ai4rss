@@ -52,6 +52,40 @@ void main() {
 
     expect(mapping.stableKey, 'knowledge-1:notion:database-1');
   });
+
+  test('connector requests validate public identity and external URLs', () {
+    final item = _item();
+    final request = KnowledgeConnectorCreateRequest(
+      item: item,
+      destinationId: 'database-1',
+      idempotencyKey: 'stable-create-key',
+    );
+    final target = KnowledgeExportTarget(
+      knowledgeItemId: item.id,
+      connectorId: 'notion',
+      destinationId: 'database-1',
+    );
+
+    expect(request.item, same(item));
+    expect(
+      target.stableKey,
+      '11:knowledge-16:notion10:database-1',
+    );
+    expect(
+      () => KnowledgeConnectorObject(
+        externalObjectId: 'page-1',
+        externalUrl: Uri.parse('file:///private/page-1'),
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => KnowledgeConnectorStatusRequest(
+        destinationId: '',
+        externalObjectId: 'page-1',
+      ),
+      throwsArgumentError,
+    );
+  });
 }
 
 KnowledgeItem _item({

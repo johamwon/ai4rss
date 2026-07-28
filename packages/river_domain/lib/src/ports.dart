@@ -314,11 +314,6 @@ final class UnavailableAudioEngine implements AudioEngine {
   Future<void> updateSettings(AudioPlaybackSettings settings) async {}
 }
 
-abstract interface class KnowledgeConnector {
-  String get id;
-  Future<Uri> upsert(KnowledgeItem item);
-}
-
 abstract interface class KnowledgeRepository {
   Stream<List<KnowledgeItem>> watchItems();
   Stream<KnowledgeItem?> watchItem(String itemId);
