@@ -3628,7 +3628,7 @@ class ReaderSettingsRowsCompanion extends UpdateCompanion<ReaderSettingsRow> {
 }
 
 class $KnowledgeItemsTable extends KnowledgeItems
-    with TableInfo<$KnowledgeItemsTable, KnowledgeItem> {
+    with TableInfo<$KnowledgeItemsTable, KnowledgeItemRow> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
@@ -3655,6 +3655,60 @@ class $KnowledgeItemsTable extends KnowledgeItems
     defaultConstraints: GeneratedColumn.constraintIsAlways(
       'REFERENCES articles (id) ON DELETE SET NULL',
     ),
+  );
+  static const VerificationMeta _sourceKindMeta = const VerificationMeta(
+    'sourceKind',
+  );
+  @override
+  late final GeneratedColumn<String> sourceKind = GeneratedColumn<String>(
+    'source_kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('article'),
+  );
+  static const VerificationMeta _sourceIdMeta = const VerificationMeta(
+    'sourceId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceId = GeneratedColumn<String>(
+    'source_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sourceTitleMeta = const VerificationMeta(
+    'sourceTitle',
+  );
+  @override
+  late final GeneratedColumn<String> sourceTitle = GeneratedColumn<String>(
+    'source_title',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _authorMeta = const VerificationMeta('author');
+  @override
+  late final GeneratedColumn<String> author = GeneratedColumn<String>(
+    'author',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _publishedAtMeta = const VerificationMeta(
+    'publishedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> publishedAt = GeneratedColumn<DateTime>(
+    'published_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
   @override
@@ -3691,6 +3745,18 @@ class $KnowledgeItemsTable extends KnowledgeItems
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _sanitizedHtmlMeta = const VerificationMeta(
+    'sanitizedHtml',
+  );
+  @override
+  late final GeneratedColumn<String> sanitizedHtml = GeneratedColumn<String>(
+    'sanitized_html',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _summaryJsonMeta = const VerificationMeta(
     'summaryJson',
   );
@@ -3702,12 +3768,60 @@ class $KnowledgeItemsTable extends KnowledgeItems
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _highlightsJsonMeta = const VerificationMeta(
+    'highlightsJson',
+  );
+  @override
+  late final GeneratedColumn<String> highlightsJson = GeneratedColumn<String>(
+    'highlights_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _notesJsonMeta = const VerificationMeta(
+    'notesJson',
+  );
+  @override
+  late final GeneratedColumn<String> notesJson = GeneratedColumn<String>(
+    'notes_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
   static const VerificationMeta _tagsJsonMeta = const VerificationMeta(
     'tagsJson',
   );
   @override
   late final GeneratedColumn<String> tagsJson = GeneratedColumn<String>(
     'tags_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _topicsJsonMeta = const VerificationMeta(
+    'topicsJson',
+  );
+  @override
+  late final GeneratedColumn<String> topicsJson = GeneratedColumn<String>(
+    'topics_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  static const VerificationMeta _entitiesJsonMeta = const VerificationMeta(
+    'entitiesJson',
+  );
+  @override
+  late final GeneratedColumn<String> entitiesJson = GeneratedColumn<String>(
+    'entities_json',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -3751,11 +3865,21 @@ class $KnowledgeItemsTable extends KnowledgeItems
   List<GeneratedColumn> get $columns => [
     id,
     articleId,
+    sourceKind,
+    sourceId,
+    sourceTitle,
+    author,
+    publishedAt,
     title,
     originalUrl,
     markdown,
+    sanitizedHtml,
     summaryJson,
+    highlightsJson,
+    notesJson,
     tagsJson,
+    topicsJson,
+    entitiesJson,
     contentHash,
     createdAt,
     updatedAt,
@@ -3767,7 +3891,7 @@ class $KnowledgeItemsTable extends KnowledgeItems
   static const String $name = 'knowledge_items';
   @override
   VerificationContext validateIntegrity(
-    Insertable<KnowledgeItem> instance, {
+    Insertable<KnowledgeItemRow> instance, {
     bool isInserting = false,
   }) {
     final context = VerificationContext();
@@ -3781,6 +3905,42 @@ class $KnowledgeItemsTable extends KnowledgeItems
       context.handle(
         _articleIdMeta,
         articleId.isAcceptableOrUnknown(data['article_id']!, _articleIdMeta),
+      );
+    }
+    if (data.containsKey('source_kind')) {
+      context.handle(
+        _sourceKindMeta,
+        sourceKind.isAcceptableOrUnknown(data['source_kind']!, _sourceKindMeta),
+      );
+    }
+    if (data.containsKey('source_id')) {
+      context.handle(
+        _sourceIdMeta,
+        sourceId.isAcceptableOrUnknown(data['source_id']!, _sourceIdMeta),
+      );
+    }
+    if (data.containsKey('source_title')) {
+      context.handle(
+        _sourceTitleMeta,
+        sourceTitle.isAcceptableOrUnknown(
+          data['source_title']!,
+          _sourceTitleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('author')) {
+      context.handle(
+        _authorMeta,
+        author.isAcceptableOrUnknown(data['author']!, _authorMeta),
+      );
+    }
+    if (data.containsKey('published_at')) {
+      context.handle(
+        _publishedAtMeta,
+        publishedAt.isAcceptableOrUnknown(
+          data['published_at']!,
+          _publishedAtMeta,
+        ),
       );
     }
     if (data.containsKey('title')) {
@@ -3810,6 +3970,15 @@ class $KnowledgeItemsTable extends KnowledgeItems
     } else if (isInserting) {
       context.missing(_markdownMeta);
     }
+    if (data.containsKey('sanitized_html')) {
+      context.handle(
+        _sanitizedHtmlMeta,
+        sanitizedHtml.isAcceptableOrUnknown(
+          data['sanitized_html']!,
+          _sanitizedHtmlMeta,
+        ),
+      );
+    }
     if (data.containsKey('summary_json')) {
       context.handle(
         _summaryJsonMeta,
@@ -3819,10 +3988,40 @@ class $KnowledgeItemsTable extends KnowledgeItems
         ),
       );
     }
+    if (data.containsKey('highlights_json')) {
+      context.handle(
+        _highlightsJsonMeta,
+        highlightsJson.isAcceptableOrUnknown(
+          data['highlights_json']!,
+          _highlightsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notes_json')) {
+      context.handle(
+        _notesJsonMeta,
+        notesJson.isAcceptableOrUnknown(data['notes_json']!, _notesJsonMeta),
+      );
+    }
     if (data.containsKey('tags_json')) {
       context.handle(
         _tagsJsonMeta,
         tagsJson.isAcceptableOrUnknown(data['tags_json']!, _tagsJsonMeta),
+      );
+    }
+    if (data.containsKey('topics_json')) {
+      context.handle(
+        _topicsJsonMeta,
+        topicsJson.isAcceptableOrUnknown(data['topics_json']!, _topicsJsonMeta),
+      );
+    }
+    if (data.containsKey('entities_json')) {
+      context.handle(
+        _entitiesJsonMeta,
+        entitiesJson.isAcceptableOrUnknown(
+          data['entities_json']!,
+          _entitiesJsonMeta,
+        ),
       );
     }
     if (data.containsKey('content_hash')) {
@@ -3858,9 +4057,9 @@ class $KnowledgeItemsTable extends KnowledgeItems
   @override
   Set<GeneratedColumn> get $primaryKey => {id};
   @override
-  KnowledgeItem map(Map<String, dynamic> data, {String? tablePrefix}) {
+  KnowledgeItemRow map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return KnowledgeItem(
+    return KnowledgeItemRow(
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -3868,6 +4067,26 @@ class $KnowledgeItemsTable extends KnowledgeItems
       articleId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}article_id'],
+      ),
+      sourceKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_kind'],
+      )!,
+      sourceId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_id'],
+      ),
+      sourceTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_title'],
+      ),
+      author: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author'],
+      ),
+      publishedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}published_at'],
       ),
       title: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -3881,13 +4100,33 @@ class $KnowledgeItemsTable extends KnowledgeItems
         DriftSqlType.string,
         data['${effectivePrefix}markdown'],
       )!,
+      sanitizedHtml: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sanitized_html'],
+      )!,
       summaryJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}summary_json'],
       ),
+      highlightsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}highlights_json'],
+      )!,
+      notesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes_json'],
+      )!,
       tagsJson: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}tags_json'],
+      )!,
+      topicsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}topics_json'],
+      )!,
+      entitiesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}entities_json'],
       )!,
       contentHash: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -3910,25 +4149,46 @@ class $KnowledgeItemsTable extends KnowledgeItems
   }
 }
 
-class KnowledgeItem extends DataClass implements Insertable<KnowledgeItem> {
+class KnowledgeItemRow extends DataClass
+    implements Insertable<KnowledgeItemRow> {
   final String id;
   final String? articleId;
+  final String sourceKind;
+  final String? sourceId;
+  final String? sourceTitle;
+  final String? author;
+  final DateTime? publishedAt;
   final String title;
   final String originalUrl;
   final String markdown;
+  final String sanitizedHtml;
   final String? summaryJson;
+  final String highlightsJson;
+  final String notesJson;
   final String tagsJson;
+  final String topicsJson;
+  final String entitiesJson;
   final String contentHash;
   final DateTime createdAt;
   final DateTime updatedAt;
-  const KnowledgeItem({
+  const KnowledgeItemRow({
     required this.id,
     this.articleId,
+    required this.sourceKind,
+    this.sourceId,
+    this.sourceTitle,
+    this.author,
+    this.publishedAt,
     required this.title,
     required this.originalUrl,
     required this.markdown,
+    required this.sanitizedHtml,
     this.summaryJson,
+    required this.highlightsJson,
+    required this.notesJson,
     required this.tagsJson,
+    required this.topicsJson,
+    required this.entitiesJson,
     required this.contentHash,
     required this.createdAt,
     required this.updatedAt,
@@ -3940,13 +4200,31 @@ class KnowledgeItem extends DataClass implements Insertable<KnowledgeItem> {
     if (!nullToAbsent || articleId != null) {
       map['article_id'] = Variable<String>(articleId);
     }
+    map['source_kind'] = Variable<String>(sourceKind);
+    if (!nullToAbsent || sourceId != null) {
+      map['source_id'] = Variable<String>(sourceId);
+    }
+    if (!nullToAbsent || sourceTitle != null) {
+      map['source_title'] = Variable<String>(sourceTitle);
+    }
+    if (!nullToAbsent || author != null) {
+      map['author'] = Variable<String>(author);
+    }
+    if (!nullToAbsent || publishedAt != null) {
+      map['published_at'] = Variable<DateTime>(publishedAt);
+    }
     map['title'] = Variable<String>(title);
     map['original_url'] = Variable<String>(originalUrl);
     map['markdown'] = Variable<String>(markdown);
+    map['sanitized_html'] = Variable<String>(sanitizedHtml);
     if (!nullToAbsent || summaryJson != null) {
       map['summary_json'] = Variable<String>(summaryJson);
     }
+    map['highlights_json'] = Variable<String>(highlightsJson);
+    map['notes_json'] = Variable<String>(notesJson);
     map['tags_json'] = Variable<String>(tagsJson);
+    map['topics_json'] = Variable<String>(topicsJson);
+    map['entities_json'] = Variable<String>(entitiesJson);
     map['content_hash'] = Variable<String>(contentHash);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -3959,32 +4237,60 @@ class KnowledgeItem extends DataClass implements Insertable<KnowledgeItem> {
       articleId: articleId == null && nullToAbsent
           ? const Value.absent()
           : Value(articleId),
+      sourceKind: Value(sourceKind),
+      sourceId: sourceId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceId),
+      sourceTitle: sourceTitle == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceTitle),
+      author: author == null && nullToAbsent
+          ? const Value.absent()
+          : Value(author),
+      publishedAt: publishedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(publishedAt),
       title: Value(title),
       originalUrl: Value(originalUrl),
       markdown: Value(markdown),
+      sanitizedHtml: Value(sanitizedHtml),
       summaryJson: summaryJson == null && nullToAbsent
           ? const Value.absent()
           : Value(summaryJson),
+      highlightsJson: Value(highlightsJson),
+      notesJson: Value(notesJson),
       tagsJson: Value(tagsJson),
+      topicsJson: Value(topicsJson),
+      entitiesJson: Value(entitiesJson),
       contentHash: Value(contentHash),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
   }
 
-  factory KnowledgeItem.fromJson(
+  factory KnowledgeItemRow.fromJson(
     Map<String, dynamic> json, {
     ValueSerializer? serializer,
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
-    return KnowledgeItem(
+    return KnowledgeItemRow(
       id: serializer.fromJson<String>(json['id']),
       articleId: serializer.fromJson<String?>(json['articleId']),
+      sourceKind: serializer.fromJson<String>(json['sourceKind']),
+      sourceId: serializer.fromJson<String?>(json['sourceId']),
+      sourceTitle: serializer.fromJson<String?>(json['sourceTitle']),
+      author: serializer.fromJson<String?>(json['author']),
+      publishedAt: serializer.fromJson<DateTime?>(json['publishedAt']),
       title: serializer.fromJson<String>(json['title']),
       originalUrl: serializer.fromJson<String>(json['originalUrl']),
       markdown: serializer.fromJson<String>(json['markdown']),
+      sanitizedHtml: serializer.fromJson<String>(json['sanitizedHtml']),
       summaryJson: serializer.fromJson<String?>(json['summaryJson']),
+      highlightsJson: serializer.fromJson<String>(json['highlightsJson']),
+      notesJson: serializer.fromJson<String>(json['notesJson']),
       tagsJson: serializer.fromJson<String>(json['tagsJson']),
+      topicsJson: serializer.fromJson<String>(json['topicsJson']),
+      entitiesJson: serializer.fromJson<String>(json['entitiesJson']),
       contentHash: serializer.fromJson<String>(json['contentHash']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -3996,53 +4302,107 @@ class KnowledgeItem extends DataClass implements Insertable<KnowledgeItem> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'articleId': serializer.toJson<String?>(articleId),
+      'sourceKind': serializer.toJson<String>(sourceKind),
+      'sourceId': serializer.toJson<String?>(sourceId),
+      'sourceTitle': serializer.toJson<String?>(sourceTitle),
+      'author': serializer.toJson<String?>(author),
+      'publishedAt': serializer.toJson<DateTime?>(publishedAt),
       'title': serializer.toJson<String>(title),
       'originalUrl': serializer.toJson<String>(originalUrl),
       'markdown': serializer.toJson<String>(markdown),
+      'sanitizedHtml': serializer.toJson<String>(sanitizedHtml),
       'summaryJson': serializer.toJson<String?>(summaryJson),
+      'highlightsJson': serializer.toJson<String>(highlightsJson),
+      'notesJson': serializer.toJson<String>(notesJson),
       'tagsJson': serializer.toJson<String>(tagsJson),
+      'topicsJson': serializer.toJson<String>(topicsJson),
+      'entitiesJson': serializer.toJson<String>(entitiesJson),
       'contentHash': serializer.toJson<String>(contentHash),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
-  KnowledgeItem copyWith({
+  KnowledgeItemRow copyWith({
     String? id,
     Value<String?> articleId = const Value.absent(),
+    String? sourceKind,
+    Value<String?> sourceId = const Value.absent(),
+    Value<String?> sourceTitle = const Value.absent(),
+    Value<String?> author = const Value.absent(),
+    Value<DateTime?> publishedAt = const Value.absent(),
     String? title,
     String? originalUrl,
     String? markdown,
+    String? sanitizedHtml,
     Value<String?> summaryJson = const Value.absent(),
+    String? highlightsJson,
+    String? notesJson,
     String? tagsJson,
+    String? topicsJson,
+    String? entitiesJson,
     String? contentHash,
     DateTime? createdAt,
     DateTime? updatedAt,
-  }) => KnowledgeItem(
+  }) => KnowledgeItemRow(
     id: id ?? this.id,
     articleId: articleId.present ? articleId.value : this.articleId,
+    sourceKind: sourceKind ?? this.sourceKind,
+    sourceId: sourceId.present ? sourceId.value : this.sourceId,
+    sourceTitle: sourceTitle.present ? sourceTitle.value : this.sourceTitle,
+    author: author.present ? author.value : this.author,
+    publishedAt: publishedAt.present ? publishedAt.value : this.publishedAt,
     title: title ?? this.title,
     originalUrl: originalUrl ?? this.originalUrl,
     markdown: markdown ?? this.markdown,
+    sanitizedHtml: sanitizedHtml ?? this.sanitizedHtml,
     summaryJson: summaryJson.present ? summaryJson.value : this.summaryJson,
+    highlightsJson: highlightsJson ?? this.highlightsJson,
+    notesJson: notesJson ?? this.notesJson,
     tagsJson: tagsJson ?? this.tagsJson,
+    topicsJson: topicsJson ?? this.topicsJson,
+    entitiesJson: entitiesJson ?? this.entitiesJson,
     contentHash: contentHash ?? this.contentHash,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
-  KnowledgeItem copyWithCompanion(KnowledgeItemsCompanion data) {
-    return KnowledgeItem(
+  KnowledgeItemRow copyWithCompanion(KnowledgeItemsCompanion data) {
+    return KnowledgeItemRow(
       id: data.id.present ? data.id.value : this.id,
       articleId: data.articleId.present ? data.articleId.value : this.articleId,
+      sourceKind: data.sourceKind.present
+          ? data.sourceKind.value
+          : this.sourceKind,
+      sourceId: data.sourceId.present ? data.sourceId.value : this.sourceId,
+      sourceTitle: data.sourceTitle.present
+          ? data.sourceTitle.value
+          : this.sourceTitle,
+      author: data.author.present ? data.author.value : this.author,
+      publishedAt: data.publishedAt.present
+          ? data.publishedAt.value
+          : this.publishedAt,
       title: data.title.present ? data.title.value : this.title,
       originalUrl: data.originalUrl.present
           ? data.originalUrl.value
           : this.originalUrl,
       markdown: data.markdown.present ? data.markdown.value : this.markdown,
+      sanitizedHtml: data.sanitizedHtml.present
+          ? data.sanitizedHtml.value
+          : this.sanitizedHtml,
       summaryJson: data.summaryJson.present
           ? data.summaryJson.value
           : this.summaryJson,
+      highlightsJson: data.highlightsJson.present
+          ? data.highlightsJson.value
+          : this.highlightsJson,
+      notesJson: data.notesJson.present ? data.notesJson.value : this.notesJson,
       tagsJson: data.tagsJson.present ? data.tagsJson.value : this.tagsJson,
+      topicsJson: data.topicsJson.present
+          ? data.topicsJson.value
+          : this.topicsJson,
+      entitiesJson: data.entitiesJson.present
+          ? data.entitiesJson.value
+          : this.entitiesJson,
       contentHash: data.contentHash.present
           ? data.contentHash.value
           : this.contentHash,
@@ -4053,14 +4413,24 @@ class KnowledgeItem extends DataClass implements Insertable<KnowledgeItem> {
 
   @override
   String toString() {
-    return (StringBuffer('KnowledgeItem(')
+    return (StringBuffer('KnowledgeItemRow(')
           ..write('id: $id, ')
           ..write('articleId: $articleId, ')
+          ..write('sourceKind: $sourceKind, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('sourceTitle: $sourceTitle, ')
+          ..write('author: $author, ')
+          ..write('publishedAt: $publishedAt, ')
           ..write('title: $title, ')
           ..write('originalUrl: $originalUrl, ')
           ..write('markdown: $markdown, ')
+          ..write('sanitizedHtml: $sanitizedHtml, ')
           ..write('summaryJson: $summaryJson, ')
+          ..write('highlightsJson: $highlightsJson, ')
+          ..write('notesJson: $notesJson, ')
           ..write('tagsJson: $tagsJson, ')
+          ..write('topicsJson: $topicsJson, ')
+          ..write('entitiesJson: $entitiesJson, ')
           ..write('contentHash: $contentHash, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -4072,11 +4442,21 @@ class KnowledgeItem extends DataClass implements Insertable<KnowledgeItem> {
   int get hashCode => Object.hash(
     id,
     articleId,
+    sourceKind,
+    sourceId,
+    sourceTitle,
+    author,
+    publishedAt,
     title,
     originalUrl,
     markdown,
+    sanitizedHtml,
     summaryJson,
+    highlightsJson,
+    notesJson,
     tagsJson,
+    topicsJson,
+    entitiesJson,
     contentHash,
     createdAt,
     updatedAt,
@@ -4084,27 +4464,47 @@ class KnowledgeItem extends DataClass implements Insertable<KnowledgeItem> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is KnowledgeItem &&
+      (other is KnowledgeItemRow &&
           other.id == this.id &&
           other.articleId == this.articleId &&
+          other.sourceKind == this.sourceKind &&
+          other.sourceId == this.sourceId &&
+          other.sourceTitle == this.sourceTitle &&
+          other.author == this.author &&
+          other.publishedAt == this.publishedAt &&
           other.title == this.title &&
           other.originalUrl == this.originalUrl &&
           other.markdown == this.markdown &&
+          other.sanitizedHtml == this.sanitizedHtml &&
           other.summaryJson == this.summaryJson &&
+          other.highlightsJson == this.highlightsJson &&
+          other.notesJson == this.notesJson &&
           other.tagsJson == this.tagsJson &&
+          other.topicsJson == this.topicsJson &&
+          other.entitiesJson == this.entitiesJson &&
           other.contentHash == this.contentHash &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
 
-class KnowledgeItemsCompanion extends UpdateCompanion<KnowledgeItem> {
+class KnowledgeItemsCompanion extends UpdateCompanion<KnowledgeItemRow> {
   final Value<String> id;
   final Value<String?> articleId;
+  final Value<String> sourceKind;
+  final Value<String?> sourceId;
+  final Value<String?> sourceTitle;
+  final Value<String?> author;
+  final Value<DateTime?> publishedAt;
   final Value<String> title;
   final Value<String> originalUrl;
   final Value<String> markdown;
+  final Value<String> sanitizedHtml;
   final Value<String?> summaryJson;
+  final Value<String> highlightsJson;
+  final Value<String> notesJson;
   final Value<String> tagsJson;
+  final Value<String> topicsJson;
+  final Value<String> entitiesJson;
   final Value<String> contentHash;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -4112,11 +4512,21 @@ class KnowledgeItemsCompanion extends UpdateCompanion<KnowledgeItem> {
   const KnowledgeItemsCompanion({
     this.id = const Value.absent(),
     this.articleId = const Value.absent(),
+    this.sourceKind = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.sourceTitle = const Value.absent(),
+    this.author = const Value.absent(),
+    this.publishedAt = const Value.absent(),
     this.title = const Value.absent(),
     this.originalUrl = const Value.absent(),
     this.markdown = const Value.absent(),
+    this.sanitizedHtml = const Value.absent(),
     this.summaryJson = const Value.absent(),
+    this.highlightsJson = const Value.absent(),
+    this.notesJson = const Value.absent(),
     this.tagsJson = const Value.absent(),
+    this.topicsJson = const Value.absent(),
+    this.entitiesJson = const Value.absent(),
     this.contentHash = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -4125,11 +4535,21 @@ class KnowledgeItemsCompanion extends UpdateCompanion<KnowledgeItem> {
   KnowledgeItemsCompanion.insert({
     required String id,
     this.articleId = const Value.absent(),
+    this.sourceKind = const Value.absent(),
+    this.sourceId = const Value.absent(),
+    this.sourceTitle = const Value.absent(),
+    this.author = const Value.absent(),
+    this.publishedAt = const Value.absent(),
     required String title,
     required String originalUrl,
     required String markdown,
+    this.sanitizedHtml = const Value.absent(),
     this.summaryJson = const Value.absent(),
+    this.highlightsJson = const Value.absent(),
+    this.notesJson = const Value.absent(),
     this.tagsJson = const Value.absent(),
+    this.topicsJson = const Value.absent(),
+    this.entitiesJson = const Value.absent(),
     required String contentHash,
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -4141,14 +4561,24 @@ class KnowledgeItemsCompanion extends UpdateCompanion<KnowledgeItem> {
        contentHash = Value(contentHash),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
-  static Insertable<KnowledgeItem> custom({
+  static Insertable<KnowledgeItemRow> custom({
     Expression<String>? id,
     Expression<String>? articleId,
+    Expression<String>? sourceKind,
+    Expression<String>? sourceId,
+    Expression<String>? sourceTitle,
+    Expression<String>? author,
+    Expression<DateTime>? publishedAt,
     Expression<String>? title,
     Expression<String>? originalUrl,
     Expression<String>? markdown,
+    Expression<String>? sanitizedHtml,
     Expression<String>? summaryJson,
+    Expression<String>? highlightsJson,
+    Expression<String>? notesJson,
     Expression<String>? tagsJson,
+    Expression<String>? topicsJson,
+    Expression<String>? entitiesJson,
     Expression<String>? contentHash,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -4157,11 +4587,21 @@ class KnowledgeItemsCompanion extends UpdateCompanion<KnowledgeItem> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (articleId != null) 'article_id': articleId,
+      if (sourceKind != null) 'source_kind': sourceKind,
+      if (sourceId != null) 'source_id': sourceId,
+      if (sourceTitle != null) 'source_title': sourceTitle,
+      if (author != null) 'author': author,
+      if (publishedAt != null) 'published_at': publishedAt,
       if (title != null) 'title': title,
       if (originalUrl != null) 'original_url': originalUrl,
       if (markdown != null) 'markdown': markdown,
+      if (sanitizedHtml != null) 'sanitized_html': sanitizedHtml,
       if (summaryJson != null) 'summary_json': summaryJson,
+      if (highlightsJson != null) 'highlights_json': highlightsJson,
+      if (notesJson != null) 'notes_json': notesJson,
       if (tagsJson != null) 'tags_json': tagsJson,
+      if (topicsJson != null) 'topics_json': topicsJson,
+      if (entitiesJson != null) 'entities_json': entitiesJson,
       if (contentHash != null) 'content_hash': contentHash,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -4172,11 +4612,21 @@ class KnowledgeItemsCompanion extends UpdateCompanion<KnowledgeItem> {
   KnowledgeItemsCompanion copyWith({
     Value<String>? id,
     Value<String?>? articleId,
+    Value<String>? sourceKind,
+    Value<String?>? sourceId,
+    Value<String?>? sourceTitle,
+    Value<String?>? author,
+    Value<DateTime?>? publishedAt,
     Value<String>? title,
     Value<String>? originalUrl,
     Value<String>? markdown,
+    Value<String>? sanitizedHtml,
     Value<String?>? summaryJson,
+    Value<String>? highlightsJson,
+    Value<String>? notesJson,
     Value<String>? tagsJson,
+    Value<String>? topicsJson,
+    Value<String>? entitiesJson,
     Value<String>? contentHash,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -4185,11 +4635,21 @@ class KnowledgeItemsCompanion extends UpdateCompanion<KnowledgeItem> {
     return KnowledgeItemsCompanion(
       id: id ?? this.id,
       articleId: articleId ?? this.articleId,
+      sourceKind: sourceKind ?? this.sourceKind,
+      sourceId: sourceId ?? this.sourceId,
+      sourceTitle: sourceTitle ?? this.sourceTitle,
+      author: author ?? this.author,
+      publishedAt: publishedAt ?? this.publishedAt,
       title: title ?? this.title,
       originalUrl: originalUrl ?? this.originalUrl,
       markdown: markdown ?? this.markdown,
+      sanitizedHtml: sanitizedHtml ?? this.sanitizedHtml,
       summaryJson: summaryJson ?? this.summaryJson,
+      highlightsJson: highlightsJson ?? this.highlightsJson,
+      notesJson: notesJson ?? this.notesJson,
       tagsJson: tagsJson ?? this.tagsJson,
+      topicsJson: topicsJson ?? this.topicsJson,
+      entitiesJson: entitiesJson ?? this.entitiesJson,
       contentHash: contentHash ?? this.contentHash,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -4206,6 +4666,21 @@ class KnowledgeItemsCompanion extends UpdateCompanion<KnowledgeItem> {
     if (articleId.present) {
       map['article_id'] = Variable<String>(articleId.value);
     }
+    if (sourceKind.present) {
+      map['source_kind'] = Variable<String>(sourceKind.value);
+    }
+    if (sourceId.present) {
+      map['source_id'] = Variable<String>(sourceId.value);
+    }
+    if (sourceTitle.present) {
+      map['source_title'] = Variable<String>(sourceTitle.value);
+    }
+    if (author.present) {
+      map['author'] = Variable<String>(author.value);
+    }
+    if (publishedAt.present) {
+      map['published_at'] = Variable<DateTime>(publishedAt.value);
+    }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
     }
@@ -4215,11 +4690,26 @@ class KnowledgeItemsCompanion extends UpdateCompanion<KnowledgeItem> {
     if (markdown.present) {
       map['markdown'] = Variable<String>(markdown.value);
     }
+    if (sanitizedHtml.present) {
+      map['sanitized_html'] = Variable<String>(sanitizedHtml.value);
+    }
     if (summaryJson.present) {
       map['summary_json'] = Variable<String>(summaryJson.value);
     }
+    if (highlightsJson.present) {
+      map['highlights_json'] = Variable<String>(highlightsJson.value);
+    }
+    if (notesJson.present) {
+      map['notes_json'] = Variable<String>(notesJson.value);
+    }
     if (tagsJson.present) {
       map['tags_json'] = Variable<String>(tagsJson.value);
+    }
+    if (topicsJson.present) {
+      map['topics_json'] = Variable<String>(topicsJson.value);
+    }
+    if (entitiesJson.present) {
+      map['entities_json'] = Variable<String>(entitiesJson.value);
     }
     if (contentHash.present) {
       map['content_hash'] = Variable<String>(contentHash.value);
@@ -4241,12 +4731,593 @@ class KnowledgeItemsCompanion extends UpdateCompanion<KnowledgeItem> {
     return (StringBuffer('KnowledgeItemsCompanion(')
           ..write('id: $id, ')
           ..write('articleId: $articleId, ')
+          ..write('sourceKind: $sourceKind, ')
+          ..write('sourceId: $sourceId, ')
+          ..write('sourceTitle: $sourceTitle, ')
+          ..write('author: $author, ')
+          ..write('publishedAt: $publishedAt, ')
           ..write('title: $title, ')
           ..write('originalUrl: $originalUrl, ')
           ..write('markdown: $markdown, ')
+          ..write('sanitizedHtml: $sanitizedHtml, ')
           ..write('summaryJson: $summaryJson, ')
+          ..write('highlightsJson: $highlightsJson, ')
+          ..write('notesJson: $notesJson, ')
           ..write('tagsJson: $tagsJson, ')
+          ..write('topicsJson: $topicsJson, ')
+          ..write('entitiesJson: $entitiesJson, ')
           ..write('contentHash: $contentHash, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $KnowledgeExternalMappingsTable extends KnowledgeExternalMappings
+    with
+        TableInfo<
+          $KnowledgeExternalMappingsTable,
+          KnowledgeExternalMappingRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $KnowledgeExternalMappingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _knowledgeItemIdMeta = const VerificationMeta(
+    'knowledgeItemId',
+  );
+  @override
+  late final GeneratedColumn<String> knowledgeItemId = GeneratedColumn<String>(
+    'knowledge_item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES knowledge_items (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _connectorIdMeta = const VerificationMeta(
+    'connectorId',
+  );
+  @override
+  late final GeneratedColumn<String> connectorId = GeneratedColumn<String>(
+    'connector_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _destinationIdMeta = const VerificationMeta(
+    'destinationId',
+  );
+  @override
+  late final GeneratedColumn<String> destinationId = GeneratedColumn<String>(
+    'destination_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _externalObjectIdMeta = const VerificationMeta(
+    'externalObjectId',
+  );
+  @override
+  late final GeneratedColumn<String> externalObjectId = GeneratedColumn<String>(
+    'external_object_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _externalUrlMeta = const VerificationMeta(
+    'externalUrl',
+  );
+  @override
+  late final GeneratedColumn<String> externalUrl = GeneratedColumn<String>(
+    'external_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _exportedContentHashMeta =
+      const VerificationMeta('exportedContentHash');
+  @override
+  late final GeneratedColumn<String> exportedContentHash =
+      GeneratedColumn<String>(
+        'exported_content_hash',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    knowledgeItemId,
+    connectorId,
+    destinationId,
+    externalObjectId,
+    externalUrl,
+    exportedContentHash,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'knowledge_external_mappings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<KnowledgeExternalMappingRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('knowledge_item_id')) {
+      context.handle(
+        _knowledgeItemIdMeta,
+        knowledgeItemId.isAcceptableOrUnknown(
+          data['knowledge_item_id']!,
+          _knowledgeItemIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_knowledgeItemIdMeta);
+    }
+    if (data.containsKey('connector_id')) {
+      context.handle(
+        _connectorIdMeta,
+        connectorId.isAcceptableOrUnknown(
+          data['connector_id']!,
+          _connectorIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_connectorIdMeta);
+    }
+    if (data.containsKey('destination_id')) {
+      context.handle(
+        _destinationIdMeta,
+        destinationId.isAcceptableOrUnknown(
+          data['destination_id']!,
+          _destinationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_destinationIdMeta);
+    }
+    if (data.containsKey('external_object_id')) {
+      context.handle(
+        _externalObjectIdMeta,
+        externalObjectId.isAcceptableOrUnknown(
+          data['external_object_id']!,
+          _externalObjectIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_externalObjectIdMeta);
+    }
+    if (data.containsKey('external_url')) {
+      context.handle(
+        _externalUrlMeta,
+        externalUrl.isAcceptableOrUnknown(
+          data['external_url']!,
+          _externalUrlMeta,
+        ),
+      );
+    }
+    if (data.containsKey('exported_content_hash')) {
+      context.handle(
+        _exportedContentHashMeta,
+        exportedContentHash.isAcceptableOrUnknown(
+          data['exported_content_hash']!,
+          _exportedContentHashMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_exportedContentHashMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {
+    knowledgeItemId,
+    connectorId,
+    destinationId,
+  };
+  @override
+  KnowledgeExternalMappingRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return KnowledgeExternalMappingRow(
+      knowledgeItemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}knowledge_item_id'],
+      )!,
+      connectorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}connector_id'],
+      )!,
+      destinationId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}destination_id'],
+      )!,
+      externalObjectId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}external_object_id'],
+      )!,
+      externalUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}external_url'],
+      ),
+      exportedContentHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}exported_content_hash'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $KnowledgeExternalMappingsTable createAlias(String alias) {
+    return $KnowledgeExternalMappingsTable(attachedDatabase, alias);
+  }
+}
+
+class KnowledgeExternalMappingRow extends DataClass
+    implements Insertable<KnowledgeExternalMappingRow> {
+  final String knowledgeItemId;
+  final String connectorId;
+  final String destinationId;
+  final String externalObjectId;
+  final String? externalUrl;
+  final String exportedContentHash;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const KnowledgeExternalMappingRow({
+    required this.knowledgeItemId,
+    required this.connectorId,
+    required this.destinationId,
+    required this.externalObjectId,
+    this.externalUrl,
+    required this.exportedContentHash,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['knowledge_item_id'] = Variable<String>(knowledgeItemId);
+    map['connector_id'] = Variable<String>(connectorId);
+    map['destination_id'] = Variable<String>(destinationId);
+    map['external_object_id'] = Variable<String>(externalObjectId);
+    if (!nullToAbsent || externalUrl != null) {
+      map['external_url'] = Variable<String>(externalUrl);
+    }
+    map['exported_content_hash'] = Variable<String>(exportedContentHash);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  KnowledgeExternalMappingsCompanion toCompanion(bool nullToAbsent) {
+    return KnowledgeExternalMappingsCompanion(
+      knowledgeItemId: Value(knowledgeItemId),
+      connectorId: Value(connectorId),
+      destinationId: Value(destinationId),
+      externalObjectId: Value(externalObjectId),
+      externalUrl: externalUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(externalUrl),
+      exportedContentHash: Value(exportedContentHash),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory KnowledgeExternalMappingRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return KnowledgeExternalMappingRow(
+      knowledgeItemId: serializer.fromJson<String>(json['knowledgeItemId']),
+      connectorId: serializer.fromJson<String>(json['connectorId']),
+      destinationId: serializer.fromJson<String>(json['destinationId']),
+      externalObjectId: serializer.fromJson<String>(json['externalObjectId']),
+      externalUrl: serializer.fromJson<String?>(json['externalUrl']),
+      exportedContentHash: serializer.fromJson<String>(
+        json['exportedContentHash'],
+      ),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'knowledgeItemId': serializer.toJson<String>(knowledgeItemId),
+      'connectorId': serializer.toJson<String>(connectorId),
+      'destinationId': serializer.toJson<String>(destinationId),
+      'externalObjectId': serializer.toJson<String>(externalObjectId),
+      'externalUrl': serializer.toJson<String?>(externalUrl),
+      'exportedContentHash': serializer.toJson<String>(exportedContentHash),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  KnowledgeExternalMappingRow copyWith({
+    String? knowledgeItemId,
+    String? connectorId,
+    String? destinationId,
+    String? externalObjectId,
+    Value<String?> externalUrl = const Value.absent(),
+    String? exportedContentHash,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => KnowledgeExternalMappingRow(
+    knowledgeItemId: knowledgeItemId ?? this.knowledgeItemId,
+    connectorId: connectorId ?? this.connectorId,
+    destinationId: destinationId ?? this.destinationId,
+    externalObjectId: externalObjectId ?? this.externalObjectId,
+    externalUrl: externalUrl.present ? externalUrl.value : this.externalUrl,
+    exportedContentHash: exportedContentHash ?? this.exportedContentHash,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  KnowledgeExternalMappingRow copyWithCompanion(
+    KnowledgeExternalMappingsCompanion data,
+  ) {
+    return KnowledgeExternalMappingRow(
+      knowledgeItemId: data.knowledgeItemId.present
+          ? data.knowledgeItemId.value
+          : this.knowledgeItemId,
+      connectorId: data.connectorId.present
+          ? data.connectorId.value
+          : this.connectorId,
+      destinationId: data.destinationId.present
+          ? data.destinationId.value
+          : this.destinationId,
+      externalObjectId: data.externalObjectId.present
+          ? data.externalObjectId.value
+          : this.externalObjectId,
+      externalUrl: data.externalUrl.present
+          ? data.externalUrl.value
+          : this.externalUrl,
+      exportedContentHash: data.exportedContentHash.present
+          ? data.exportedContentHash.value
+          : this.exportedContentHash,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('KnowledgeExternalMappingRow(')
+          ..write('knowledgeItemId: $knowledgeItemId, ')
+          ..write('connectorId: $connectorId, ')
+          ..write('destinationId: $destinationId, ')
+          ..write('externalObjectId: $externalObjectId, ')
+          ..write('externalUrl: $externalUrl, ')
+          ..write('exportedContentHash: $exportedContentHash, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    knowledgeItemId,
+    connectorId,
+    destinationId,
+    externalObjectId,
+    externalUrl,
+    exportedContentHash,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is KnowledgeExternalMappingRow &&
+          other.knowledgeItemId == this.knowledgeItemId &&
+          other.connectorId == this.connectorId &&
+          other.destinationId == this.destinationId &&
+          other.externalObjectId == this.externalObjectId &&
+          other.externalUrl == this.externalUrl &&
+          other.exportedContentHash == this.exportedContentHash &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class KnowledgeExternalMappingsCompanion
+    extends UpdateCompanion<KnowledgeExternalMappingRow> {
+  final Value<String> knowledgeItemId;
+  final Value<String> connectorId;
+  final Value<String> destinationId;
+  final Value<String> externalObjectId;
+  final Value<String?> externalUrl;
+  final Value<String> exportedContentHash;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const KnowledgeExternalMappingsCompanion({
+    this.knowledgeItemId = const Value.absent(),
+    this.connectorId = const Value.absent(),
+    this.destinationId = const Value.absent(),
+    this.externalObjectId = const Value.absent(),
+    this.externalUrl = const Value.absent(),
+    this.exportedContentHash = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  KnowledgeExternalMappingsCompanion.insert({
+    required String knowledgeItemId,
+    required String connectorId,
+    required String destinationId,
+    required String externalObjectId,
+    this.externalUrl = const Value.absent(),
+    required String exportedContentHash,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : knowledgeItemId = Value(knowledgeItemId),
+       connectorId = Value(connectorId),
+       destinationId = Value(destinationId),
+       externalObjectId = Value(externalObjectId),
+       exportedContentHash = Value(exportedContentHash),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<KnowledgeExternalMappingRow> custom({
+    Expression<String>? knowledgeItemId,
+    Expression<String>? connectorId,
+    Expression<String>? destinationId,
+    Expression<String>? externalObjectId,
+    Expression<String>? externalUrl,
+    Expression<String>? exportedContentHash,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (knowledgeItemId != null) 'knowledge_item_id': knowledgeItemId,
+      if (connectorId != null) 'connector_id': connectorId,
+      if (destinationId != null) 'destination_id': destinationId,
+      if (externalObjectId != null) 'external_object_id': externalObjectId,
+      if (externalUrl != null) 'external_url': externalUrl,
+      if (exportedContentHash != null)
+        'exported_content_hash': exportedContentHash,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  KnowledgeExternalMappingsCompanion copyWith({
+    Value<String>? knowledgeItemId,
+    Value<String>? connectorId,
+    Value<String>? destinationId,
+    Value<String>? externalObjectId,
+    Value<String?>? externalUrl,
+    Value<String>? exportedContentHash,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return KnowledgeExternalMappingsCompanion(
+      knowledgeItemId: knowledgeItemId ?? this.knowledgeItemId,
+      connectorId: connectorId ?? this.connectorId,
+      destinationId: destinationId ?? this.destinationId,
+      externalObjectId: externalObjectId ?? this.externalObjectId,
+      externalUrl: externalUrl ?? this.externalUrl,
+      exportedContentHash: exportedContentHash ?? this.exportedContentHash,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (knowledgeItemId.present) {
+      map['knowledge_item_id'] = Variable<String>(knowledgeItemId.value);
+    }
+    if (connectorId.present) {
+      map['connector_id'] = Variable<String>(connectorId.value);
+    }
+    if (destinationId.present) {
+      map['destination_id'] = Variable<String>(destinationId.value);
+    }
+    if (externalObjectId.present) {
+      map['external_object_id'] = Variable<String>(externalObjectId.value);
+    }
+    if (externalUrl.present) {
+      map['external_url'] = Variable<String>(externalUrl.value);
+    }
+    if (exportedContentHash.present) {
+      map['exported_content_hash'] = Variable<String>(
+        exportedContentHash.value,
+      );
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('KnowledgeExternalMappingsCompanion(')
+          ..write('knowledgeItemId: $knowledgeItemId, ')
+          ..write('connectorId: $connectorId, ')
+          ..write('destinationId: $destinationId, ')
+          ..write('externalObjectId: $externalObjectId, ')
+          ..write('externalUrl: $externalUrl, ')
+          ..write('exportedContentHash: $exportedContentHash, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -12888,6 +13959,8 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
   late final $ReaderSettingsRowsTable readerSettingsRows =
       $ReaderSettingsRowsTable(this);
   late final $KnowledgeItemsTable knowledgeItems = $KnowledgeItemsTable(this);
+  late final $KnowledgeExternalMappingsTable knowledgeExternalMappings =
+      $KnowledgeExternalMappingsTable(this);
   late final $ArticleAnnotationsTable articleAnnotations =
       $ArticleAnnotationsTable(this);
   late final $AudioItemsTable audioItems = $AudioItemsTable(this);
@@ -12923,6 +13996,7 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
     readingEvents,
     readerSettingsRows,
     knowledgeItems,
+    knowledgeExternalMappings,
     articleAnnotations,
     audioItems,
     audioQueueEntries,
@@ -12966,6 +14040,15 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('knowledge_items', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'knowledge_items',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [
+        TableUpdate('knowledge_external_mappings', kind: UpdateKind.delete),
+      ],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
@@ -13943,7 +15026,7 @@ final class $$ArticlesTableReferences
     );
   }
 
-  static MultiTypedResultKey<$KnowledgeItemsTable, List<KnowledgeItem>>
+  static MultiTypedResultKey<$KnowledgeItemsTable, List<KnowledgeItemRow>>
   _knowledgeItemsRefsTable(_$RiverDatabase db) => MultiTypedResultKey.fromTable(
     db.knowledgeItems,
     aliasName: 'articles__id__knowledge_items__article_id',
@@ -14727,7 +15810,7 @@ class $$ArticlesTableTableManager
                         await $_getPrefetchedData<
                           Article,
                           $ArticlesTable,
-                          KnowledgeItem
+                          KnowledgeItemRow
                         >(
                           currentTable: table,
                           referencedTable: $$ArticlesTableReferences
@@ -15854,11 +16937,21 @@ typedef $$KnowledgeItemsTableCreateCompanionBuilder =
     KnowledgeItemsCompanion Function({
       required String id,
       Value<String?> articleId,
+      Value<String> sourceKind,
+      Value<String?> sourceId,
+      Value<String?> sourceTitle,
+      Value<String?> author,
+      Value<DateTime?> publishedAt,
       required String title,
       required String originalUrl,
       required String markdown,
+      Value<String> sanitizedHtml,
       Value<String?> summaryJson,
+      Value<String> highlightsJson,
+      Value<String> notesJson,
       Value<String> tagsJson,
+      Value<String> topicsJson,
+      Value<String> entitiesJson,
       required String contentHash,
       required DateTime createdAt,
       required DateTime updatedAt,
@@ -15868,11 +16961,21 @@ typedef $$KnowledgeItemsTableUpdateCompanionBuilder =
     KnowledgeItemsCompanion Function({
       Value<String> id,
       Value<String?> articleId,
+      Value<String> sourceKind,
+      Value<String?> sourceId,
+      Value<String?> sourceTitle,
+      Value<String?> author,
+      Value<DateTime?> publishedAt,
       Value<String> title,
       Value<String> originalUrl,
       Value<String> markdown,
+      Value<String> sanitizedHtml,
       Value<String?> summaryJson,
+      Value<String> highlightsJson,
+      Value<String> notesJson,
       Value<String> tagsJson,
+      Value<String> topicsJson,
+      Value<String> entitiesJson,
       Value<String> contentHash,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -15881,7 +16984,11 @@ typedef $$KnowledgeItemsTableUpdateCompanionBuilder =
 
 final class $$KnowledgeItemsTableReferences
     extends
-        BaseReferences<_$RiverDatabase, $KnowledgeItemsTable, KnowledgeItem> {
+        BaseReferences<
+          _$RiverDatabase,
+          $KnowledgeItemsTable,
+          KnowledgeItemRow
+        > {
   $$KnowledgeItemsTableReferences(
     super.$_db,
     super.$_table,
@@ -15904,6 +17011,36 @@ final class $$KnowledgeItemsTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static MultiTypedResultKey<
+    $KnowledgeExternalMappingsTable,
+    List<KnowledgeExternalMappingRow>
+  >
+  _knowledgeExternalMappingsRefsTable(
+    _$RiverDatabase db,
+  ) => MultiTypedResultKey.fromTable(
+    db.knowledgeExternalMappings,
+    aliasName:
+        'knowledge_items__id__knowledge_external_mappings__knowledge_item_id',
+  );
+
+  $$KnowledgeExternalMappingsTableProcessedTableManager
+  get knowledgeExternalMappingsRefs {
+    final manager =
+        $$KnowledgeExternalMappingsTableTableManager(
+          $_db,
+          $_db.knowledgeExternalMappings,
+        ).filter(
+          (f) => f.knowledgeItemId.id.sqlEquals($_itemColumn<String>('id')!),
+        );
+
+    final cache = $_typedResult.readTableOrNull(
+      _knowledgeExternalMappingsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$KnowledgeItemsTableFilterComposer
@@ -15917,6 +17054,31 @@ class $$KnowledgeItemsTableFilterComposer
   });
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceKind => $composableBuilder(
+    column: $table.sourceKind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceTitle => $composableBuilder(
+    column: $table.sourceTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get author => $composableBuilder(
+    column: $table.author,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get publishedAt => $composableBuilder(
+    column: $table.publishedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15935,13 +17097,38 @@ class $$KnowledgeItemsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get sanitizedHtml => $composableBuilder(
+    column: $table.sanitizedHtml,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get summaryJson => $composableBuilder(
     column: $table.summaryJson,
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get highlightsJson => $composableBuilder(
+    column: $table.highlightsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notesJson => $composableBuilder(
+    column: $table.notesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get tagsJson => $composableBuilder(
     column: $table.tagsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get topicsJson => $composableBuilder(
+    column: $table.topicsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get entitiesJson => $composableBuilder(
+    column: $table.entitiesJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15982,6 +17169,33 @@ class $$KnowledgeItemsTableFilterComposer
     );
     return composer;
   }
+
+  Expression<bool> knowledgeExternalMappingsRefs(
+    Expression<bool> Function($$KnowledgeExternalMappingsTableFilterComposer f)
+    f,
+  ) {
+    final $$KnowledgeExternalMappingsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.knowledgeExternalMappings,
+          getReferencedColumn: (t) => t.knowledgeItemId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$KnowledgeExternalMappingsTableFilterComposer(
+                $db: $db,
+                $table: $db.knowledgeExternalMappings,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$KnowledgeItemsTableOrderingComposer
@@ -15995,6 +17209,31 @@ class $$KnowledgeItemsTableOrderingComposer
   });
   ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceKind => $composableBuilder(
+    column: $table.sourceKind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceId => $composableBuilder(
+    column: $table.sourceId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceTitle => $composableBuilder(
+    column: $table.sourceTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get author => $composableBuilder(
+    column: $table.author,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get publishedAt => $composableBuilder(
+    column: $table.publishedAt,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -16013,13 +17252,38 @@ class $$KnowledgeItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get sanitizedHtml => $composableBuilder(
+    column: $table.sanitizedHtml,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get summaryJson => $composableBuilder(
     column: $table.summaryJson,
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get highlightsJson => $composableBuilder(
+    column: $table.highlightsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notesJson => $composableBuilder(
+    column: $table.notesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get tagsJson => $composableBuilder(
     column: $table.tagsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get topicsJson => $composableBuilder(
+    column: $table.topicsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get entitiesJson => $composableBuilder(
+    column: $table.entitiesJson,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -16074,6 +17338,27 @@ class $$KnowledgeItemsTableAnnotationComposer
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
+  GeneratedColumn<String> get sourceKind => $composableBuilder(
+    column: $table.sourceKind,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceId =>
+      $composableBuilder(column: $table.sourceId, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceTitle => $composableBuilder(
+    column: $table.sourceTitle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get author =>
+      $composableBuilder(column: $table.author, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get publishedAt => $composableBuilder(
+    column: $table.publishedAt,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
 
@@ -16085,13 +17370,36 @@ class $$KnowledgeItemsTableAnnotationComposer
   GeneratedColumn<String> get markdown =>
       $composableBuilder(column: $table.markdown, builder: (column) => column);
 
+  GeneratedColumn<String> get sanitizedHtml => $composableBuilder(
+    column: $table.sanitizedHtml,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get summaryJson => $composableBuilder(
     column: $table.summaryJson,
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get highlightsJson => $composableBuilder(
+    column: $table.highlightsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notesJson =>
+      $composableBuilder(column: $table.notesJson, builder: (column) => column);
+
   GeneratedColumn<String> get tagsJson =>
       $composableBuilder(column: $table.tagsJson, builder: (column) => column);
+
+  GeneratedColumn<String> get topicsJson => $composableBuilder(
+    column: $table.topicsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get entitiesJson => $composableBuilder(
+    column: $table.entitiesJson,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get contentHash => $composableBuilder(
     column: $table.contentHash,
@@ -16126,6 +17434,33 @@ class $$KnowledgeItemsTableAnnotationComposer
     );
     return composer;
   }
+
+  Expression<T> knowledgeExternalMappingsRefs<T extends Object>(
+    Expression<T> Function($$KnowledgeExternalMappingsTableAnnotationComposer a)
+    f,
+  ) {
+    final $$KnowledgeExternalMappingsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.knowledgeExternalMappings,
+          getReferencedColumn: (t) => t.knowledgeItemId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$KnowledgeExternalMappingsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.knowledgeExternalMappings,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$KnowledgeItemsTableTableManager
@@ -16133,15 +17468,18 @@ class $$KnowledgeItemsTableTableManager
         RootTableManager<
           _$RiverDatabase,
           $KnowledgeItemsTable,
-          KnowledgeItem,
+          KnowledgeItemRow,
           $$KnowledgeItemsTableFilterComposer,
           $$KnowledgeItemsTableOrderingComposer,
           $$KnowledgeItemsTableAnnotationComposer,
           $$KnowledgeItemsTableCreateCompanionBuilder,
           $$KnowledgeItemsTableUpdateCompanionBuilder,
-          (KnowledgeItem, $$KnowledgeItemsTableReferences),
-          KnowledgeItem,
-          PrefetchHooks Function({bool articleId})
+          (KnowledgeItemRow, $$KnowledgeItemsTableReferences),
+          KnowledgeItemRow,
+          PrefetchHooks Function({
+            bool articleId,
+            bool knowledgeExternalMappingsRefs,
+          })
         > {
   $$KnowledgeItemsTableTableManager(
     _$RiverDatabase db,
@@ -16160,11 +17498,21 @@ class $$KnowledgeItemsTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String?> articleId = const Value.absent(),
+                Value<String> sourceKind = const Value.absent(),
+                Value<String?> sourceId = const Value.absent(),
+                Value<String?> sourceTitle = const Value.absent(),
+                Value<String?> author = const Value.absent(),
+                Value<DateTime?> publishedAt = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> originalUrl = const Value.absent(),
                 Value<String> markdown = const Value.absent(),
+                Value<String> sanitizedHtml = const Value.absent(),
                 Value<String?> summaryJson = const Value.absent(),
+                Value<String> highlightsJson = const Value.absent(),
+                Value<String> notesJson = const Value.absent(),
                 Value<String> tagsJson = const Value.absent(),
+                Value<String> topicsJson = const Value.absent(),
+                Value<String> entitiesJson = const Value.absent(),
                 Value<String> contentHash = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -16172,11 +17520,21 @@ class $$KnowledgeItemsTableTableManager
               }) => KnowledgeItemsCompanion(
                 id: id,
                 articleId: articleId,
+                sourceKind: sourceKind,
+                sourceId: sourceId,
+                sourceTitle: sourceTitle,
+                author: author,
+                publishedAt: publishedAt,
                 title: title,
                 originalUrl: originalUrl,
                 markdown: markdown,
+                sanitizedHtml: sanitizedHtml,
                 summaryJson: summaryJson,
+                highlightsJson: highlightsJson,
+                notesJson: notesJson,
                 tagsJson: tagsJson,
+                topicsJson: topicsJson,
+                entitiesJson: entitiesJson,
                 contentHash: contentHash,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -16186,11 +17544,21 @@ class $$KnowledgeItemsTableTableManager
               ({
                 required String id,
                 Value<String?> articleId = const Value.absent(),
+                Value<String> sourceKind = const Value.absent(),
+                Value<String?> sourceId = const Value.absent(),
+                Value<String?> sourceTitle = const Value.absent(),
+                Value<String?> author = const Value.absent(),
+                Value<DateTime?> publishedAt = const Value.absent(),
                 required String title,
                 required String originalUrl,
                 required String markdown,
+                Value<String> sanitizedHtml = const Value.absent(),
                 Value<String?> summaryJson = const Value.absent(),
+                Value<String> highlightsJson = const Value.absent(),
+                Value<String> notesJson = const Value.absent(),
                 Value<String> tagsJson = const Value.absent(),
+                Value<String> topicsJson = const Value.absent(),
+                Value<String> entitiesJson = const Value.absent(),
                 required String contentHash,
                 required DateTime createdAt,
                 required DateTime updatedAt,
@@ -16198,11 +17566,21 @@ class $$KnowledgeItemsTableTableManager
               }) => KnowledgeItemsCompanion.insert(
                 id: id,
                 articleId: articleId,
+                sourceKind: sourceKind,
+                sourceId: sourceId,
+                sourceTitle: sourceTitle,
+                author: author,
+                publishedAt: publishedAt,
                 title: title,
                 originalUrl: originalUrl,
                 markdown: markdown,
+                sanitizedHtml: sanitizedHtml,
                 summaryJson: summaryJson,
+                highlightsJson: highlightsJson,
+                notesJson: notesJson,
                 tagsJson: tagsJson,
+                topicsJson: topicsJson,
+                entitiesJson: entitiesJson,
                 contentHash: contentHash,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -16216,7 +17594,447 @@ class $$KnowledgeItemsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({articleId = false}) {
+          prefetchHooksCallback:
+              ({articleId = false, knowledgeExternalMappingsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (knowledgeExternalMappingsRefs)
+                      db.knowledgeExternalMappings,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (articleId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.articleId,
+                                    referencedTable:
+                                        $$KnowledgeItemsTableReferences
+                                            ._articleIdTable(db),
+                                    referencedColumn:
+                                        $$KnowledgeItemsTableReferences
+                                            ._articleIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (knowledgeExternalMappingsRefs)
+                        await $_getPrefetchedData<
+                          KnowledgeItemRow,
+                          $KnowledgeItemsTable,
+                          KnowledgeExternalMappingRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$KnowledgeItemsTableReferences
+                              ._knowledgeExternalMappingsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$KnowledgeItemsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).knowledgeExternalMappingsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.knowledgeItemId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$KnowledgeItemsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $KnowledgeItemsTable,
+      KnowledgeItemRow,
+      $$KnowledgeItemsTableFilterComposer,
+      $$KnowledgeItemsTableOrderingComposer,
+      $$KnowledgeItemsTableAnnotationComposer,
+      $$KnowledgeItemsTableCreateCompanionBuilder,
+      $$KnowledgeItemsTableUpdateCompanionBuilder,
+      (KnowledgeItemRow, $$KnowledgeItemsTableReferences),
+      KnowledgeItemRow,
+      PrefetchHooks Function({
+        bool articleId,
+        bool knowledgeExternalMappingsRefs,
+      })
+    >;
+typedef $$KnowledgeExternalMappingsTableCreateCompanionBuilder =
+    KnowledgeExternalMappingsCompanion Function({
+      required String knowledgeItemId,
+      required String connectorId,
+      required String destinationId,
+      required String externalObjectId,
+      Value<String?> externalUrl,
+      required String exportedContentHash,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$KnowledgeExternalMappingsTableUpdateCompanionBuilder =
+    KnowledgeExternalMappingsCompanion Function({
+      Value<String> knowledgeItemId,
+      Value<String> connectorId,
+      Value<String> destinationId,
+      Value<String> externalObjectId,
+      Value<String?> externalUrl,
+      Value<String> exportedContentHash,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$KnowledgeExternalMappingsTableReferences
+    extends
+        BaseReferences<
+          _$RiverDatabase,
+          $KnowledgeExternalMappingsTable,
+          KnowledgeExternalMappingRow
+        > {
+  $$KnowledgeExternalMappingsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $KnowledgeItemsTable _knowledgeItemIdTable(_$RiverDatabase db) =>
+      db.knowledgeItems.createAlias(
+        'knowledge_external_mappings__knowledge_item_id__knowledge_items__id',
+      );
+
+  $$KnowledgeItemsTableProcessedTableManager get knowledgeItemId {
+    final $_column = $_itemColumn<String>('knowledge_item_id')!;
+
+    final manager = $$KnowledgeItemsTableTableManager(
+      $_db,
+      $_db.knowledgeItems,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_knowledgeItemIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$KnowledgeExternalMappingsTableFilterComposer
+    extends Composer<_$RiverDatabase, $KnowledgeExternalMappingsTable> {
+  $$KnowledgeExternalMappingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get connectorId => $composableBuilder(
+    column: $table.connectorId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get destinationId => $composableBuilder(
+    column: $table.destinationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get externalObjectId => $composableBuilder(
+    column: $table.externalObjectId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get externalUrl => $composableBuilder(
+    column: $table.externalUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exportedContentHash => $composableBuilder(
+    column: $table.exportedContentHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$KnowledgeItemsTableFilterComposer get knowledgeItemId {
+    final $$KnowledgeItemsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.knowledgeItemId,
+      referencedTable: $db.knowledgeItems,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$KnowledgeItemsTableFilterComposer(
+            $db: $db,
+            $table: $db.knowledgeItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$KnowledgeExternalMappingsTableOrderingComposer
+    extends Composer<_$RiverDatabase, $KnowledgeExternalMappingsTable> {
+  $$KnowledgeExternalMappingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get connectorId => $composableBuilder(
+    column: $table.connectorId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get destinationId => $composableBuilder(
+    column: $table.destinationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get externalObjectId => $composableBuilder(
+    column: $table.externalObjectId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get externalUrl => $composableBuilder(
+    column: $table.externalUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get exportedContentHash => $composableBuilder(
+    column: $table.exportedContentHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$KnowledgeItemsTableOrderingComposer get knowledgeItemId {
+    final $$KnowledgeItemsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.knowledgeItemId,
+      referencedTable: $db.knowledgeItems,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$KnowledgeItemsTableOrderingComposer(
+            $db: $db,
+            $table: $db.knowledgeItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$KnowledgeExternalMappingsTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $KnowledgeExternalMappingsTable> {
+  $$KnowledgeExternalMappingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get connectorId => $composableBuilder(
+    column: $table.connectorId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get destinationId => $composableBuilder(
+    column: $table.destinationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get externalObjectId => $composableBuilder(
+    column: $table.externalObjectId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get externalUrl => $composableBuilder(
+    column: $table.externalUrl,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get exportedContentHash => $composableBuilder(
+    column: $table.exportedContentHash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$KnowledgeItemsTableAnnotationComposer get knowledgeItemId {
+    final $$KnowledgeItemsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.knowledgeItemId,
+      referencedTable: $db.knowledgeItems,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$KnowledgeItemsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.knowledgeItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$KnowledgeExternalMappingsTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $KnowledgeExternalMappingsTable,
+          KnowledgeExternalMappingRow,
+          $$KnowledgeExternalMappingsTableFilterComposer,
+          $$KnowledgeExternalMappingsTableOrderingComposer,
+          $$KnowledgeExternalMappingsTableAnnotationComposer,
+          $$KnowledgeExternalMappingsTableCreateCompanionBuilder,
+          $$KnowledgeExternalMappingsTableUpdateCompanionBuilder,
+          (
+            KnowledgeExternalMappingRow,
+            $$KnowledgeExternalMappingsTableReferences,
+          ),
+          KnowledgeExternalMappingRow,
+          PrefetchHooks Function({bool knowledgeItemId})
+        > {
+  $$KnowledgeExternalMappingsTableTableManager(
+    _$RiverDatabase db,
+    $KnowledgeExternalMappingsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$KnowledgeExternalMappingsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$KnowledgeExternalMappingsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$KnowledgeExternalMappingsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> knowledgeItemId = const Value.absent(),
+                Value<String> connectorId = const Value.absent(),
+                Value<String> destinationId = const Value.absent(),
+                Value<String> externalObjectId = const Value.absent(),
+                Value<String?> externalUrl = const Value.absent(),
+                Value<String> exportedContentHash = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => KnowledgeExternalMappingsCompanion(
+                knowledgeItemId: knowledgeItemId,
+                connectorId: connectorId,
+                destinationId: destinationId,
+                externalObjectId: externalObjectId,
+                externalUrl: externalUrl,
+                exportedContentHash: exportedContentHash,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String knowledgeItemId,
+                required String connectorId,
+                required String destinationId,
+                required String externalObjectId,
+                Value<String?> externalUrl = const Value.absent(),
+                required String exportedContentHash,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => KnowledgeExternalMappingsCompanion.insert(
+                knowledgeItemId: knowledgeItemId,
+                connectorId: connectorId,
+                destinationId: destinationId,
+                externalObjectId: externalObjectId,
+                externalUrl: externalUrl,
+                exportedContentHash: exportedContentHash,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$KnowledgeExternalMappingsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({knowledgeItemId = false}) {
             return PrefetchHooks(
               db: db,
               explicitlyWatchedTables: [],
@@ -16236,16 +18054,17 @@ class $$KnowledgeItemsTableTableManager
                       dynamic
                     >
                   >(state) {
-                    if (articleId) {
+                    if (knowledgeItemId) {
                       state =
                           state.withJoin(
                                 currentTable: table,
-                                currentColumn: table.articleId,
-                                referencedTable: $$KnowledgeItemsTableReferences
-                                    ._articleIdTable(db),
+                                currentColumn: table.knowledgeItemId,
+                                referencedTable:
+                                    $$KnowledgeExternalMappingsTableReferences
+                                        ._knowledgeItemIdTable(db),
                                 referencedColumn:
-                                    $$KnowledgeItemsTableReferences
-                                        ._articleIdTable(db)
+                                    $$KnowledgeExternalMappingsTableReferences
+                                        ._knowledgeItemIdTable(db)
                                         .id,
                               )
                               as T;
@@ -16262,19 +18081,19 @@ class $$KnowledgeItemsTableTableManager
       );
 }
 
-typedef $$KnowledgeItemsTableProcessedTableManager =
+typedef $$KnowledgeExternalMappingsTableProcessedTableManager =
     ProcessedTableManager<
       _$RiverDatabase,
-      $KnowledgeItemsTable,
-      KnowledgeItem,
-      $$KnowledgeItemsTableFilterComposer,
-      $$KnowledgeItemsTableOrderingComposer,
-      $$KnowledgeItemsTableAnnotationComposer,
-      $$KnowledgeItemsTableCreateCompanionBuilder,
-      $$KnowledgeItemsTableUpdateCompanionBuilder,
-      (KnowledgeItem, $$KnowledgeItemsTableReferences),
-      KnowledgeItem,
-      PrefetchHooks Function({bool articleId})
+      $KnowledgeExternalMappingsTable,
+      KnowledgeExternalMappingRow,
+      $$KnowledgeExternalMappingsTableFilterComposer,
+      $$KnowledgeExternalMappingsTableOrderingComposer,
+      $$KnowledgeExternalMappingsTableAnnotationComposer,
+      $$KnowledgeExternalMappingsTableCreateCompanionBuilder,
+      $$KnowledgeExternalMappingsTableUpdateCompanionBuilder,
+      (KnowledgeExternalMappingRow, $$KnowledgeExternalMappingsTableReferences),
+      KnowledgeExternalMappingRow,
+      PrefetchHooks Function({bool knowledgeItemId})
     >;
 typedef $$ArticleAnnotationsTableCreateCompanionBuilder =
     ArticleAnnotationsCompanion Function({
@@ -21073,6 +22892,11 @@ class $RiverDatabaseManager {
       $$ReaderSettingsRowsTableTableManager(_db, _db.readerSettingsRows);
   $$KnowledgeItemsTableTableManager get knowledgeItems =>
       $$KnowledgeItemsTableTableManager(_db, _db.knowledgeItems);
+  $$KnowledgeExternalMappingsTableTableManager get knowledgeExternalMappings =>
+      $$KnowledgeExternalMappingsTableTableManager(
+        _db,
+        _db.knowledgeExternalMappings,
+      );
   $$ArticleAnnotationsTableTableManager get articleAnnotations =>
       $$ArticleAnnotationsTableTableManager(_db, _db.articleAnnotations);
   $$AudioItemsTableTableManager get audioItems =>

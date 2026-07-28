@@ -1,5 +1,6 @@
 import 'annotations.dart';
 import 'audio.dart';
+import 'knowledge.dart';
 import 'models.dart';
 
 abstract interface class Clock {
@@ -315,5 +316,20 @@ final class UnavailableAudioEngine implements AudioEngine {
 
 abstract interface class KnowledgeConnector {
   String get id;
-  Future<Uri> upsert(Article article, ArticleSummary? summary);
+  Future<Uri> upsert(KnowledgeItem item);
+}
+
+abstract interface class KnowledgeRepository {
+  Stream<List<KnowledgeItem>> watchItems();
+  Stream<KnowledgeItem?> watchItem(String itemId);
+  Future<KnowledgeItem?> findBySource(KnowledgeSourceReference source);
+  Future<KnowledgeItem> saveItem(KnowledgeItem item);
+  Future<void> deleteItem(String itemId);
+  Stream<List<KnowledgeExternalMapping>> watchExternalMappings(String itemId);
+  Future<void> upsertExternalMapping(KnowledgeExternalMapping mapping);
+  Future<void> deleteExternalMapping({
+    required String knowledgeItemId,
+    required String connectorId,
+    required String destinationId,
+  });
 }

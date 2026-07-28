@@ -111,6 +111,7 @@ class ReaderSettingsRows extends Table {
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
 }
 
+@DataClassName('KnowledgeItemRow')
 class KnowledgeItems extends Table {
   TextColumn get id => text()();
   TextColumn get articleId => text().nullable().references(
@@ -118,17 +119,47 @@ class KnowledgeItems extends Table {
     #id,
     onDelete: KeyAction.setNull,
   )();
+  TextColumn get sourceKind => text().withDefault(const Constant('article'))();
+  TextColumn get sourceId => text().nullable()();
+  TextColumn get sourceTitle => text().nullable()();
+  TextColumn get author => text().nullable()();
+  DateTimeColumn get publishedAt => dateTime().nullable()();
   TextColumn get title => text().withLength(min: 1, max: 2048)();
   TextColumn get originalUrl => text()();
   TextColumn get markdown => text()();
+  TextColumn get sanitizedHtml => text().withDefault(const Constant(''))();
   TextColumn get summaryJson => text().nullable()();
+  TextColumn get highlightsJson => text().withDefault(const Constant('[]'))();
+  TextColumn get notesJson => text().withDefault(const Constant('[]'))();
   TextColumn get tagsJson => text().withDefault(const Constant('[]'))();
+  TextColumn get topicsJson => text().withDefault(const Constant('[]'))();
+  TextColumn get entitiesJson => text().withDefault(const Constant('[]'))();
   TextColumn get contentHash => text()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
+@DataClassName('KnowledgeExternalMappingRow')
+class KnowledgeExternalMappings extends Table {
+  TextColumn get knowledgeItemId =>
+      text().references(KnowledgeItems, #id, onDelete: KeyAction.cascade)();
+  TextColumn get connectorId => text()();
+  TextColumn get destinationId => text()();
+  TextColumn get externalObjectId => text()();
+  TextColumn get externalUrl => text().nullable()();
+  TextColumn get exportedContentHash => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{
+    knowledgeItemId,
+    connectorId,
+    destinationId,
+  };
 }
 
 @DataClassName('ArticleAnnotationRow')
