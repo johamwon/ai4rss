@@ -122,6 +122,56 @@ final class AudioPlaybackSnapshot {
   final String? contentRevision;
 }
 
+final class AudioQueueEntry {
+  AudioQueueEntry({
+    required this.item,
+    required this.position,
+    required this.isCurrent,
+    required this.enqueuedAt,
+    required this.updatedAt,
+    this.contentRevision,
+  })  : assert(position >= 0),
+        assert(
+          item.kind != AudioKind.articleTts ||
+              (contentRevision != null && contentRevision.trim().isNotEmpty),
+          'Queued article TTS requires a stable content revision.',
+        ),
+        assert(
+          item.kind != AudioKind.podcastEpisode || contentRevision == null,
+          'Queued Podcast media does not use an article content revision.',
+        );
+
+  final AudioItem item;
+  final int position;
+  final bool isCurrent;
+  final String? contentRevision;
+  final DateTime enqueuedAt;
+  final DateTime updatedAt;
+}
+
+final class AudioQueueSnapshot {
+  AudioQueueSnapshot(Iterable<AudioQueueEntry> entries)
+      : entries = List<AudioQueueEntry>.unmodifiable(entries);
+
+  const AudioQueueSnapshot.empty() : entries = const <AudioQueueEntry>[];
+
+  final List<AudioQueueEntry> entries;
+
+  AudioQueueEntry? get current {
+    for (final entry in entries) {
+      if (entry.isCurrent) return entry;
+    }
+    return null;
+  }
+
+  int get currentIndex {
+    for (var index = 0; index < entries.length; index += 1) {
+      if (entries[index].isCurrent) return index;
+    }
+    return -1;
+  }
+}
+
 final class AudioVoice {
   const AudioVoice({
     required this.id,

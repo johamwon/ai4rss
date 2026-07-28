@@ -8,7 +8,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:test/test.dart';
 
 void main() {
-  test('v1 fixture migrates to v9 without losing article state', () async {
+  test('v1 fixture migrates to v10 without losing article state', () async {
     final fixture = await _materializeFixture('v001_populated.sql');
     final migrated = await _openFixture(fixture);
 
@@ -17,7 +17,7 @@ void main() {
     expect(article.feedSummary, 'Existing preview survives migration');
     expect(article.starred, isTrue);
     expect(article.feedContentHtml, isNull);
-    expect(await _userVersion(migrated), 9);
+    expect(await _userVersion(migrated), 10);
     expect(
       await _syncTableNames(migrated),
       containsAll(<String>[
@@ -47,7 +47,7 @@ void main() {
 
     final article = await recovered.select(recovered.articles).getSingle();
     expect(article.feedContentHtml, '<p>Recovered body</p>');
-    expect(await _userVersion(recovered), 9);
+    expect(await _userVersion(recovered), 10);
   });
 
   test('v2 fixture creates the settings table and preserves article', () async {
@@ -56,7 +56,7 @@ void main() {
 
     final article = await migrated.select(migrated.articles).getSingle();
     expect(article.feedContentHtml, '<p>Current immediate body</p>');
-    expect(await _userVersion(migrated), 9);
+    expect(await _userVersion(migrated), 10);
     expect(
       await DriftReaderSettingsRepository(migrated).watchSettings().first,
       const ReaderSettings(),
@@ -91,7 +91,7 @@ void main() {
     expect(settings.fontFamily, ReaderFontFamily.serif);
     expect(settings.fontScale, 1.3);
     expect(settings.theme, ReaderThemePreference.dark);
-    expect(await _userVersion(recovered), 9);
+    expect(await _userVersion(recovered), 10);
   });
 
   test('v3 fixture creates a searchable index without data loss', () async {
@@ -118,7 +118,7 @@ void main() {
           .id,
       'article-1',
     );
-    expect(await _userVersion(current), 9);
+    expect(await _userVersion(current), 10);
   });
 
   test('interrupted v4 index creation rebuilds and creates triggers', () async {
@@ -145,7 +145,7 @@ void main() {
       'article-1',
     ]);
     expect(await _searchTriggerCount(recovered), 10);
-    expect(await _userVersion(recovered), 9);
+    expect(await _userVersion(recovered), 10);
   });
 
   test('v4 fixture adds restartable audio state with index intact', () async {
@@ -177,7 +177,7 @@ void main() {
         'language_tag',
       ]),
     );
-    expect(await _userVersion(current), 9);
+    expect(await _userVersion(current), 10);
   });
 
   test('interrupted v5 audio column additions retry idempotently', () async {
@@ -202,7 +202,7 @@ void main() {
         'language_tag',
       ]),
     );
-    expect(await _userVersion(recovered), 9);
+    expect(await _userVersion(recovered), 10);
   });
 
   test('interrupted v6 sync table creation retries idempotently', () async {
@@ -244,7 +244,7 @@ void main() {
         'sync_seen_mutation_rows',
       ]),
     );
-    expect(await _userVersion(recovered), 9);
+    expect(await _userVersion(recovered), 10);
   });
 
   test('interrupted v7 sync history migration retries idempotently', () async {
@@ -284,7 +284,7 @@ void main() {
         'resolved_at',
       ]),
     );
-    expect(await _userVersion(recovered), 9);
+    expect(await _userVersion(recovered), 10);
   });
 
   test('interrupted v8 podcast table creation retries idempotently', () async {
@@ -309,7 +309,7 @@ void main() {
       await _columnNames(recovered, 'podcast_downloads'),
       contains('source_url'),
     );
-    expect(await _userVersion(recovered), 9);
+    expect(await _userVersion(recovered), 10);
   });
 
   test('v8 source binding migration adds the missing column', () async {
@@ -328,7 +328,7 @@ void main() {
       await _columnNames(recovered, 'podcast_downloads'),
       contains('source_url'),
     );
-    expect(await _userVersion(recovered), 9);
+    expect(await _userVersion(recovered), 10);
   });
 
   test('interrupted v9 source binding retries idempotently', () async {
@@ -346,7 +346,60 @@ void main() {
       await _columnNames(recovered, 'podcast_downloads'),
       contains('source_url'),
     );
-    expect(await _userVersion(recovered), 9);
+    expect(await _userVersion(recovered), 10);
+  });
+
+  test('v9 fixture adds an empty queue without losing audio state', () async {
+    final fixture = await _materializeFixture('v009_audio_state.sql');
+    final migrated = await _openFixture(fixture);
+
+    final playback = await migrated.select(migrated.audioItems).getSingle();
+    final download = await migrated
+        .select(migrated.podcastDownloads)
+        .getSingle();
+    expect(playback.id, 'audio-v9');
+    expect(playback.positionMs, 42000);
+    expect(playback.playbackRate, 1.25);
+    expect(download.sourceUrl, 'https://example.test/audio-v9.mp3');
+    expect(
+      await DriftAudioQueueRepository(migrated).read(),
+      isA<AudioQueueSnapshot>(),
+    );
+    expect((await DriftAudioQueueRepository(migrated).read()).entries, isEmpty);
+    expect(await _userVersion(migrated), 10);
+  });
+
+  test('interrupted v10 queue creation retries without losing rows', () async {
+    final fixture = await _materializeFixture('v009_audio_state.sql');
+    final raw = sqlite.sqlite3.open(fixture.path);
+    raw
+      ..execute('''
+        CREATE TABLE audio_queue_entries (
+          item_id TEXT NOT NULL PRIMARY KEY,
+          kind TEXT NOT NULL,
+          title TEXT NOT NULL,
+          source_uri TEXT NOT NULL,
+          content_revision TEXT,
+          queue_position INTEGER NOT NULL,
+          is_current INTEGER NOT NULL DEFAULT 0 CHECK (is_current IN (0, 1)),
+          enqueued_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        )
+      ''')
+      ..execute('''
+        INSERT INTO audio_queue_entries VALUES (
+          'queued-v9', 'articleTts', 'Queued before interruption',
+          'https://example.test/articles/queued-v9', 'sha256:queued-v9',
+          0, 1, 1784995200, 1784995200
+        )
+      ''')
+      ..close();
+    final recovered = await _openFixture(fixture);
+
+    final queue = await DriftAudioQueueRepository(recovered).read();
+    expect(queue.entries.single.item.id, 'queued-v9');
+    expect(queue.current?.item.id, 'queued-v9');
+    expect(await _userVersion(recovered), 10);
   });
 }
 

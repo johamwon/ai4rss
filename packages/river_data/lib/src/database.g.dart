@@ -5190,6 +5190,585 @@ class AudioItemsCompanion extends UpdateCompanion<AudioItem> {
   }
 }
 
+class $AudioQueueEntriesTable extends AudioQueueEntries
+    with TableInfo<$AudioQueueEntriesTable, AudioQueueEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AudioQueueEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
+  @override
+  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
+    'item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 2048,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceUriMeta = const VerificationMeta(
+    'sourceUri',
+  );
+  @override
+  late final GeneratedColumn<String> sourceUri = GeneratedColumn<String>(
+    'source_uri',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentRevisionMeta = const VerificationMeta(
+    'contentRevision',
+  );
+  @override
+  late final GeneratedColumn<String> contentRevision = GeneratedColumn<String>(
+    'content_revision',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _queuePositionMeta = const VerificationMeta(
+    'queuePosition',
+  );
+  @override
+  late final GeneratedColumn<int> queuePosition = GeneratedColumn<int>(
+    'queue_position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isCurrentMeta = const VerificationMeta(
+    'isCurrent',
+  );
+  @override
+  late final GeneratedColumn<bool> isCurrent = GeneratedColumn<bool>(
+    'is_current',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_current" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _enqueuedAtMeta = const VerificationMeta(
+    'enqueuedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> enqueuedAt = GeneratedColumn<DateTime>(
+    'enqueued_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    itemId,
+    kind,
+    title,
+    sourceUri,
+    contentRevision,
+    queuePosition,
+    isCurrent,
+    enqueuedAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'audio_queue_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AudioQueueEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('item_id')) {
+      context.handle(
+        _itemIdMeta,
+        itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_itemIdMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('source_uri')) {
+      context.handle(
+        _sourceUriMeta,
+        sourceUri.isAcceptableOrUnknown(data['source_uri']!, _sourceUriMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sourceUriMeta);
+    }
+    if (data.containsKey('content_revision')) {
+      context.handle(
+        _contentRevisionMeta,
+        contentRevision.isAcceptableOrUnknown(
+          data['content_revision']!,
+          _contentRevisionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('queue_position')) {
+      context.handle(
+        _queuePositionMeta,
+        queuePosition.isAcceptableOrUnknown(
+          data['queue_position']!,
+          _queuePositionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_queuePositionMeta);
+    }
+    if (data.containsKey('is_current')) {
+      context.handle(
+        _isCurrentMeta,
+        isCurrent.isAcceptableOrUnknown(data['is_current']!, _isCurrentMeta),
+      );
+    }
+    if (data.containsKey('enqueued_at')) {
+      context.handle(
+        _enqueuedAtMeta,
+        enqueuedAt.isAcceptableOrUnknown(data['enqueued_at']!, _enqueuedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_enqueuedAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {itemId};
+  @override
+  AudioQueueEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AudioQueueEntry(
+      itemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}item_id'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      sourceUri: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_uri'],
+      )!,
+      contentRevision: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content_revision'],
+      ),
+      queuePosition: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}queue_position'],
+      )!,
+      isCurrent: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_current'],
+      )!,
+      enqueuedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}enqueued_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AudioQueueEntriesTable createAlias(String alias) {
+    return $AudioQueueEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class AudioQueueEntry extends DataClass implements Insertable<AudioQueueEntry> {
+  final String itemId;
+  final String kind;
+  final String title;
+  final String sourceUri;
+  final String? contentRevision;
+  final int queuePosition;
+  final bool isCurrent;
+  final DateTime enqueuedAt;
+  final DateTime updatedAt;
+  const AudioQueueEntry({
+    required this.itemId,
+    required this.kind,
+    required this.title,
+    required this.sourceUri,
+    this.contentRevision,
+    required this.queuePosition,
+    required this.isCurrent,
+    required this.enqueuedAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['item_id'] = Variable<String>(itemId);
+    map['kind'] = Variable<String>(kind);
+    map['title'] = Variable<String>(title);
+    map['source_uri'] = Variable<String>(sourceUri);
+    if (!nullToAbsent || contentRevision != null) {
+      map['content_revision'] = Variable<String>(contentRevision);
+    }
+    map['queue_position'] = Variable<int>(queuePosition);
+    map['is_current'] = Variable<bool>(isCurrent);
+    map['enqueued_at'] = Variable<DateTime>(enqueuedAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AudioQueueEntriesCompanion toCompanion(bool nullToAbsent) {
+    return AudioQueueEntriesCompanion(
+      itemId: Value(itemId),
+      kind: Value(kind),
+      title: Value(title),
+      sourceUri: Value(sourceUri),
+      contentRevision: contentRevision == null && nullToAbsent
+          ? const Value.absent()
+          : Value(contentRevision),
+      queuePosition: Value(queuePosition),
+      isCurrent: Value(isCurrent),
+      enqueuedAt: Value(enqueuedAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AudioQueueEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AudioQueueEntry(
+      itemId: serializer.fromJson<String>(json['itemId']),
+      kind: serializer.fromJson<String>(json['kind']),
+      title: serializer.fromJson<String>(json['title']),
+      sourceUri: serializer.fromJson<String>(json['sourceUri']),
+      contentRevision: serializer.fromJson<String?>(json['contentRevision']),
+      queuePosition: serializer.fromJson<int>(json['queuePosition']),
+      isCurrent: serializer.fromJson<bool>(json['isCurrent']),
+      enqueuedAt: serializer.fromJson<DateTime>(json['enqueuedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'itemId': serializer.toJson<String>(itemId),
+      'kind': serializer.toJson<String>(kind),
+      'title': serializer.toJson<String>(title),
+      'sourceUri': serializer.toJson<String>(sourceUri),
+      'contentRevision': serializer.toJson<String?>(contentRevision),
+      'queuePosition': serializer.toJson<int>(queuePosition),
+      'isCurrent': serializer.toJson<bool>(isCurrent),
+      'enqueuedAt': serializer.toJson<DateTime>(enqueuedAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AudioQueueEntry copyWith({
+    String? itemId,
+    String? kind,
+    String? title,
+    String? sourceUri,
+    Value<String?> contentRevision = const Value.absent(),
+    int? queuePosition,
+    bool? isCurrent,
+    DateTime? enqueuedAt,
+    DateTime? updatedAt,
+  }) => AudioQueueEntry(
+    itemId: itemId ?? this.itemId,
+    kind: kind ?? this.kind,
+    title: title ?? this.title,
+    sourceUri: sourceUri ?? this.sourceUri,
+    contentRevision: contentRevision.present
+        ? contentRevision.value
+        : this.contentRevision,
+    queuePosition: queuePosition ?? this.queuePosition,
+    isCurrent: isCurrent ?? this.isCurrent,
+    enqueuedAt: enqueuedAt ?? this.enqueuedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AudioQueueEntry copyWithCompanion(AudioQueueEntriesCompanion data) {
+    return AudioQueueEntry(
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      title: data.title.present ? data.title.value : this.title,
+      sourceUri: data.sourceUri.present ? data.sourceUri.value : this.sourceUri,
+      contentRevision: data.contentRevision.present
+          ? data.contentRevision.value
+          : this.contentRevision,
+      queuePosition: data.queuePosition.present
+          ? data.queuePosition.value
+          : this.queuePosition,
+      isCurrent: data.isCurrent.present ? data.isCurrent.value : this.isCurrent,
+      enqueuedAt: data.enqueuedAt.present
+          ? data.enqueuedAt.value
+          : this.enqueuedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AudioQueueEntry(')
+          ..write('itemId: $itemId, ')
+          ..write('kind: $kind, ')
+          ..write('title: $title, ')
+          ..write('sourceUri: $sourceUri, ')
+          ..write('contentRevision: $contentRevision, ')
+          ..write('queuePosition: $queuePosition, ')
+          ..write('isCurrent: $isCurrent, ')
+          ..write('enqueuedAt: $enqueuedAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    itemId,
+    kind,
+    title,
+    sourceUri,
+    contentRevision,
+    queuePosition,
+    isCurrent,
+    enqueuedAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AudioQueueEntry &&
+          other.itemId == this.itemId &&
+          other.kind == this.kind &&
+          other.title == this.title &&
+          other.sourceUri == this.sourceUri &&
+          other.contentRevision == this.contentRevision &&
+          other.queuePosition == this.queuePosition &&
+          other.isCurrent == this.isCurrent &&
+          other.enqueuedAt == this.enqueuedAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AudioQueueEntriesCompanion extends UpdateCompanion<AudioQueueEntry> {
+  final Value<String> itemId;
+  final Value<String> kind;
+  final Value<String> title;
+  final Value<String> sourceUri;
+  final Value<String?> contentRevision;
+  final Value<int> queuePosition;
+  final Value<bool> isCurrent;
+  final Value<DateTime> enqueuedAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AudioQueueEntriesCompanion({
+    this.itemId = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.title = const Value.absent(),
+    this.sourceUri = const Value.absent(),
+    this.contentRevision = const Value.absent(),
+    this.queuePosition = const Value.absent(),
+    this.isCurrent = const Value.absent(),
+    this.enqueuedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AudioQueueEntriesCompanion.insert({
+    required String itemId,
+    required String kind,
+    required String title,
+    required String sourceUri,
+    this.contentRevision = const Value.absent(),
+    required int queuePosition,
+    this.isCurrent = const Value.absent(),
+    required DateTime enqueuedAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : itemId = Value(itemId),
+       kind = Value(kind),
+       title = Value(title),
+       sourceUri = Value(sourceUri),
+       queuePosition = Value(queuePosition),
+       enqueuedAt = Value(enqueuedAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<AudioQueueEntry> custom({
+    Expression<String>? itemId,
+    Expression<String>? kind,
+    Expression<String>? title,
+    Expression<String>? sourceUri,
+    Expression<String>? contentRevision,
+    Expression<int>? queuePosition,
+    Expression<bool>? isCurrent,
+    Expression<DateTime>? enqueuedAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (itemId != null) 'item_id': itemId,
+      if (kind != null) 'kind': kind,
+      if (title != null) 'title': title,
+      if (sourceUri != null) 'source_uri': sourceUri,
+      if (contentRevision != null) 'content_revision': contentRevision,
+      if (queuePosition != null) 'queue_position': queuePosition,
+      if (isCurrent != null) 'is_current': isCurrent,
+      if (enqueuedAt != null) 'enqueued_at': enqueuedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AudioQueueEntriesCompanion copyWith({
+    Value<String>? itemId,
+    Value<String>? kind,
+    Value<String>? title,
+    Value<String>? sourceUri,
+    Value<String?>? contentRevision,
+    Value<int>? queuePosition,
+    Value<bool>? isCurrent,
+    Value<DateTime>? enqueuedAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AudioQueueEntriesCompanion(
+      itemId: itemId ?? this.itemId,
+      kind: kind ?? this.kind,
+      title: title ?? this.title,
+      sourceUri: sourceUri ?? this.sourceUri,
+      contentRevision: contentRevision ?? this.contentRevision,
+      queuePosition: queuePosition ?? this.queuePosition,
+      isCurrent: isCurrent ?? this.isCurrent,
+      enqueuedAt: enqueuedAt ?? this.enqueuedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (itemId.present) {
+      map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (sourceUri.present) {
+      map['source_uri'] = Variable<String>(sourceUri.value);
+    }
+    if (contentRevision.present) {
+      map['content_revision'] = Variable<String>(contentRevision.value);
+    }
+    if (queuePosition.present) {
+      map['queue_position'] = Variable<int>(queuePosition.value);
+    }
+    if (isCurrent.present) {
+      map['is_current'] = Variable<bool>(isCurrent.value);
+    }
+    if (enqueuedAt.present) {
+      map['enqueued_at'] = Variable<DateTime>(enqueuedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AudioQueueEntriesCompanion(')
+          ..write('itemId: $itemId, ')
+          ..write('kind: $kind, ')
+          ..write('title: $title, ')
+          ..write('sourceUri: $sourceUri, ')
+          ..write('contentRevision: $contentRevision, ')
+          ..write('queuePosition: $queuePosition, ')
+          ..write('isCurrent: $isCurrent, ')
+          ..write('enqueuedAt: $enqueuedAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $BackgroundJobsTable extends BackgroundJobs
     with TableInfo<$BackgroundJobsTable, BackgroundJob> {
   @override
@@ -11216,6 +11795,8 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
       $ReaderSettingsRowsTable(this);
   late final $KnowledgeItemsTable knowledgeItems = $KnowledgeItemsTable(this);
   late final $AudioItemsTable audioItems = $AudioItemsTable(this);
+  late final $AudioQueueEntriesTable audioQueueEntries =
+      $AudioQueueEntriesTable(this);
   late final $BackgroundJobsTable backgroundJobs = $BackgroundJobsTable(this);
   late final $SyncTombstonesTable syncTombstones = $SyncTombstonesTable(this);
   late final $SyncReplicaEntriesTable syncReplicaEntries =
@@ -11247,6 +11828,7 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
     readerSettingsRows,
     knowledgeItems,
     audioItems,
+    audioQueueEntries,
     backgroundJobs,
     syncTombstones,
     syncReplicaEntries,
@@ -14912,6 +15494,301 @@ typedef $$AudioItemsTableProcessedTableManager =
       AudioItem,
       PrefetchHooks Function()
     >;
+typedef $$AudioQueueEntriesTableCreateCompanionBuilder =
+    AudioQueueEntriesCompanion Function({
+      required String itemId,
+      required String kind,
+      required String title,
+      required String sourceUri,
+      Value<String?> contentRevision,
+      required int queuePosition,
+      Value<bool> isCurrent,
+      required DateTime enqueuedAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AudioQueueEntriesTableUpdateCompanionBuilder =
+    AudioQueueEntriesCompanion Function({
+      Value<String> itemId,
+      Value<String> kind,
+      Value<String> title,
+      Value<String> sourceUri,
+      Value<String?> contentRevision,
+      Value<int> queuePosition,
+      Value<bool> isCurrent,
+      Value<DateTime> enqueuedAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AudioQueueEntriesTableFilterComposer
+    extends Composer<_$RiverDatabase, $AudioQueueEntriesTable> {
+  $$AudioQueueEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceUri => $composableBuilder(
+    column: $table.sourceUri,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contentRevision => $composableBuilder(
+    column: $table.contentRevision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get queuePosition => $composableBuilder(
+    column: $table.queuePosition,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isCurrent => $composableBuilder(
+    column: $table.isCurrent,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get enqueuedAt => $composableBuilder(
+    column: $table.enqueuedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AudioQueueEntriesTableOrderingComposer
+    extends Composer<_$RiverDatabase, $AudioQueueEntriesTable> {
+  $$AudioQueueEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceUri => $composableBuilder(
+    column: $table.sourceUri,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contentRevision => $composableBuilder(
+    column: $table.contentRevision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get queuePosition => $composableBuilder(
+    column: $table.queuePosition,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isCurrent => $composableBuilder(
+    column: $table.isCurrent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get enqueuedAt => $composableBuilder(
+    column: $table.enqueuedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AudioQueueEntriesTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $AudioQueueEntriesTable> {
+  $$AudioQueueEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get itemId =>
+      $composableBuilder(column: $table.itemId, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceUri =>
+      $composableBuilder(column: $table.sourceUri, builder: (column) => column);
+
+  GeneratedColumn<String> get contentRevision => $composableBuilder(
+    column: $table.contentRevision,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get queuePosition => $composableBuilder(
+    column: $table.queuePosition,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isCurrent =>
+      $composableBuilder(column: $table.isCurrent, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get enqueuedAt => $composableBuilder(
+    column: $table.enqueuedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AudioQueueEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $AudioQueueEntriesTable,
+          AudioQueueEntry,
+          $$AudioQueueEntriesTableFilterComposer,
+          $$AudioQueueEntriesTableOrderingComposer,
+          $$AudioQueueEntriesTableAnnotationComposer,
+          $$AudioQueueEntriesTableCreateCompanionBuilder,
+          $$AudioQueueEntriesTableUpdateCompanionBuilder,
+          (
+            AudioQueueEntry,
+            BaseReferences<
+              _$RiverDatabase,
+              $AudioQueueEntriesTable,
+              AudioQueueEntry
+            >,
+          ),
+          AudioQueueEntry,
+          PrefetchHooks Function()
+        > {
+  $$AudioQueueEntriesTableTableManager(
+    _$RiverDatabase db,
+    $AudioQueueEntriesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AudioQueueEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AudioQueueEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AudioQueueEntriesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> itemId = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> sourceUri = const Value.absent(),
+                Value<String?> contentRevision = const Value.absent(),
+                Value<int> queuePosition = const Value.absent(),
+                Value<bool> isCurrent = const Value.absent(),
+                Value<DateTime> enqueuedAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AudioQueueEntriesCompanion(
+                itemId: itemId,
+                kind: kind,
+                title: title,
+                sourceUri: sourceUri,
+                contentRevision: contentRevision,
+                queuePosition: queuePosition,
+                isCurrent: isCurrent,
+                enqueuedAt: enqueuedAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String itemId,
+                required String kind,
+                required String title,
+                required String sourceUri,
+                Value<String?> contentRevision = const Value.absent(),
+                required int queuePosition,
+                Value<bool> isCurrent = const Value.absent(),
+                required DateTime enqueuedAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AudioQueueEntriesCompanion.insert(
+                itemId: itemId,
+                kind: kind,
+                title: title,
+                sourceUri: sourceUri,
+                contentRevision: contentRevision,
+                queuePosition: queuePosition,
+                isCurrent: isCurrent,
+                enqueuedAt: enqueuedAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AudioQueueEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $AudioQueueEntriesTable,
+      AudioQueueEntry,
+      $$AudioQueueEntriesTableFilterComposer,
+      $$AudioQueueEntriesTableOrderingComposer,
+      $$AudioQueueEntriesTableAnnotationComposer,
+      $$AudioQueueEntriesTableCreateCompanionBuilder,
+      $$AudioQueueEntriesTableUpdateCompanionBuilder,
+      (
+        AudioQueueEntry,
+        BaseReferences<
+          _$RiverDatabase,
+          $AudioQueueEntriesTable,
+          AudioQueueEntry
+        >,
+      ),
+      AudioQueueEntry,
+      PrefetchHooks Function()
+    >;
 typedef $$BackgroundJobsTableCreateCompanionBuilder =
     BackgroundJobsCompanion Function({
       required String id,
@@ -18371,6 +19248,8 @@ class $RiverDatabaseManager {
       $$KnowledgeItemsTableTableManager(_db, _db.knowledgeItems);
   $$AudioItemsTableTableManager get audioItems =>
       $$AudioItemsTableTableManager(_db, _db.audioItems);
+  $$AudioQueueEntriesTableTableManager get audioQueueEntries =>
+      $$AudioQueueEntriesTableTableManager(_db, _db.audioQueueEntries);
   $$BackgroundJobsTableTableManager get backgroundJobs =>
       $$BackgroundJobsTableTableManager(_db, _db.backgroundJobs);
   $$SyncTombstonesTableTableManager get syncTombstones =>

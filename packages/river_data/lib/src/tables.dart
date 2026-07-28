@@ -153,6 +153,21 @@ class AudioItems extends Table {
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
 }
 
+class AudioQueueEntries extends Table {
+  TextColumn get itemId => text()();
+  TextColumn get kind => text()();
+  TextColumn get title => text().withLength(min: 1, max: 2048)();
+  TextColumn get sourceUri => text()();
+  TextColumn get contentRevision => text().nullable()();
+  IntColumn get queuePosition => integer()();
+  BoolColumn get isCurrent => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get enqueuedAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{itemId};
+}
+
 class BackgroundJobs extends Table {
   TextColumn get id => text()();
   TextColumn get type => text()();

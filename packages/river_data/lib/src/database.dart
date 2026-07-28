@@ -15,6 +15,7 @@ part 'database.g.dart';
     ReaderSettingsRows,
     KnowledgeItems,
     AudioItems,
+    AudioQueueEntries,
     BackgroundJobs,
     SyncTombstones,
     SyncReplicaEntries,
@@ -37,7 +38,7 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -135,6 +136,9 @@ final class RiverDatabase extends _$RiverDatabase {
       }
       if (from < 9 && !await _hasColumn('podcast_downloads', 'source_url')) {
         await migrator.addColumn(podcastDownloads, podcastDownloads.sourceUrl);
+      }
+      if (from < 10 && !await _hasTable('audio_queue_entries')) {
+        await migrator.createTable(audioQueueEntries);
       }
     },
     beforeOpen: (OpeningDetails details) async {

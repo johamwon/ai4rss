@@ -8,10 +8,12 @@ v001_populated.sql
 v002_populated.sql
 v003_populated.sql
 v004_populated.sql
+v009_audio_state.sql
 ```
 
 Never rewrite or delete a released fixture. Migration tests must cover upgrade to current, interruption recovery, idempotent retry and downgrade/export behavior where supported.
 
-Schema v5 is exercised by migrating the immutable v4 fixture because its only
-changes are additive audio playback columns. A populated v5 fixture will be
-added when the next schema ships.
+Schemas v5 through v8 are exercised by migrating the immutable v4 fixture and
+by interrupted additive/table-creation cases. `v009_audio_state.sql` is the
+immutable predecessor fixture for the v10 persistent unified audio queue and
+retains populated playback, Podcast catalog and resumable-download state.

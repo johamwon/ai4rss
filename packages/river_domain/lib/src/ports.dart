@@ -115,6 +115,36 @@ abstract interface class AudioPlaybackRepository {
   Future<void> clear(String itemId);
 }
 
+abstract interface class AudioQueueRepository {
+  Stream<AudioQueueSnapshot> watch();
+  Future<AudioQueueSnapshot> read();
+
+  Future<bool> enqueue({
+    required AudioItem item,
+    required String? contentRevision,
+    required DateTime enqueuedAt,
+  });
+
+  Future<void> move({
+    required String itemId,
+    required int targetIndex,
+    required DateTime updatedAt,
+  });
+
+  Future<void> select({
+    required String itemId,
+    required DateTime updatedAt,
+  });
+
+  Future<void> remove({
+    required String itemId,
+    required DateTime updatedAt,
+  });
+
+  Future<AudioQueueEntry?> consumeCurrent({required DateTime updatedAt});
+  Future<void> clear();
+}
+
 abstract interface class AudioSystemSession {
   Stream<AudioSystemEvent> get events;
 
@@ -159,6 +189,53 @@ final class UnavailableAudioPlaybackRepository
 
   @override
   Future<void> save(AudioPlaybackSnapshot snapshot) async {}
+}
+
+final class UnavailableAudioQueueRepository implements AudioQueueRepository {
+  const UnavailableAudioQueueRepository();
+
+  @override
+  Future<void> clear() async {}
+
+  @override
+  Future<AudioQueueEntry?> consumeCurrent({
+    required DateTime updatedAt,
+  }) async =>
+      null;
+
+  @override
+  Future<bool> enqueue({
+    required AudioItem item,
+    required String? contentRevision,
+    required DateTime enqueuedAt,
+  }) async =>
+      false;
+
+  @override
+  Future<void> move({
+    required String itemId,
+    required int targetIndex,
+    required DateTime updatedAt,
+  }) async {}
+
+  @override
+  Future<AudioQueueSnapshot> read() async => const AudioQueueSnapshot.empty();
+
+  @override
+  Future<void> remove({
+    required String itemId,
+    required DateTime updatedAt,
+  }) async {}
+
+  @override
+  Future<void> select({
+    required String itemId,
+    required DateTime updatedAt,
+  }) async {}
+
+  @override
+  Stream<AudioQueueSnapshot> watch() =>
+      Stream<AudioQueueSnapshot>.value(const AudioQueueSnapshot.empty());
 }
 
 final class UnavailableAudioEngine implements AudioEngine {

@@ -7,6 +7,7 @@ import 'package:river_design_system/river_design_system.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
 
+import '../audio/audio_queue_page.dart';
 import '../podcast/podcast_library_page.dart';
 import '../sync/sync_account_page.dart';
 import 'app_dependencies.dart';
@@ -331,6 +332,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           offlineArticles: dependencies.offlineArticles,
           clock: dependencies.clock,
           audioController: dependencies.audioController,
+          audioQueue: dependencies.audioQueue,
         ),
       ),
     );
@@ -373,7 +375,21 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           policies: dependencies.podcastPolicies,
           downloads: dependencies.podcastDownloads,
           audio: dependencies.audioController,
+          queue: dependencies.audioQueue,
           clock: dependencies.clock,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openAudioQueue() async {
+    final dependencies = RiverDependenciesScope.of(context);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => AudioQueuePage(
+          queue: dependencies.audioQueue,
+          player: dependencies.audioQueuePlayer,
+          playback: dependencies.audioController,
         ),
       ),
     );
@@ -587,6 +603,11 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
                   appBar: AppBar(
                     title: const Text('River'),
                     actions: <Widget>[
+                      IconButton(
+                        onPressed: () => unawaited(_openAudioQueue()),
+                        icon: const Icon(Icons.queue_music),
+                        tooltip: '收听队列',
+                      ),
                       IconButton(
                         onPressed: () => unawaited(_openPodcasts()),
                         icon: const Icon(Icons.podcasts_outlined),
