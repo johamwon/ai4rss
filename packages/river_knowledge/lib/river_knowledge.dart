@@ -8,14 +8,36 @@ import 'package:river_domain/river_domain.dart';
 export 'src/knowledge_markdown.dart';
 
 final class KnowledgeExportService {
-  const KnowledgeExportService(this._connector);
+  const KnowledgeExportService(this._manager);
 
-  final KnowledgeConnector _connector;
+  final KnowledgeExportManager _manager;
 
-  String idempotencyKey(KnowledgeItem item) => '${_connector.id}:${item.id}';
+  Future<void> export(
+    KnowledgeItem item, {
+    required String connectorId,
+    required String destinationId,
+  }) {
+    return _manager.enqueueUpsert(
+      KnowledgeExportTarget(
+        knowledgeItemId: item.id,
+        connectorId: connectorId,
+        destinationId: destinationId,
+      ),
+    );
+  }
 
-  Future<Uri> export(KnowledgeItem item) {
-    return _connector.upsert(item);
+  Future<void> delete(
+    KnowledgeItem item, {
+    required String connectorId,
+    required String destinationId,
+  }) {
+    return _manager.enqueueDelete(
+      KnowledgeExportTarget(
+        knowledgeItemId: item.id,
+        connectorId: connectorId,
+        destinationId: destinationId,
+      ),
+    );
   }
 }
 
