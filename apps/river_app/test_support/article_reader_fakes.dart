@@ -92,6 +92,44 @@ final class FakeReaderSettingsRepository implements ReaderSettingsRepository {
   Future<void> close() => _changes.close();
 }
 
+final class FakeArticleAnnotationRepository
+    implements ArticleAnnotationRepository {
+  final List<ArticleAnnotation> annotations = <ArticleAnnotation>[];
+  final StreamController<List<ArticleAnnotation>> _changes =
+      StreamController<List<ArticleAnnotation>>.broadcast();
+
+  @override
+  Stream<List<ArticleAnnotation>> watchArticleAnnotations(
+    String articleId,
+  ) async* {
+    yield _forArticle(articleId);
+    yield* _changes.stream.map(
+      (values) => values
+          .where((annotation) => annotation.articleId == articleId)
+          .toList(growable: false),
+    );
+  }
+
+  @override
+  Future<void> upsertAnnotation(ArticleAnnotation annotation) async {
+    annotations.removeWhere((value) => value.id == annotation.id);
+    annotations.add(annotation);
+    _changes.add(List<ArticleAnnotation>.unmodifiable(annotations));
+  }
+
+  @override
+  Future<void> deleteAnnotation(String annotationId) async {
+    annotations.removeWhere((value) => value.id == annotationId);
+    _changes.add(List<ArticleAnnotation>.unmodifiable(annotations));
+  }
+
+  List<ArticleAnnotation> _forArticle(String articleId) => annotations
+      .where((annotation) => annotation.articleId == articleId)
+      .toList(growable: false);
+
+  Future<void> close() => _changes.close();
+}
+
 final class FakeShareGateway implements ShareGateway {
   ShareRequest? lastRequest;
   ShareOutcome outcome = ShareOutcome.completed;
@@ -170,6 +208,13 @@ final class FixedReaderClock implements Clock {
 
   @override
   DateTime now() => DateTime.utc(2026, 7, 19, 8);
+}
+
+final class SequentialReaderIds implements IdGenerator {
+  var _next = 0;
+
+  @override
+  String next() => 'annotation-${++_next}';
 }
 
 final class FakeArticleAudioEngine implements AudioEngine {
@@ -305,6 +350,8 @@ ArticleReaderController buildReaderController({
   required Future<ExtractionResult> Function(ExtractionRequest request) extract,
   FakeArticleReaderRepository? repository,
   FakeReaderSettingsRepository? settings,
+  FakeArticleAnnotationRepository? annotations,
+  IdGenerator? ids,
   FakeShareGateway? share,
   FakeExternalUriGateway? externalUri,
   FakeOfflineArticleManager? offlineArticles,
@@ -317,6 +364,9 @@ ArticleReaderController buildReaderController({
       repository: repository ?? FakeArticleReaderRepository(watch),
       extractor: FakeExtractor(extract),
       readerSettings: settings ?? FakeReaderSettingsRepository(),
+      annotations:
+          annotations ?? const UnavailableArticleAnnotationRepository(),
+      ids: ids,
       share: share ?? FakeShareGateway(),
       externalUri: externalUri ?? FakeExternalUriGateway(),
       offlineArticles: offlineArticles ?? FakeOfflineArticleManager(),

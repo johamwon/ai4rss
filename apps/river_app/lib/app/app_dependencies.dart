@@ -94,6 +94,7 @@ final class AppDependencies {
       ids: ids,
     );
     readerSettings = DriftReaderSettingsRepository(database);
+    annotations = DriftArticleAnnotationRepository(database);
     audioQueueRepository = DriftAudioQueueRepository(database);
     audioQueue = PersistentAudioQueue(
       repository: audioQueueRepository,
@@ -193,6 +194,7 @@ final class AppDependencies {
   late final FeedDiscoveryService feedDiscovery;
   late final SubscriptionOrganizerService subscriptionOrganizer;
   late final DriftReaderSettingsRepository readerSettings;
+  late final DriftArticleAnnotationRepository annotations;
   late final DriftAudioQueueRepository audioQueueRepository;
   late final PersistentAudioQueue audioQueue;
   late final AudioPlaybackController audioController;

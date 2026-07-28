@@ -1,3 +1,4 @@
+import 'annotations.dart';
 import 'audio.dart';
 import 'models.dart';
 
@@ -74,6 +75,33 @@ abstract interface class ReaderSettingsRepository {
     ReaderSettings settings, {
     required DateTime updatedAt,
   });
+}
+
+abstract interface class ArticleAnnotationRepository {
+  Stream<List<ArticleAnnotation>> watchArticleAnnotations(String articleId);
+
+  Future<void> upsertAnnotation(ArticleAnnotation annotation);
+
+  Future<void> deleteAnnotation(String annotationId);
+}
+
+final class UnavailableArticleAnnotationRepository
+    implements ArticleAnnotationRepository {
+  const UnavailableArticleAnnotationRepository();
+
+  @override
+  Stream<List<ArticleAnnotation>> watchArticleAnnotations(String articleId) =>
+      Stream<List<ArticleAnnotation>>.value(const <ArticleAnnotation>[]);
+
+  @override
+  Future<void> upsertAnnotation(ArticleAnnotation annotation) async {
+    throw UnsupportedError('Article annotations are unavailable.');
+  }
+
+  @override
+  Future<void> deleteAnnotation(String annotationId) async {
+    throw UnsupportedError('Article annotations are unavailable.');
+  }
 }
 
 abstract interface class ShareGateway {

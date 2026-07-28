@@ -131,6 +131,30 @@ class KnowledgeItems extends Table {
   Set<Column<Object>> get primaryKey => <Column<Object>>{id};
 }
 
+@DataClassName('ArticleAnnotationRow')
+class ArticleAnnotations extends Table {
+  TextColumn get id => text()();
+  TextColumn get articleId =>
+      text().references(Articles, #id, onDelete: KeyAction.cascade)();
+  TextColumn get exactText => text()();
+  TextColumn get prefixText => text()();
+  TextColumn get suffixText => text()();
+  IntColumn get originalStart => integer()();
+  IntColumn get originalEnd => integer()();
+  TextColumn get contentRevision => text()();
+  TextColumn get startDomPath => text()();
+  IntColumn get startDomOffset => integer()();
+  TextColumn get endDomPath => text()();
+  IntColumn get endDomOffset => integer()();
+  TextColumn get color => text().withDefault(const Constant('yellow'))();
+  TextColumn get note => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
 class AudioItems extends Table {
   TextColumn get id => text()();
   TextColumn get kind => text()();

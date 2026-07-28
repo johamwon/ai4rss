@@ -4255,6 +4255,939 @@ class KnowledgeItemsCompanion extends UpdateCompanion<KnowledgeItem> {
   }
 }
 
+class $ArticleAnnotationsTable extends ArticleAnnotations
+    with TableInfo<$ArticleAnnotationsTable, ArticleAnnotationRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ArticleAnnotationsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _articleIdMeta = const VerificationMeta(
+    'articleId',
+  );
+  @override
+  late final GeneratedColumn<String> articleId = GeneratedColumn<String>(
+    'article_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES articles (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _exactTextMeta = const VerificationMeta(
+    'exactText',
+  );
+  @override
+  late final GeneratedColumn<String> exactText = GeneratedColumn<String>(
+    'exact_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _prefixTextMeta = const VerificationMeta(
+    'prefixText',
+  );
+  @override
+  late final GeneratedColumn<String> prefixText = GeneratedColumn<String>(
+    'prefix_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _suffixTextMeta = const VerificationMeta(
+    'suffixText',
+  );
+  @override
+  late final GeneratedColumn<String> suffixText = GeneratedColumn<String>(
+    'suffix_text',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _originalStartMeta = const VerificationMeta(
+    'originalStart',
+  );
+  @override
+  late final GeneratedColumn<int> originalStart = GeneratedColumn<int>(
+    'original_start',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _originalEndMeta = const VerificationMeta(
+    'originalEnd',
+  );
+  @override
+  late final GeneratedColumn<int> originalEnd = GeneratedColumn<int>(
+    'original_end',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentRevisionMeta = const VerificationMeta(
+    'contentRevision',
+  );
+  @override
+  late final GeneratedColumn<String> contentRevision = GeneratedColumn<String>(
+    'content_revision',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startDomPathMeta = const VerificationMeta(
+    'startDomPath',
+  );
+  @override
+  late final GeneratedColumn<String> startDomPath = GeneratedColumn<String>(
+    'start_dom_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startDomOffsetMeta = const VerificationMeta(
+    'startDomOffset',
+  );
+  @override
+  late final GeneratedColumn<int> startDomOffset = GeneratedColumn<int>(
+    'start_dom_offset',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endDomPathMeta = const VerificationMeta(
+    'endDomPath',
+  );
+  @override
+  late final GeneratedColumn<String> endDomPath = GeneratedColumn<String>(
+    'end_dom_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endDomOffsetMeta = const VerificationMeta(
+    'endDomOffset',
+  );
+  @override
+  late final GeneratedColumn<int> endDomOffset = GeneratedColumn<int>(
+    'end_dom_offset',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _colorMeta = const VerificationMeta('color');
+  @override
+  late final GeneratedColumn<String> color = GeneratedColumn<String>(
+    'color',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('yellow'),
+  );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    articleId,
+    exactText,
+    prefixText,
+    suffixText,
+    originalStart,
+    originalEnd,
+    contentRevision,
+    startDomPath,
+    startDomOffset,
+    endDomPath,
+    endDomOffset,
+    color,
+    note,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'article_annotations';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ArticleAnnotationRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('article_id')) {
+      context.handle(
+        _articleIdMeta,
+        articleId.isAcceptableOrUnknown(data['article_id']!, _articleIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_articleIdMeta);
+    }
+    if (data.containsKey('exact_text')) {
+      context.handle(
+        _exactTextMeta,
+        exactText.isAcceptableOrUnknown(data['exact_text']!, _exactTextMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_exactTextMeta);
+    }
+    if (data.containsKey('prefix_text')) {
+      context.handle(
+        _prefixTextMeta,
+        prefixText.isAcceptableOrUnknown(data['prefix_text']!, _prefixTextMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_prefixTextMeta);
+    }
+    if (data.containsKey('suffix_text')) {
+      context.handle(
+        _suffixTextMeta,
+        suffixText.isAcceptableOrUnknown(data['suffix_text']!, _suffixTextMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_suffixTextMeta);
+    }
+    if (data.containsKey('original_start')) {
+      context.handle(
+        _originalStartMeta,
+        originalStart.isAcceptableOrUnknown(
+          data['original_start']!,
+          _originalStartMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_originalStartMeta);
+    }
+    if (data.containsKey('original_end')) {
+      context.handle(
+        _originalEndMeta,
+        originalEnd.isAcceptableOrUnknown(
+          data['original_end']!,
+          _originalEndMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_originalEndMeta);
+    }
+    if (data.containsKey('content_revision')) {
+      context.handle(
+        _contentRevisionMeta,
+        contentRevision.isAcceptableOrUnknown(
+          data['content_revision']!,
+          _contentRevisionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_contentRevisionMeta);
+    }
+    if (data.containsKey('start_dom_path')) {
+      context.handle(
+        _startDomPathMeta,
+        startDomPath.isAcceptableOrUnknown(
+          data['start_dom_path']!,
+          _startDomPathMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_startDomPathMeta);
+    }
+    if (data.containsKey('start_dom_offset')) {
+      context.handle(
+        _startDomOffsetMeta,
+        startDomOffset.isAcceptableOrUnknown(
+          data['start_dom_offset']!,
+          _startDomOffsetMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_startDomOffsetMeta);
+    }
+    if (data.containsKey('end_dom_path')) {
+      context.handle(
+        _endDomPathMeta,
+        endDomPath.isAcceptableOrUnknown(
+          data['end_dom_path']!,
+          _endDomPathMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_endDomPathMeta);
+    }
+    if (data.containsKey('end_dom_offset')) {
+      context.handle(
+        _endDomOffsetMeta,
+        endDomOffset.isAcceptableOrUnknown(
+          data['end_dom_offset']!,
+          _endDomOffsetMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_endDomOffsetMeta);
+    }
+    if (data.containsKey('color')) {
+      context.handle(
+        _colorMeta,
+        color.isAcceptableOrUnknown(data['color']!, _colorMeta),
+      );
+    }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ArticleAnnotationRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ArticleAnnotationRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      articleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}article_id'],
+      )!,
+      exactText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}exact_text'],
+      )!,
+      prefixText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prefix_text'],
+      )!,
+      suffixText: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}suffix_text'],
+      )!,
+      originalStart: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}original_start'],
+      )!,
+      originalEnd: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}original_end'],
+      )!,
+      contentRevision: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content_revision'],
+      )!,
+      startDomPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}start_dom_path'],
+      )!,
+      startDomOffset: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}start_dom_offset'],
+      )!,
+      endDomPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}end_dom_path'],
+      )!,
+      endDomOffset: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}end_dom_offset'],
+      )!,
+      color: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}color'],
+      )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ArticleAnnotationsTable createAlias(String alias) {
+    return $ArticleAnnotationsTable(attachedDatabase, alias);
+  }
+}
+
+class ArticleAnnotationRow extends DataClass
+    implements Insertable<ArticleAnnotationRow> {
+  final String id;
+  final String articleId;
+  final String exactText;
+  final String prefixText;
+  final String suffixText;
+  final int originalStart;
+  final int originalEnd;
+  final String contentRevision;
+  final String startDomPath;
+  final int startDomOffset;
+  final String endDomPath;
+  final int endDomOffset;
+  final String color;
+  final String? note;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const ArticleAnnotationRow({
+    required this.id,
+    required this.articleId,
+    required this.exactText,
+    required this.prefixText,
+    required this.suffixText,
+    required this.originalStart,
+    required this.originalEnd,
+    required this.contentRevision,
+    required this.startDomPath,
+    required this.startDomOffset,
+    required this.endDomPath,
+    required this.endDomOffset,
+    required this.color,
+    this.note,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['article_id'] = Variable<String>(articleId);
+    map['exact_text'] = Variable<String>(exactText);
+    map['prefix_text'] = Variable<String>(prefixText);
+    map['suffix_text'] = Variable<String>(suffixText);
+    map['original_start'] = Variable<int>(originalStart);
+    map['original_end'] = Variable<int>(originalEnd);
+    map['content_revision'] = Variable<String>(contentRevision);
+    map['start_dom_path'] = Variable<String>(startDomPath);
+    map['start_dom_offset'] = Variable<int>(startDomOffset);
+    map['end_dom_path'] = Variable<String>(endDomPath);
+    map['end_dom_offset'] = Variable<int>(endDomOffset);
+    map['color'] = Variable<String>(color);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ArticleAnnotationsCompanion toCompanion(bool nullToAbsent) {
+    return ArticleAnnotationsCompanion(
+      id: Value(id),
+      articleId: Value(articleId),
+      exactText: Value(exactText),
+      prefixText: Value(prefixText),
+      suffixText: Value(suffixText),
+      originalStart: Value(originalStart),
+      originalEnd: Value(originalEnd),
+      contentRevision: Value(contentRevision),
+      startDomPath: Value(startDomPath),
+      startDomOffset: Value(startDomOffset),
+      endDomPath: Value(endDomPath),
+      endDomOffset: Value(endDomOffset),
+      color: Value(color),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ArticleAnnotationRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ArticleAnnotationRow(
+      id: serializer.fromJson<String>(json['id']),
+      articleId: serializer.fromJson<String>(json['articleId']),
+      exactText: serializer.fromJson<String>(json['exactText']),
+      prefixText: serializer.fromJson<String>(json['prefixText']),
+      suffixText: serializer.fromJson<String>(json['suffixText']),
+      originalStart: serializer.fromJson<int>(json['originalStart']),
+      originalEnd: serializer.fromJson<int>(json['originalEnd']),
+      contentRevision: serializer.fromJson<String>(json['contentRevision']),
+      startDomPath: serializer.fromJson<String>(json['startDomPath']),
+      startDomOffset: serializer.fromJson<int>(json['startDomOffset']),
+      endDomPath: serializer.fromJson<String>(json['endDomPath']),
+      endDomOffset: serializer.fromJson<int>(json['endDomOffset']),
+      color: serializer.fromJson<String>(json['color']),
+      note: serializer.fromJson<String?>(json['note']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'articleId': serializer.toJson<String>(articleId),
+      'exactText': serializer.toJson<String>(exactText),
+      'prefixText': serializer.toJson<String>(prefixText),
+      'suffixText': serializer.toJson<String>(suffixText),
+      'originalStart': serializer.toJson<int>(originalStart),
+      'originalEnd': serializer.toJson<int>(originalEnd),
+      'contentRevision': serializer.toJson<String>(contentRevision),
+      'startDomPath': serializer.toJson<String>(startDomPath),
+      'startDomOffset': serializer.toJson<int>(startDomOffset),
+      'endDomPath': serializer.toJson<String>(endDomPath),
+      'endDomOffset': serializer.toJson<int>(endDomOffset),
+      'color': serializer.toJson<String>(color),
+      'note': serializer.toJson<String?>(note),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ArticleAnnotationRow copyWith({
+    String? id,
+    String? articleId,
+    String? exactText,
+    String? prefixText,
+    String? suffixText,
+    int? originalStart,
+    int? originalEnd,
+    String? contentRevision,
+    String? startDomPath,
+    int? startDomOffset,
+    String? endDomPath,
+    int? endDomOffset,
+    String? color,
+    Value<String?> note = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => ArticleAnnotationRow(
+    id: id ?? this.id,
+    articleId: articleId ?? this.articleId,
+    exactText: exactText ?? this.exactText,
+    prefixText: prefixText ?? this.prefixText,
+    suffixText: suffixText ?? this.suffixText,
+    originalStart: originalStart ?? this.originalStart,
+    originalEnd: originalEnd ?? this.originalEnd,
+    contentRevision: contentRevision ?? this.contentRevision,
+    startDomPath: startDomPath ?? this.startDomPath,
+    startDomOffset: startDomOffset ?? this.startDomOffset,
+    endDomPath: endDomPath ?? this.endDomPath,
+    endDomOffset: endDomOffset ?? this.endDomOffset,
+    color: color ?? this.color,
+    note: note.present ? note.value : this.note,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ArticleAnnotationRow copyWithCompanion(ArticleAnnotationsCompanion data) {
+    return ArticleAnnotationRow(
+      id: data.id.present ? data.id.value : this.id,
+      articleId: data.articleId.present ? data.articleId.value : this.articleId,
+      exactText: data.exactText.present ? data.exactText.value : this.exactText,
+      prefixText: data.prefixText.present
+          ? data.prefixText.value
+          : this.prefixText,
+      suffixText: data.suffixText.present
+          ? data.suffixText.value
+          : this.suffixText,
+      originalStart: data.originalStart.present
+          ? data.originalStart.value
+          : this.originalStart,
+      originalEnd: data.originalEnd.present
+          ? data.originalEnd.value
+          : this.originalEnd,
+      contentRevision: data.contentRevision.present
+          ? data.contentRevision.value
+          : this.contentRevision,
+      startDomPath: data.startDomPath.present
+          ? data.startDomPath.value
+          : this.startDomPath,
+      startDomOffset: data.startDomOffset.present
+          ? data.startDomOffset.value
+          : this.startDomOffset,
+      endDomPath: data.endDomPath.present
+          ? data.endDomPath.value
+          : this.endDomPath,
+      endDomOffset: data.endDomOffset.present
+          ? data.endDomOffset.value
+          : this.endDomOffset,
+      color: data.color.present ? data.color.value : this.color,
+      note: data.note.present ? data.note.value : this.note,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ArticleAnnotationRow(')
+          ..write('id: $id, ')
+          ..write('articleId: $articleId, ')
+          ..write('exactText: $exactText, ')
+          ..write('prefixText: $prefixText, ')
+          ..write('suffixText: $suffixText, ')
+          ..write('originalStart: $originalStart, ')
+          ..write('originalEnd: $originalEnd, ')
+          ..write('contentRevision: $contentRevision, ')
+          ..write('startDomPath: $startDomPath, ')
+          ..write('startDomOffset: $startDomOffset, ')
+          ..write('endDomPath: $endDomPath, ')
+          ..write('endDomOffset: $endDomOffset, ')
+          ..write('color: $color, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    articleId,
+    exactText,
+    prefixText,
+    suffixText,
+    originalStart,
+    originalEnd,
+    contentRevision,
+    startDomPath,
+    startDomOffset,
+    endDomPath,
+    endDomOffset,
+    color,
+    note,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ArticleAnnotationRow &&
+          other.id == this.id &&
+          other.articleId == this.articleId &&
+          other.exactText == this.exactText &&
+          other.prefixText == this.prefixText &&
+          other.suffixText == this.suffixText &&
+          other.originalStart == this.originalStart &&
+          other.originalEnd == this.originalEnd &&
+          other.contentRevision == this.contentRevision &&
+          other.startDomPath == this.startDomPath &&
+          other.startDomOffset == this.startDomOffset &&
+          other.endDomPath == this.endDomPath &&
+          other.endDomOffset == this.endDomOffset &&
+          other.color == this.color &&
+          other.note == this.note &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ArticleAnnotationsCompanion
+    extends UpdateCompanion<ArticleAnnotationRow> {
+  final Value<String> id;
+  final Value<String> articleId;
+  final Value<String> exactText;
+  final Value<String> prefixText;
+  final Value<String> suffixText;
+  final Value<int> originalStart;
+  final Value<int> originalEnd;
+  final Value<String> contentRevision;
+  final Value<String> startDomPath;
+  final Value<int> startDomOffset;
+  final Value<String> endDomPath;
+  final Value<int> endDomOffset;
+  final Value<String> color;
+  final Value<String?> note;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const ArticleAnnotationsCompanion({
+    this.id = const Value.absent(),
+    this.articleId = const Value.absent(),
+    this.exactText = const Value.absent(),
+    this.prefixText = const Value.absent(),
+    this.suffixText = const Value.absent(),
+    this.originalStart = const Value.absent(),
+    this.originalEnd = const Value.absent(),
+    this.contentRevision = const Value.absent(),
+    this.startDomPath = const Value.absent(),
+    this.startDomOffset = const Value.absent(),
+    this.endDomPath = const Value.absent(),
+    this.endDomOffset = const Value.absent(),
+    this.color = const Value.absent(),
+    this.note = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ArticleAnnotationsCompanion.insert({
+    required String id,
+    required String articleId,
+    required String exactText,
+    required String prefixText,
+    required String suffixText,
+    required int originalStart,
+    required int originalEnd,
+    required String contentRevision,
+    required String startDomPath,
+    required int startDomOffset,
+    required String endDomPath,
+    required int endDomOffset,
+    this.color = const Value.absent(),
+    this.note = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       articleId = Value(articleId),
+       exactText = Value(exactText),
+       prefixText = Value(prefixText),
+       suffixText = Value(suffixText),
+       originalStart = Value(originalStart),
+       originalEnd = Value(originalEnd),
+       contentRevision = Value(contentRevision),
+       startDomPath = Value(startDomPath),
+       startDomOffset = Value(startDomOffset),
+       endDomPath = Value(endDomPath),
+       endDomOffset = Value(endDomOffset),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<ArticleAnnotationRow> custom({
+    Expression<String>? id,
+    Expression<String>? articleId,
+    Expression<String>? exactText,
+    Expression<String>? prefixText,
+    Expression<String>? suffixText,
+    Expression<int>? originalStart,
+    Expression<int>? originalEnd,
+    Expression<String>? contentRevision,
+    Expression<String>? startDomPath,
+    Expression<int>? startDomOffset,
+    Expression<String>? endDomPath,
+    Expression<int>? endDomOffset,
+    Expression<String>? color,
+    Expression<String>? note,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (articleId != null) 'article_id': articleId,
+      if (exactText != null) 'exact_text': exactText,
+      if (prefixText != null) 'prefix_text': prefixText,
+      if (suffixText != null) 'suffix_text': suffixText,
+      if (originalStart != null) 'original_start': originalStart,
+      if (originalEnd != null) 'original_end': originalEnd,
+      if (contentRevision != null) 'content_revision': contentRevision,
+      if (startDomPath != null) 'start_dom_path': startDomPath,
+      if (startDomOffset != null) 'start_dom_offset': startDomOffset,
+      if (endDomPath != null) 'end_dom_path': endDomPath,
+      if (endDomOffset != null) 'end_dom_offset': endDomOffset,
+      if (color != null) 'color': color,
+      if (note != null) 'note': note,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ArticleAnnotationsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? articleId,
+    Value<String>? exactText,
+    Value<String>? prefixText,
+    Value<String>? suffixText,
+    Value<int>? originalStart,
+    Value<int>? originalEnd,
+    Value<String>? contentRevision,
+    Value<String>? startDomPath,
+    Value<int>? startDomOffset,
+    Value<String>? endDomPath,
+    Value<int>? endDomOffset,
+    Value<String>? color,
+    Value<String?>? note,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ArticleAnnotationsCompanion(
+      id: id ?? this.id,
+      articleId: articleId ?? this.articleId,
+      exactText: exactText ?? this.exactText,
+      prefixText: prefixText ?? this.prefixText,
+      suffixText: suffixText ?? this.suffixText,
+      originalStart: originalStart ?? this.originalStart,
+      originalEnd: originalEnd ?? this.originalEnd,
+      contentRevision: contentRevision ?? this.contentRevision,
+      startDomPath: startDomPath ?? this.startDomPath,
+      startDomOffset: startDomOffset ?? this.startDomOffset,
+      endDomPath: endDomPath ?? this.endDomPath,
+      endDomOffset: endDomOffset ?? this.endDomOffset,
+      color: color ?? this.color,
+      note: note ?? this.note,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (articleId.present) {
+      map['article_id'] = Variable<String>(articleId.value);
+    }
+    if (exactText.present) {
+      map['exact_text'] = Variable<String>(exactText.value);
+    }
+    if (prefixText.present) {
+      map['prefix_text'] = Variable<String>(prefixText.value);
+    }
+    if (suffixText.present) {
+      map['suffix_text'] = Variable<String>(suffixText.value);
+    }
+    if (originalStart.present) {
+      map['original_start'] = Variable<int>(originalStart.value);
+    }
+    if (originalEnd.present) {
+      map['original_end'] = Variable<int>(originalEnd.value);
+    }
+    if (contentRevision.present) {
+      map['content_revision'] = Variable<String>(contentRevision.value);
+    }
+    if (startDomPath.present) {
+      map['start_dom_path'] = Variable<String>(startDomPath.value);
+    }
+    if (startDomOffset.present) {
+      map['start_dom_offset'] = Variable<int>(startDomOffset.value);
+    }
+    if (endDomPath.present) {
+      map['end_dom_path'] = Variable<String>(endDomPath.value);
+    }
+    if (endDomOffset.present) {
+      map['end_dom_offset'] = Variable<int>(endDomOffset.value);
+    }
+    if (color.present) {
+      map['color'] = Variable<String>(color.value);
+    }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ArticleAnnotationsCompanion(')
+          ..write('id: $id, ')
+          ..write('articleId: $articleId, ')
+          ..write('exactText: $exactText, ')
+          ..write('prefixText: $prefixText, ')
+          ..write('suffixText: $suffixText, ')
+          ..write('originalStart: $originalStart, ')
+          ..write('originalEnd: $originalEnd, ')
+          ..write('contentRevision: $contentRevision, ')
+          ..write('startDomPath: $startDomPath, ')
+          ..write('startDomOffset: $startDomOffset, ')
+          ..write('endDomPath: $endDomPath, ')
+          ..write('endDomOffset: $endDomOffset, ')
+          ..write('color: $color, ')
+          ..write('note: $note, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $AudioItemsTable extends AudioItems
     with TableInfo<$AudioItemsTable, AudioItem> {
   @override
@@ -11955,6 +12888,8 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
   late final $ReaderSettingsRowsTable readerSettingsRows =
       $ReaderSettingsRowsTable(this);
   late final $KnowledgeItemsTable knowledgeItems = $KnowledgeItemsTable(this);
+  late final $ArticleAnnotationsTable articleAnnotations =
+      $ArticleAnnotationsTable(this);
   late final $AudioItemsTable audioItems = $AudioItemsTable(this);
   late final $AudioQueueEntriesTable audioQueueEntries =
       $AudioQueueEntriesTable(this);
@@ -11988,6 +12923,7 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
     readingEvents,
     readerSettingsRows,
     knowledgeItems,
+    articleAnnotations,
     audioItems,
     audioQueueEntries,
     backgroundJobs,
@@ -12030,6 +12966,13 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('knowledge_items', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'articles',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('article_annotations', kind: UpdateKind.delete)],
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
@@ -13017,6 +13960,30 @@ final class $$ArticlesTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<
+    $ArticleAnnotationsTable,
+    List<ArticleAnnotationRow>
+  >
+  _articleAnnotationsRefsTable(_$RiverDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.articleAnnotations,
+        aliasName: 'articles__id__article_annotations__article_id',
+      );
+
+  $$ArticleAnnotationsTableProcessedTableManager get articleAnnotationsRefs {
+    final manager = $$ArticleAnnotationsTableTableManager(
+      $_db,
+      $_db.articleAnnotations,
+    ).filter((f) => f.articleId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _articleAnnotationsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ArticlesTableFilterComposer
@@ -13197,6 +14164,31 @@ class $$ArticlesTableFilterComposer
           }) => $$KnowledgeItemsTableFilterComposer(
             $db: $db,
             $table: $db.knowledgeItems,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> articleAnnotationsRefs(
+    Expression<bool> Function($$ArticleAnnotationsTableFilterComposer f) f,
+  ) {
+    final $$ArticleAnnotationsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.articleAnnotations,
+      getReferencedColumn: (t) => t.articleId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ArticleAnnotationsTableFilterComposer(
+            $db: $db,
+            $table: $db.articleAnnotations,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -13491,6 +14483,32 @@ class $$ArticlesTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> articleAnnotationsRefs<T extends Object>(
+    Expression<T> Function($$ArticleAnnotationsTableAnnotationComposer a) f,
+  ) {
+    final $$ArticleAnnotationsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.articleAnnotations,
+          getReferencedColumn: (t) => t.articleId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$ArticleAnnotationsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.articleAnnotations,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$ArticlesTableTableManager
@@ -13511,6 +14529,7 @@ class $$ArticlesTableTableManager
             bool articleContentsRefs,
             bool readingEventsRefs,
             bool knowledgeItemsRefs,
+            bool articleAnnotationsRefs,
           })
         > {
   $$ArticlesTableTableManager(_$RiverDatabase db, $ArticlesTable table)
@@ -13618,6 +14637,7 @@ class $$ArticlesTableTableManager
                 articleContentsRefs = false,
                 readingEventsRefs = false,
                 knowledgeItemsRefs = false,
+                articleAnnotationsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -13625,6 +14645,7 @@ class $$ArticlesTableTableManager
                     if (articleContentsRefs) db.articleContents,
                     if (readingEventsRefs) db.readingEvents,
                     if (knowledgeItemsRefs) db.knowledgeItems,
+                    if (articleAnnotationsRefs) db.articleAnnotations,
                   ],
                   addJoins:
                       <
@@ -13723,6 +14744,27 @@ class $$ArticlesTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (articleAnnotationsRefs)
+                        await $_getPrefetchedData<
+                          Article,
+                          $ArticlesTable,
+                          ArticleAnnotationRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ArticlesTableReferences
+                              ._articleAnnotationsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ArticlesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).articleAnnotationsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.articleId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -13748,6 +14790,7 @@ typedef $$ArticlesTableProcessedTableManager =
         bool articleContentsRefs,
         bool readingEventsRefs,
         bool knowledgeItemsRefs,
+        bool articleAnnotationsRefs,
       })
     >;
 typedef $$ArticleContentsTableCreateCompanionBuilder =
@@ -15231,6 +16274,566 @@ typedef $$KnowledgeItemsTableProcessedTableManager =
       $$KnowledgeItemsTableUpdateCompanionBuilder,
       (KnowledgeItem, $$KnowledgeItemsTableReferences),
       KnowledgeItem,
+      PrefetchHooks Function({bool articleId})
+    >;
+typedef $$ArticleAnnotationsTableCreateCompanionBuilder =
+    ArticleAnnotationsCompanion Function({
+      required String id,
+      required String articleId,
+      required String exactText,
+      required String prefixText,
+      required String suffixText,
+      required int originalStart,
+      required int originalEnd,
+      required String contentRevision,
+      required String startDomPath,
+      required int startDomOffset,
+      required String endDomPath,
+      required int endDomOffset,
+      Value<String> color,
+      Value<String?> note,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ArticleAnnotationsTableUpdateCompanionBuilder =
+    ArticleAnnotationsCompanion Function({
+      Value<String> id,
+      Value<String> articleId,
+      Value<String> exactText,
+      Value<String> prefixText,
+      Value<String> suffixText,
+      Value<int> originalStart,
+      Value<int> originalEnd,
+      Value<String> contentRevision,
+      Value<String> startDomPath,
+      Value<int> startDomOffset,
+      Value<String> endDomPath,
+      Value<int> endDomOffset,
+      Value<String> color,
+      Value<String?> note,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+final class $$ArticleAnnotationsTableReferences
+    extends
+        BaseReferences<
+          _$RiverDatabase,
+          $ArticleAnnotationsTable,
+          ArticleAnnotationRow
+        > {
+  $$ArticleAnnotationsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ArticlesTable _articleIdTable(_$RiverDatabase db) =>
+      db.articles.createAlias('article_annotations__article_id__articles__id');
+
+  $$ArticlesTableProcessedTableManager get articleId {
+    final $_column = $_itemColumn<String>('article_id')!;
+
+    final manager = $$ArticlesTableTableManager(
+      $_db,
+      $_db.articles,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_articleIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$ArticleAnnotationsTableFilterComposer
+    extends Composer<_$RiverDatabase, $ArticleAnnotationsTable> {
+  $$ArticleAnnotationsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exactText => $composableBuilder(
+    column: $table.exactText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get prefixText => $composableBuilder(
+    column: $table.prefixText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get suffixText => $composableBuilder(
+    column: $table.suffixText,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get originalStart => $composableBuilder(
+    column: $table.originalStart,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get originalEnd => $composableBuilder(
+    column: $table.originalEnd,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contentRevision => $composableBuilder(
+    column: $table.contentRevision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get startDomPath => $composableBuilder(
+    column: $table.startDomPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get startDomOffset => $composableBuilder(
+    column: $table.startDomOffset,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get endDomPath => $composableBuilder(
+    column: $table.endDomPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get endDomOffset => $composableBuilder(
+    column: $table.endDomOffset,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ArticlesTableFilterComposer get articleId {
+    final $$ArticlesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.articleId,
+      referencedTable: $db.articles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ArticlesTableFilterComposer(
+            $db: $db,
+            $table: $db.articles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ArticleAnnotationsTableOrderingComposer
+    extends Composer<_$RiverDatabase, $ArticleAnnotationsTable> {
+  $$ArticleAnnotationsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get exactText => $composableBuilder(
+    column: $table.exactText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get prefixText => $composableBuilder(
+    column: $table.prefixText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get suffixText => $composableBuilder(
+    column: $table.suffixText,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get originalStart => $composableBuilder(
+    column: $table.originalStart,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get originalEnd => $composableBuilder(
+    column: $table.originalEnd,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contentRevision => $composableBuilder(
+    column: $table.contentRevision,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get startDomPath => $composableBuilder(
+    column: $table.startDomPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get startDomOffset => $composableBuilder(
+    column: $table.startDomOffset,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get endDomPath => $composableBuilder(
+    column: $table.endDomPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get endDomOffset => $composableBuilder(
+    column: $table.endDomOffset,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get color => $composableBuilder(
+    column: $table.color,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ArticlesTableOrderingComposer get articleId {
+    final $$ArticlesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.articleId,
+      referencedTable: $db.articles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ArticlesTableOrderingComposer(
+            $db: $db,
+            $table: $db.articles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ArticleAnnotationsTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $ArticleAnnotationsTable> {
+  $$ArticleAnnotationsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get exactText =>
+      $composableBuilder(column: $table.exactText, builder: (column) => column);
+
+  GeneratedColumn<String> get prefixText => $composableBuilder(
+    column: $table.prefixText,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get suffixText => $composableBuilder(
+    column: $table.suffixText,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get originalStart => $composableBuilder(
+    column: $table.originalStart,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get originalEnd => $composableBuilder(
+    column: $table.originalEnd,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get contentRevision => $composableBuilder(
+    column: $table.contentRevision,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get startDomPath => $composableBuilder(
+    column: $table.startDomPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get startDomOffset => $composableBuilder(
+    column: $table.startDomOffset,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get endDomPath => $composableBuilder(
+    column: $table.endDomPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get endDomOffset => $composableBuilder(
+    column: $table.endDomOffset,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get color =>
+      $composableBuilder(column: $table.color, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$ArticlesTableAnnotationComposer get articleId {
+    final $$ArticlesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.articleId,
+      referencedTable: $db.articles,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ArticlesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.articles,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$ArticleAnnotationsTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $ArticleAnnotationsTable,
+          ArticleAnnotationRow,
+          $$ArticleAnnotationsTableFilterComposer,
+          $$ArticleAnnotationsTableOrderingComposer,
+          $$ArticleAnnotationsTableAnnotationComposer,
+          $$ArticleAnnotationsTableCreateCompanionBuilder,
+          $$ArticleAnnotationsTableUpdateCompanionBuilder,
+          (ArticleAnnotationRow, $$ArticleAnnotationsTableReferences),
+          ArticleAnnotationRow,
+          PrefetchHooks Function({bool articleId})
+        > {
+  $$ArticleAnnotationsTableTableManager(
+    _$RiverDatabase db,
+    $ArticleAnnotationsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ArticleAnnotationsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ArticleAnnotationsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ArticleAnnotationsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> articleId = const Value.absent(),
+                Value<String> exactText = const Value.absent(),
+                Value<String> prefixText = const Value.absent(),
+                Value<String> suffixText = const Value.absent(),
+                Value<int> originalStart = const Value.absent(),
+                Value<int> originalEnd = const Value.absent(),
+                Value<String> contentRevision = const Value.absent(),
+                Value<String> startDomPath = const Value.absent(),
+                Value<int> startDomOffset = const Value.absent(),
+                Value<String> endDomPath = const Value.absent(),
+                Value<int> endDomOffset = const Value.absent(),
+                Value<String> color = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ArticleAnnotationsCompanion(
+                id: id,
+                articleId: articleId,
+                exactText: exactText,
+                prefixText: prefixText,
+                suffixText: suffixText,
+                originalStart: originalStart,
+                originalEnd: originalEnd,
+                contentRevision: contentRevision,
+                startDomPath: startDomPath,
+                startDomOffset: startDomOffset,
+                endDomPath: endDomPath,
+                endDomOffset: endDomOffset,
+                color: color,
+                note: note,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String articleId,
+                required String exactText,
+                required String prefixText,
+                required String suffixText,
+                required int originalStart,
+                required int originalEnd,
+                required String contentRevision,
+                required String startDomPath,
+                required int startDomOffset,
+                required String endDomPath,
+                required int endDomOffset,
+                Value<String> color = const Value.absent(),
+                Value<String?> note = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ArticleAnnotationsCompanion.insert(
+                id: id,
+                articleId: articleId,
+                exactText: exactText,
+                prefixText: prefixText,
+                suffixText: suffixText,
+                originalStart: originalStart,
+                originalEnd: originalEnd,
+                contentRevision: contentRevision,
+                startDomPath: startDomPath,
+                startDomOffset: startDomOffset,
+                endDomPath: endDomPath,
+                endDomOffset: endDomOffset,
+                color: color,
+                note: note,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$ArticleAnnotationsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({articleId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (articleId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.articleId,
+                                referencedTable:
+                                    $$ArticleAnnotationsTableReferences
+                                        ._articleIdTable(db),
+                                referencedColumn:
+                                    $$ArticleAnnotationsTableReferences
+                                        ._articleIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$ArticleAnnotationsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $ArticleAnnotationsTable,
+      ArticleAnnotationRow,
+      $$ArticleAnnotationsTableFilterComposer,
+      $$ArticleAnnotationsTableOrderingComposer,
+      $$ArticleAnnotationsTableAnnotationComposer,
+      $$ArticleAnnotationsTableCreateCompanionBuilder,
+      $$ArticleAnnotationsTableUpdateCompanionBuilder,
+      (ArticleAnnotationRow, $$ArticleAnnotationsTableReferences),
+      ArticleAnnotationRow,
       PrefetchHooks Function({bool articleId})
     >;
 typedef $$AudioItemsTableCreateCompanionBuilder =
@@ -19470,6 +21073,8 @@ class $RiverDatabaseManager {
       $$ReaderSettingsRowsTableTableManager(_db, _db.readerSettingsRows);
   $$KnowledgeItemsTableTableManager get knowledgeItems =>
       $$KnowledgeItemsTableTableManager(_db, _db.knowledgeItems);
+  $$ArticleAnnotationsTableTableManager get articleAnnotations =>
+      $$ArticleAnnotationsTableTableManager(_db, _db.articleAnnotations);
   $$AudioItemsTableTableManager get audioItems =>
       $$AudioItemsTableTableManager(_db, _db.audioItems);
   $$AudioQueueEntriesTableTableManager get audioQueueEntries =>

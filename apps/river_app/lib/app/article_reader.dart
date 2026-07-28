@@ -20,6 +20,12 @@ enum ArticleEnhancementPhase {
 
 enum ArticleReaderContentSource { feed, cache, extracted }
 
+typedef ArticleAnnotationCreator = Future<void> Function({
+  required ArticleTextAnchor anchor,
+  String? note,
+  ArticleAnnotationColor color,
+});
+
 final class ArticleReaderContent {
   const ArticleReaderContent({
     required this.text,
@@ -59,6 +65,7 @@ final class ArticleReaderState {
     this.enhancementFailure,
     this.offlineArticle,
     this.settings = const ReaderSettings(),
+    this.annotations = const <ArticleAnnotation>[],
     this.audio = const AudioPlaybackState.initial(),
     this.operationFailure,
     this.isMutating = false,
@@ -74,6 +81,7 @@ final class ArticleReaderState {
   final ArticleEnhancementFailure? enhancementFailure;
   final OfflineArticleState? offlineArticle;
   final ReaderSettings settings;
+  final List<ArticleAnnotation> annotations;
   final AudioPlaybackState audio;
   final String? operationFailure;
   final bool isMutating;
@@ -87,6 +95,7 @@ final class ArticleReaderState {
     bool clearEnhancementFailure = false,
     OfflineArticleState? offlineArticle,
     ReaderSettings? settings,
+    List<ArticleAnnotation>? annotations,
     AudioPlaybackState? audio,
     String? operationFailure,
     bool clearOperationFailure = false,
@@ -102,6 +111,7 @@ final class ArticleReaderState {
             : enhancementFailure ?? this.enhancementFailure,
         offlineArticle: offlineArticle ?? this.offlineArticle,
         settings: settings ?? this.settings,
+        annotations: annotations ?? this.annotations,
         audio: audio ?? this.audio,
         operationFailure: clearOperationFailure
             ? null
@@ -116,6 +126,9 @@ final class ArticleReaderController extends ChangeNotifier {
     required ArticleReaderRepository repository,
     required FullTextExtractor extractor,
     required ReaderSettingsRepository readerSettings,
+    ArticleAnnotationRepository annotations =
+        const UnavailableArticleAnnotationRepository(),
+    IdGenerator? ids,
     required ShareGateway share,
     required ExternalUriGateway externalUri,
     required OfflineArticleManager offlineArticles,
@@ -128,6 +141,8 @@ final class ArticleReaderController extends ChangeNotifier {
   })  : _repository = repository,
         _extractor = extractor,
         _readerSettings = readerSettings,
+        _annotations = annotations,
+        _ids = ids,
         _share = share,
         _externalUri = externalUri,
         _offlineArticles = offlineArticles,
@@ -142,6 +157,7 @@ final class ArticleReaderController extends ChangeNotifier {
         _ownsAudioController = audioController == null {
     _subscribeArticle();
     _subscribeSettings();
+    _subscribeAnnotations();
     _subscribeOfflineArticle();
     _subscribeAudio();
   }
@@ -150,6 +166,8 @@ final class ArticleReaderController extends ChangeNotifier {
   final ArticleReaderRepository _repository;
   final FullTextExtractor _extractor;
   final ReaderSettingsRepository _readerSettings;
+  final ArticleAnnotationRepository _annotations;
+  final IdGenerator? _ids;
   final ShareGateway _share;
   final ExternalUriGateway _externalUri;
   final OfflineArticleManager _offlineArticles;
@@ -159,6 +177,7 @@ final class ArticleReaderController extends ChangeNotifier {
   final bool _ownsAudioController;
   StreamSubscription<FeedArticleDetailRecord?>? _articleSubscription;
   StreamSubscription<ReaderSettings>? _settingsSubscription;
+  StreamSubscription<List<ArticleAnnotation>>? _annotationSubscription;
   StreamSubscription<OfflineArticleState>? _offlineArticleSubscription;
   StreamSubscription<AudioPlaybackState>? _audioSubscription;
   ArticleReaderState _state = const ArticleReaderState.loading();
@@ -171,6 +190,7 @@ final class ArticleReaderController extends ChangeNotifier {
   var _disposed = false;
 
   ArticleReaderState get state => _state;
+  bool get canAnnotate => _ids != null && _state.content != null;
   bool get canQueueSpeech =>
       _audioQueue != null && _state.detail != null && _state.content != null;
 
@@ -181,6 +201,7 @@ final class ArticleReaderController extends ChangeNotifier {
       ArticleReaderState(
         loadPhase: ArticleReaderLoadPhase.loading,
         settings: _state.settings,
+        annotations: _state.annotations,
         audio: _state.audio,
       ),
     );
@@ -209,6 +230,23 @@ final class ArticleReaderController extends ChangeNotifier {
           onError: (Object error, StackTrace stackTrace) => _setState(
             _state.copyWith(
               operationFailure: '阅读设置暂不可用，已使用默认排版',
+            ),
+          ),
+        );
+  }
+
+  void _subscribeAnnotations() {
+    _annotationSubscription = _annotations
+        .watchArticleAnnotations(articleId)
+        .listen(
+          (annotations) => _setState(
+            _state.copyWith(
+              annotations: List<ArticleAnnotation>.unmodifiable(annotations),
+            ),
+          ),
+          onError: (Object error, StackTrace stackTrace) => _setState(
+            _state.copyWith(
+              operationFailure: '高亮与笔记暂时无法读取',
             ),
           ),
         );
@@ -257,6 +295,7 @@ final class ArticleReaderController extends ChangeNotifier {
         ArticleReaderState(
           loadPhase: ArticleReaderLoadPhase.missing,
           settings: _state.settings,
+          annotations: _state.annotations,
           audio: _state.audio,
         ),
       );
@@ -277,6 +316,7 @@ final class ArticleReaderController extends ChangeNotifier {
         enhancementFailure: _state.enhancementFailure,
         offlineArticle: _offlineStateForDetail(detail),
         settings: _state.settings,
+        annotations: _state.annotations,
         audio: _state.audio,
         operationFailure: _state.operationFailure,
         isMutating: _state.isMutating,
@@ -536,6 +576,62 @@ final class ArticleReaderController extends ChangeNotifier {
     }
   }
 
+  Future<void> createAnnotation({
+    required ArticleTextAnchor anchor,
+    String? note,
+    ArticleAnnotationColor color = ArticleAnnotationColor.yellow,
+  }) async {
+    final ids = _ids;
+    if (ids == null) {
+      _setState(_state.copyWith(operationFailure: '当前正文暂时无法添加高亮'));
+      return;
+    }
+    final normalizedNote = _normalizedAnnotationNote(note);
+    try {
+      final now = _clock.now().toUtc();
+      await _annotations.upsertAnnotation(
+        ArticleAnnotation(
+          id: ids.next(),
+          articleId: articleId,
+          anchor: anchor,
+          color: color,
+          note: normalizedNote,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+    } on Object {
+      _setState(_state.copyWith(operationFailure: '高亮保存失败，请重试'));
+    }
+  }
+
+  Future<void> updateAnnotation({
+    required ArticleAnnotation annotation,
+    required ArticleAnnotationColor color,
+    String? note,
+  }) async {
+    try {
+      await _annotations.upsertAnnotation(
+        annotation.copyWith(
+          color: color,
+          note: _normalizedAnnotationNote(note),
+          clearNote: note == null || note.trim().isEmpty,
+          updatedAt: _clock.now().toUtc(),
+        ),
+      );
+    } on Object {
+      _setState(_state.copyWith(operationFailure: '笔记保存失败，请重试'));
+    }
+  }
+
+  Future<void> deleteAnnotation(String annotationId) async {
+    try {
+      await _annotations.deleteAnnotation(annotationId);
+    } on Object {
+      _setState(_state.copyWith(operationFailure: '高亮删除失败，请重试'));
+    }
+  }
+
   Future<void> toggleSpeech() async {
     final audio = _audioController.state;
     if (audio.phase == AudioEnginePhase.playing) {
@@ -771,6 +867,7 @@ final class ArticleReaderController extends ChangeNotifier {
     _extractionGeneration += 1;
     unawaited(_articleSubscription?.cancel());
     unawaited(_settingsSubscription?.cancel());
+    unawaited(_annotationSubscription?.cancel());
     unawaited(_offlineArticleSubscription?.cancel());
     unawaited(_audioSubscription?.cancel());
     if (_ownsAudioController) {
@@ -780,12 +877,45 @@ final class ArticleReaderController extends ChangeNotifier {
   }
 }
 
+String? _normalizedAnnotationNote(String? note) {
+  final normalized = note?.trim();
+  if (normalized == null || normalized.isEmpty) return null;
+  return normalized.length <= 20000
+      ? normalized
+      : normalized.substring(0, 20000);
+}
+
+List<ResolvedArticleAnnotation> _resolveAnnotations(ArticleReaderState state) {
+  final content = state.content;
+  if (content == null || state.annotations.isEmpty) {
+    return const <ResolvedArticleAnnotation>[];
+  }
+  final document = DocumentTextSnapshot.single(content.text);
+  final resolved = state.annotations
+      .map(
+        (annotation) => const ArticleAnchorResolver().resolve(
+          annotation,
+          document,
+          contentRevision: content.revision,
+        ),
+      )
+      .toList(growable: false);
+  resolved.sort((left, right) {
+    if (left.isAttached != right.isAttached) return left.isAttached ? -1 : 1;
+    return (left.start ?? left.annotation.anchor.originalStart)
+        .compareTo(right.start ?? right.annotation.anchor.originalStart);
+  });
+  return List<ResolvedArticleAnnotation>.unmodifiable(resolved);
+}
+
 final class ArticleReaderPage extends StatefulWidget {
   const ArticleReaderPage({
     required this.articleId,
     required this.repository,
     required this.extractor,
     required this.readerSettings,
+    this.annotations = const UnavailableArticleAnnotationRepository(),
+    this.ids,
     required this.share,
     required this.externalUri,
     required this.offlineArticles,
@@ -801,6 +931,8 @@ final class ArticleReaderPage extends StatefulWidget {
   final ArticleReaderRepository repository;
   final FullTextExtractor extractor;
   final ReaderSettingsRepository readerSettings;
+  final ArticleAnnotationRepository annotations;
+  final IdGenerator? ids;
   final ShareGateway share;
   final ExternalUriGateway externalUri;
   final OfflineArticleManager offlineArticles;
@@ -825,6 +957,8 @@ final class _ArticleReaderPageState extends State<ArticleReaderPage> {
       repository: widget.repository,
       extractor: widget.extractor,
       readerSettings: widget.readerSettings,
+      annotations: widget.annotations,
+      ids: widget.ids,
       share: widget.share,
       externalUri: widget.externalUri,
       offlineArticles: widget.offlineArticles,
@@ -846,6 +980,252 @@ final class _ArticleReaderPageState extends State<ArticleReaderPage> {
   Widget build(BuildContext context) =>
       ArticleReaderScreen(controller: _controller);
 }
+
+Future<String?> _requestAnnotationNote(
+  BuildContext context, {
+  String initial = '',
+}) async {
+  var note = initial;
+  return showDialog<String>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('添加笔记'),
+      content: TextFormField(
+        initialValue: initial,
+        autofocus: true,
+        minLines: 3,
+        maxLines: 8,
+        maxLength: 20000,
+        onChanged: (value) => note = value,
+        decoration: const InputDecoration(
+          hintText: '记录为什么这段内容值得保留',
+        ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(note),
+          child: const Text('保存'),
+        ),
+      ],
+    ),
+  );
+}
+
+Future<void> _showAnnotations(
+  BuildContext context,
+  ArticleReaderState state,
+  ArticleReaderController controller,
+) =>
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => _AnnotationSheet(
+        annotations: _resolveAnnotations(state),
+        onUpdate: controller.updateAnnotation,
+        onDelete: controller.deleteAnnotation,
+      ),
+    );
+
+enum _AnnotationAction { edit, delete }
+
+final class _AnnotationEdit {
+  const _AnnotationEdit({required this.note, required this.color});
+
+  final String note;
+  final ArticleAnnotationColor color;
+}
+
+final class _AnnotationSheet extends StatelessWidget {
+  const _AnnotationSheet({
+    required this.annotations,
+    required this.onUpdate,
+    required this.onDelete,
+  });
+
+  final List<ResolvedArticleAnnotation> annotations;
+  final Future<void> Function({
+    required ArticleAnnotation annotation,
+    required ArticleAnnotationColor color,
+    String? note,
+  }) onUpdate;
+  final Future<void> Function(String annotationId) onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: FractionallySizedBox(
+        heightFactor: 0.78,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          children: <Widget>[
+            Text(
+              '高亮与笔记',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            for (final resolved in annotations)
+              Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    radius: 8,
+                    backgroundColor: _annotationColor(
+                      resolved.annotation.color,
+                    ),
+                  ),
+                  title: Text(
+                    resolved.annotation.anchor.exact,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: Text(
+                    <String>[
+                      if (!resolved.isAttached) '正文变化后已失联',
+                      if (resolved.annotation.note case final note?) note,
+                    ].join('\n'),
+                  ),
+                  trailing: PopupMenuButton<_AnnotationAction>(
+                    tooltip: '管理高亮',
+                    onSelected: (action) => unawaited(
+                      _handleAction(context, action, resolved.annotation),
+                    ),
+                    itemBuilder: (context) =>
+                        const <PopupMenuEntry<_AnnotationAction>>[
+                      PopupMenuItem(
+                        value: _AnnotationAction.edit,
+                        child: Text('编辑笔记与颜色'),
+                      ),
+                      PopupMenuItem(
+                        value: _AnnotationAction.delete,
+                        child: Text('删除高亮'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleAction(
+    BuildContext context,
+    _AnnotationAction action,
+    ArticleAnnotation annotation,
+  ) async {
+    switch (action) {
+      case _AnnotationAction.edit:
+        final edit = await _editAnnotation(context, annotation);
+        if (edit == null) return;
+        await onUpdate(
+          annotation: annotation,
+          color: edit.color,
+          note: edit.note,
+        );
+      case _AnnotationAction.delete:
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('删除高亮？'),
+            content: const Text('该高亮及其笔记将从本机删除。'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('删除'),
+              ),
+            ],
+          ),
+        );
+        if (confirmed != true) return;
+        await onDelete(annotation.id);
+    }
+    if (context.mounted) Navigator.of(context).pop();
+  }
+}
+
+Future<_AnnotationEdit?> _editAnnotation(
+  BuildContext context,
+  ArticleAnnotation annotation,
+) async {
+  var note = annotation.note ?? '';
+  var color = annotation.color;
+  return showDialog<_AnnotationEdit>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setLocalState) => AlertDialog(
+        title: const Text('编辑高亮'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              Wrap(
+                spacing: 8,
+                children: ArticleAnnotationColor.values
+                    .map(
+                      (value) => ChoiceChip(
+                        selected: color == value,
+                        avatar: CircleAvatar(
+                          backgroundColor: _annotationColor(value),
+                        ),
+                        label: Text(_annotationColorLabel(value)),
+                        onSelected: (_) => setLocalState(() => color = value),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                initialValue: note,
+                minLines: 3,
+                maxLines: 8,
+                maxLength: 20000,
+                onChanged: (value) => note = value,
+                decoration: const InputDecoration(labelText: '笔记'),
+              ),
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(
+              _AnnotationEdit(note: note, color: color),
+            ),
+            child: const Text('保存'),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+String _annotationColorLabel(ArticleAnnotationColor color) => switch (color) {
+      ArticleAnnotationColor.yellow => '黄',
+      ArticleAnnotationColor.green => '绿',
+      ArticleAnnotationColor.blue => '蓝',
+      ArticleAnnotationColor.pink => '粉',
+    };
+
+Color _annotationColor(ArticleAnnotationColor color) => switch (color) {
+      ArticleAnnotationColor.yellow => Colors.amber,
+      ArticleAnnotationColor.green => Colors.lightGreen,
+      ArticleAnnotationColor.blue => Colors.lightBlue,
+      ArticleAnnotationColor.pink => Colors.pinkAccent,
+    };
 
 final class ArticleReaderScreen extends StatelessWidget {
   const ArticleReaderScreen({required this.controller, super.key});
@@ -958,6 +1338,7 @@ final class _ReaderReady extends StatelessWidget {
   Widget build(BuildContext context) {
     final detail = state.detail!;
     final content = state.content;
+    final resolvedAnnotations = _resolveAnnotations(state);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -977,6 +1358,11 @@ final class _ReaderReady extends StatelessWidget {
             controller: controller,
           ),
         _ReaderActions(state: state, controller: controller),
+        if (resolvedAnnotations.any((annotation) => !annotation.isAttached))
+          const MaterialBanner(
+            content: Text('部分高亮因正文变化已失联，可在“高亮与笔记”中查看'),
+            actions: <Widget>[SizedBox.shrink()],
+          ),
         if (content != null)
           _ArticleTtsControls(
             audio: state.audio,
@@ -999,6 +1385,8 @@ final class _ReaderReady extends StatelessWidget {
                   settings: state.settings,
                   initialProgress: detail.scrollDepth,
                   onProgressChanged: controller.reportProgress,
+                  annotations: resolvedAnnotations,
+                  onCreateAnnotation: controller.createAnnotation,
                   highlightedSegment:
                       state.audio.request?.contentRevision == content.revision
                           ? state.audio.currentSpeechSegment
@@ -1376,6 +1764,19 @@ final class _ReaderActions extends StatelessWidget {
               icon: const Icon(Icons.open_in_new),
               tooltip: '打开原文',
             ),
+            IconButton(
+              onPressed: state.annotations.isEmpty
+                  ? null
+                  : () => unawaited(
+                        _showAnnotations(context, state, controller),
+                      ),
+              icon: Badge.count(
+                count: state.annotations.length,
+                isLabelVisible: state.annotations.isNotEmpty,
+                child: const Icon(Icons.highlight_outlined),
+              ),
+              tooltip: state.annotations.isEmpty ? '选择正文即可添加高亮' : '高亮与笔记',
+            ),
             _OfflineArticleAction(state: state, controller: controller),
             IconButton(
               onPressed: () => unawaited(
@@ -1534,6 +1935,8 @@ final class ArticleDocumentView extends StatefulWidget {
     required this.settings,
     required this.initialProgress,
     required this.onProgressChanged,
+    this.annotations = const <ResolvedArticleAnnotation>[],
+    this.onCreateAnnotation,
     this.highlightedSegment,
     super.key,
   });
@@ -1542,6 +1945,8 @@ final class ArticleDocumentView extends StatefulWidget {
   final ReaderSettings settings;
   final double initialProgress;
   final ValueChanged<double> onProgressChanged;
+  final List<ResolvedArticleAnnotation> annotations;
+  final ArticleAnnotationCreator? onCreateAnnotation;
   final SpeechSegment? highlightedSegment;
 
   @override
@@ -1552,7 +1957,10 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
   late final ScrollController _scrollController;
   late final TextEditingController _textController;
   late final FocusNode _focusNode;
+  late TextSelection _lastSelection;
+  late String _displayedRevision;
   String? _pendingText;
+  String? _pendingRevision;
   var _updatingText = false;
   var _restoredInitialProgress = false;
 
@@ -1575,7 +1983,10 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
     _textController = _HighlightingTextEditingController(
       text: widget.content.text,
       highlightedSegment: widget.highlightedSegment,
+      annotations: widget.annotations,
     )..addListener(_handleSelectionChange);
+    _lastSelection = _textController.selection;
+    _displayedRevision = widget.content.revision;
     _focusNode = FocusNode();
     WidgetsBinding.instance.addPostFrameCallback((_) => _restoreProgress());
   }
@@ -1584,11 +1995,27 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
   void didUpdateWidget(ArticleDocumentView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.content.text != oldWidget.content.text) {
-      _replacePreservingAnchors(widget.content.text);
+      if (_replacePreservingAnchors(widget.content.text)) {
+        _displayedRevision = widget.content.revision;
+        _pendingText = null;
+        _pendingRevision = null;
+      } else {
+        _pendingRevision = widget.content.revision;
+      }
+    } else if (widget.content.revision != oldWidget.content.revision) {
+      if (_pendingText == null) {
+        _displayedRevision = widget.content.revision;
+      } else {
+        _pendingRevision = widget.content.revision;
+      }
     }
     if (widget.highlightedSegment != oldWidget.highlightedSegment) {
       (_textController as _HighlightingTextEditingController)
           .setHighlightedSegment(widget.highlightedSegment);
+    }
+    if (!identical(widget.annotations, oldWidget.annotations)) {
+      (_textController as _HighlightingTextEditingController)
+          .setAnnotations(widget.annotations);
     }
   }
 
@@ -1628,15 +2055,53 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
   }
 
   void _handleSelectionChange() {
-    if (_updatingText || _pendingText == null || !selection.isCollapsed) return;
-    final pending = _pendingText!;
-    _pendingText = null;
-    _replacePreservingAnchors(pending);
+    if (_updatingText) return;
+    if (_pendingText != null && selection.isCollapsed) {
+      final pending = _pendingText!;
+      _pendingText = null;
+      if (_replacePreservingAnchors(pending)) {
+        _displayedRevision = _pendingRevision ?? _displayedRevision;
+        _pendingRevision = null;
+      }
+    }
+    final current = selection;
+    if (current == _lastSelection) return;
+    _lastSelection = current;
+    if (mounted) setState(() {});
   }
 
-  void _replacePreservingAnchors(String nextText) {
+  Future<void> _createAnnotation({String? note}) async {
+    final create = widget.onCreateAnnotation;
+    final current = selection;
+    if (create == null ||
+        !current.isValid ||
+        current.isCollapsed ||
+        current.start < 0 ||
+        current.end > documentText.length) {
+      return;
+    }
+    await create(
+      anchor: ArticleTextAnchor.capture(
+        document: DocumentTextSnapshot.single(documentText),
+        start: current.start,
+        end: current.end,
+        contentRevision: _displayedRevision,
+      ),
+      note: note,
+      color: ArticleAnnotationColor.yellow,
+    );
+    if (!mounted) return;
+    _textController.selection = TextSelection.collapsed(offset: current.end);
+  }
+
+  Future<void> _createAnnotationWithNote() async {
+    final note = await _requestAnnotationNote(context);
+    if (note != null) await _createAnnotation(note: note);
+  }
+
+  bool _replacePreservingAnchors(String nextText) {
     final previousText = _textController.text;
-    if (previousText == nextText) return;
+    if (previousText == nextText) return true;
     final previousSelection = _textController.selection;
     final mappedSelection = _mapSelection(
       previousText,
@@ -1645,7 +2110,7 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
     );
     if (!previousSelection.isCollapsed && mappedSelection == null) {
       _pendingText = nextText;
-      return;
+      return false;
     }
 
     final oldExtent = _scrollController.hasClients
@@ -1677,6 +2142,7 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
       final target = extent * (mappedAnchor / nextText.length);
       _scrollController.jumpTo(target.clamp(0, extent));
     });
+    return true;
   }
 
   @override
@@ -1705,14 +2171,42 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
             child: Semantics(
               container: true,
               label: '文章正文',
-              child: TextField(
-                controller: _textController,
-                focusNode: _focusNode,
-                readOnly: true,
-                maxLines: null,
-                scrollPhysics: const NeverScrollableScrollPhysics(),
-                decoration: const InputDecoration.collapsed(hintText: ''),
-                style: _readerTextStyle(textTheme, widget.settings),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  TextField(
+                    controller: _textController,
+                    focusNode: _focusNode,
+                    readOnly: true,
+                    maxLines: null,
+                    scrollPhysics: const NeverScrollableScrollPhysics(),
+                    decoration: const InputDecoration.collapsed(hintText: ''),
+                    style: _readerTextStyle(textTheme, widget.settings),
+                  ),
+                  if (selection.isValid &&
+                      !selection.isCollapsed &&
+                      widget.onCreateAnnotation != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: <Widget>[
+                          FilledButton.tonalIcon(
+                            onPressed: () => unawaited(_createAnnotation()),
+                            icon: const Icon(Icons.highlight),
+                            label: const Text('高亮'),
+                          ),
+                          OutlinedButton.icon(
+                            onPressed: () =>
+                                unawaited(_createAnnotationWithNote()),
+                            icon: const Icon(Icons.note_add_outlined),
+                            label: const Text('高亮并添加笔记'),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
@@ -1726,10 +2220,14 @@ final class _HighlightingTextEditingController extends TextEditingController {
   _HighlightingTextEditingController({
     required String text,
     SpeechSegment? highlightedSegment,
+    List<ResolvedArticleAnnotation> annotations =
+        const <ResolvedArticleAnnotation>[],
   })  : _highlightedRange = _rangeFor(text, highlightedSegment),
+        _annotations = annotations,
         super(text: text);
 
   TextRange? _highlightedRange;
+  List<ResolvedArticleAnnotation> _annotations;
 
   TextRange? get highlightedRange => _highlightedRange;
 
@@ -1737,6 +2235,11 @@ final class _HighlightingTextEditingController extends TextEditingController {
     final next = _rangeFor(text, segment);
     if (_sameRange(_highlightedRange, next)) return;
     _highlightedRange = next;
+    notifyListeners();
+  }
+
+  void setAnnotations(List<ResolvedArticleAnnotation> annotations) {
+    _annotations = annotations;
     notifyListeners();
   }
 
@@ -1756,7 +2259,17 @@ final class _HighlightingTextEditingController extends TextEditingController {
     required bool withComposing,
   }) {
     final range = _highlightedRange;
-    if (range == null || range.isCollapsed || range.end > text.length) {
+    final attached = _annotations
+        .where(
+          (annotation) =>
+              annotation.isAttached &&
+              annotation.start! >= 0 &&
+              annotation.end! <= text.length &&
+              annotation.start! < annotation.end!,
+        )
+        .toList(growable: false);
+    if ((range == null || range.isCollapsed || range.end > text.length) &&
+        attached.isEmpty) {
       return super.buildTextSpan(
         context: context,
         style: style,
@@ -1764,18 +2277,30 @@ final class _HighlightingTextEditingController extends TextEditingController {
       );
     }
     final foreground = style?.color ?? Theme.of(context).colorScheme.onSurface;
+    final boundaries = <int>{0, text.length};
+    if (range != null && range.end <= text.length) {
+      boundaries
+        ..add(range.start)
+        ..add(range.end);
+    }
+    for (final annotation in attached) {
+      boundaries
+        ..add(annotation.start!)
+        ..add(annotation.end!);
+    }
+    final ordered = boundaries.toList()..sort();
     return TextSpan(
       style: style,
       children: <InlineSpan>[
-        if (range.start > 0) TextSpan(text: text.substring(0, range.start)),
-        TextSpan(
-          text: text.substring(range.start, range.end),
-          style: TextStyle(
-            backgroundColor: foreground.withValues(alpha: 0.16),
-            fontWeight: FontWeight.w600,
+        for (var index = 0; index + 1 < ordered.length; index += 1)
+          _annotationSpan(
+            text,
+            ordered[index],
+            ordered[index + 1],
+            attached,
+            range,
+            foreground,
           ),
-        ),
-        if (range.end < text.length) TextSpan(text: text.substring(range.end)),
       ],
     );
   }
@@ -1792,6 +2317,37 @@ final class _HighlightingTextEditingController extends TextEditingController {
 
   static bool _sameRange(TextRange? left, TextRange? right) =>
       left?.start == right?.start && left?.end == right?.end;
+}
+
+TextSpan _annotationSpan(
+  String text,
+  int start,
+  int end,
+  List<ResolvedArticleAnnotation> annotations,
+  TextRange? speechRange,
+  Color foreground,
+) {
+  ArticleAnnotationColor? color;
+  for (final annotation in annotations) {
+    if (annotation.start! <= start && annotation.end! >= end) {
+      color = annotation.annotation.color;
+    }
+  }
+  final spoken = speechRange != null &&
+      speechRange.start <= start &&
+      speechRange.end >= end;
+  return TextSpan(
+    text: text.substring(start, end),
+    style: TextStyle(
+      backgroundColor: color == null
+          ? spoken
+              ? foreground.withValues(alpha: 0.16)
+              : null
+          : _annotationColor(color).withValues(alpha: 0.34),
+      fontWeight: spoken ? FontWeight.w600 : null,
+      decoration: spoken && color != null ? TextDecoration.underline : null,
+    ),
+  );
 }
 
 TextStyle _readerTextStyle(TextTheme textTheme, ReaderSettings settings) {

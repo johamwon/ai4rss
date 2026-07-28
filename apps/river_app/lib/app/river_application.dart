@@ -392,6 +392,8 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           repository: dependencies.feeds,
           extractor: dependencies.fullTextExtractor,
           readerSettings: dependencies.readerSettings,
+          annotations: dependencies.annotations,
+          ids: dependencies.ids,
           share: dependencies.share,
           externalUri: dependencies.externalUri,
           offlineArticles: dependencies.offlineArticles,
