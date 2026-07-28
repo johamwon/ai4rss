@@ -7,7 +7,9 @@ import 'package:river_design_system/river_design_system.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
 
+import '../audio/audio_player_page.dart';
 import '../audio/audio_queue_page.dart';
+import '../audio/global_mini_player.dart';
 import '../podcast/podcast_library_page.dart';
 import '../sync/sync_account_page.dart';
 import 'app_dependencies.dart';
@@ -17,25 +19,88 @@ import 'article_search.dart';
 import 'automatic_feed_refresh_controller.dart';
 import 'dependency_scope.dart';
 
-final class RiverApp extends StatelessWidget {
+final class RiverApp extends StatefulWidget {
   const RiverApp({required this.dependencies, super.key});
 
   final AppDependencies dependencies;
 
   @override
+  State<RiverApp> createState() => _RiverAppState();
+}
+
+final class _RiverAppState extends State<RiverApp> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
   Widget build(BuildContext context) {
     return RiverDependenciesScope(
-      dependencies: dependencies,
+      dependencies: widget.dependencies,
       child: MaterialApp(
+        builder: (context, child) => Overlay(
+          initialEntries: <OverlayEntry>[
+            OverlayEntry(
+              builder: (context) => Positioned.fill(
+                child: Column(
+                  children: <Widget>[
+                    Expanded(child: child ?? const SizedBox.shrink()),
+                    GlobalMiniPlayer(
+                      queue: widget.dependencies.audioQueue,
+                      player: widget.dependencies.audioQueuePlayer,
+                      playback: widget.dependencies.audioController,
+                      onOpenPlayer: _openAudioPlayer,
+                      onOpenQueue: _openAudioQueue,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
         debugShowCheckedModeBanner: false,
         darkTheme: RiverTheme.dark(),
         highContrastDarkTheme: RiverTheme.highContrastDark(),
         highContrastTheme: RiverTheme.highContrastLight(),
         home: const RiverHomeScreen(),
+        navigatorKey: _navigatorKey,
         theme: RiverTheme.light(),
         title: 'River',
       ),
     );
+  }
+
+  void _openAudioPlayer() {
+    final navigator = _navigatorKey.currentState;
+    if (navigator != null) {
+      unawaited(
+        navigator.push<void>(
+          MaterialPageRoute<void>(
+            builder: (context) => AudioPlayerPage(
+              queue: widget.dependencies.audioQueue,
+              player: widget.dependencies.audioQueuePlayer,
+              playback: widget.dependencies.audioController,
+              onOpenQueue: _openAudioQueue,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+
+  void _openAudioQueue() {
+    final navigator = _navigatorKey.currentState;
+    if (navigator != null) {
+      unawaited(
+        navigator.push<void>(
+          MaterialPageRoute<void>(
+            builder: (context) => AudioQueuePage(
+              queue: widget.dependencies.audioQueue,
+              player: widget.dependencies.audioQueuePlayer,
+              playback: widget.dependencies.audioController,
+            ),
+          ),
+        ),
+      );
+    }
   }
 }
 
