@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:river_app/app/app_dependencies.dart';
 import 'package:river_app/app/river_application.dart';
-import 'package:river_data/river_data.dart';
+import 'package:river_data/river_data.dart' hide AudioItem, AudioQueueEntry;
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
 import 'package:river_platform/river_platform.dart';
@@ -195,6 +195,34 @@ void main() {
     expect(find.text('还没有播客\n添加 Podcast RSS 后即可收听和离线下载'), findsOneWidget);
     await tester.pageBack();
     await tester.pumpAndSettle();
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('global mini player opens player and queue routes', (
+    tester,
+  ) async {
+    await dependencies.audioQueue.enqueue(
+      AudioItem(
+        id: 'queued-podcast',
+        kind: AudioKind.podcastEpisode,
+        title: 'Queued Podcast',
+        sourceUri: Uri.parse('https://example.test/queued.mp3'),
+      ),
+    );
+    await tester.pumpWidget(RiverApp(dependencies: dependencies));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Podcast · 等待播放'), findsOneWidget);
+    await tester.tap(find.text('Queued Podcast'));
+    await tester.pumpAndSettle();
+    expect(find.text('正在收听'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('打开收听队列').first);
+    await tester.pumpAndSettle();
+    expect(find.text('收听队列'), findsOneWidget);
+    expect(find.text('Queued Podcast'), findsWidgets);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));
