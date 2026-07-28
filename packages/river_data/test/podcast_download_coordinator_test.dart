@@ -56,9 +56,10 @@ void main() {
 
       await manager.start();
       await manager.enqueue('episode-1');
-      expect(
-        (await manager.status('episode-1')).phase,
+      await _waitFor(
+        manager,
         PodcastDownloadPhase.queued,
+        failureCode: PodcastDownloadFailureCode.network,
       );
 
       final available = manager
@@ -95,7 +96,7 @@ void main() {
 
     await manager.start();
     await manager.enqueue('episode-1');
-    final state = await manager.status('episode-1');
+    final state = await _waitFor(manager, PodcastDownloadPhase.failed);
 
     expect(state.phase, PodcastDownloadPhase.failed);
     expect(state.failureCode, PodcastDownloadFailureCode.storageFull);
@@ -128,7 +129,7 @@ void main() {
 
     await manager.start();
     await manager.enqueue('episode-1');
-    final state = await manager.status('episode-1');
+    final state = await _waitFor(manager, PodcastDownloadPhase.failed);
 
     expect(state.phase, PodcastDownloadPhase.failed);
     expect(state.failureCode, PodcastDownloadFailureCode.corruptMedia);
@@ -163,6 +164,7 @@ void main() {
 
     await manager.start();
     await manager.enqueue('episode-1');
+    await _waitFor(manager, PodcastDownloadPhase.available);
     await manager.remove('episode-1');
     expect(
       (await manager.status('episode-1')).phase,
@@ -171,10 +173,46 @@ void main() {
 
     await manager.enqueue('episode-1');
 
-    expect((await manager.status('episode-1')).availablePath, 'second.mp3');
+    expect(
+      (await _waitFor(manager, PodcastDownloadPhase.available)).availablePath,
+      'second.mp3',
+    );
     expect(backend.discarded, contains('first.mp3'));
     expect(backend.calls, 2);
   });
+
+  test(
+    'missing local media clears stale availability for streaming fallback',
+    () async {
+      final database = RiverDatabase(NativeDatabase.memory());
+      final podcasts = DriftPodcastRepository(database);
+      await _seedPodcast(podcasts);
+      final network = _FakeNetwork(NetworkAvailability.online);
+      final backend = _FakeBackend(<_TransferOperation>[
+        (_, _) async => const PodcastTransferSuccess(
+          availablePath: 'missing.mp3',
+          downloadedBytes: 8,
+          totalBytes: 8,
+        ),
+      ]);
+      final manager = _manager(database, podcasts, backend, network);
+      addTearDown(() async {
+        await manager.close();
+        await network.close();
+        await database.close();
+      });
+
+      await manager.start();
+      await manager.enqueue('episode-1');
+      await _waitFor(manager, PodcastDownloadPhase.available);
+      backend.available = false;
+
+      final state = await manager.status('episode-1');
+
+      expect(state.phase, PodcastDownloadPhase.notDownloaded);
+      expect(state.playbackUri, isNull);
+    },
+  );
 
   test('cold restart recovers an unexpired lease and resumes bytes', () async {
     final directory = await Directory.systemTemp.createTemp(
@@ -245,6 +283,18 @@ void main() {
   });
 }
 
+Future<PodcastDownloadState> _waitFor(
+  PodcastDownloadManager manager,
+  PodcastDownloadPhase phase, {
+  String? failureCode,
+}) => manager
+    .watch('episode-1')
+    .firstWhere(
+      (state) =>
+          state.phase == phase &&
+          (failureCode == null || state.failureCode == failureCode),
+    );
+
 DurablePodcastDownloadManager _manager(
   RiverDatabase database,
   DriftPodcastRepository podcasts,
@@ -304,12 +354,16 @@ final class _FakeBackend implements PodcastTransferBackend {
   final List<_TransferOperation> operations;
   final List<String> discarded = <String>[];
   var calls = 0;
+  var available = true;
 
   @override
   Future<void> discard({String? partialPath, String? availablePath}) async {
     if (partialPath != null) discarded.add(partialPath);
     if (availablePath != null) discarded.add(availablePath);
   }
+
+  @override
+  Future<bool> isAvailable(String availablePath) async => available;
 
   @override
   Future<PodcastTransferResult> transfer(

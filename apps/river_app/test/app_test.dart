@@ -181,6 +181,13 @@ void main() {
     expect(find.text('River'), findsOneWidget);
     expect(find.text('还没有订阅源'), findsOneWidget);
     expect(find.byTooltip('添加订阅源'), findsOneWidget);
+    expect(find.byTooltip('播客'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('播客'));
+    await tester.pumpAndSettle();
+    expect(find.text('还没有播客\n添加 Podcast RSS 后即可收听和离线下载'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));

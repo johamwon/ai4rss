@@ -170,9 +170,15 @@ abstract interface class PodcastRepository {
 }
 
 abstract interface class PodcastCatalogRepository implements PodcastRepository {
+  Stream<List<PodcastShowRecord>> watchShows();
+
+  Stream<List<PodcastEpisodeRecord>> watchEpisodes(String showId);
+
   Future<PodcastShowRecord?> findShowById(String showId);
 
   Future<PodcastEpisodeRecord?> findEpisodeById(String episodeId);
+
+  Future<void> deleteShow(String showId);
 
   Future<void> updateShowPolicy({
     required String showId,
@@ -338,6 +344,7 @@ final class PodcastRefreshService {
       );
       return PodcastRefreshResult(
         showId: existingShow.id,
+        insertedEpisodeIds: const <String>[],
         insertedEpisodes: 0,
         updatedEpisodes: 0,
         unchangedEpisodes: 0,
@@ -408,6 +415,10 @@ final class PodcastRefreshService {
     await repository.applyRefresh(show: show, episodeUpserts: upserts);
     return PodcastRefreshResult(
       showId: showId,
+      insertedEpisodeIds: <String>[
+        for (final episode in upserts)
+          if (!episodesByExternalId.containsKey(episode.externalId)) episode.id,
+      ],
       insertedEpisodes: inserted,
       updatedEpisodes: updated,
       unchangedEpisodes: unchanged,
@@ -420,6 +431,7 @@ final class PodcastRefreshService {
 final class PodcastRefreshResult {
   const PodcastRefreshResult({
     required this.showId,
+    required this.insertedEpisodeIds,
     required this.insertedEpisodes,
     required this.updatedEpisodes,
     required this.unchangedEpisodes,
@@ -428,11 +440,62 @@ final class PodcastRefreshResult {
   });
 
   final String showId;
+  final List<String> insertedEpisodeIds;
   final int insertedEpisodes;
   final int updatedEpisodes;
   final int unchangedEpisodes;
   final int discardedDuplicates;
   final bool notModified;
+}
+
+final class PodcastDownloadPolicyService {
+  const PodcastDownloadPolicyService({
+    required this.repository,
+    required this.downloads,
+  });
+
+  final PodcastCatalogRepository repository;
+  final PodcastDownloadManager downloads;
+
+  Future<void> applyAfterRefresh(PodcastRefreshResult result) async {
+    final show = await repository.findShowById(result.showId);
+    if (show == null) return;
+    switch (show.downloadPolicy) {
+      case PodcastDownloadPolicy.manual:
+        return;
+      case PodcastDownloadPolicy.newestOnly:
+        final episodes = await repository.listEpisodes(show.id);
+        if (episodes.isNotEmpty) {
+          await downloads.enqueue(episodes.first.id);
+        }
+      case PodcastDownloadPolicy.all:
+        for (final episodeId in result.insertedEpisodeIds) {
+          await downloads.enqueue(episodeId);
+        }
+    }
+  }
+
+  Future<void> updatePolicy({
+    required String showId,
+    required double defaultPlaybackRate,
+    required PodcastDownloadPolicy downloadPolicy,
+    required DateTime updatedAt,
+  }) async {
+    await repository.updateShowPolicy(
+      showId: showId,
+      defaultPlaybackRate: defaultPlaybackRate,
+      downloadPolicy: downloadPolicy,
+      updatedAt: updatedAt,
+    );
+    if (downloadPolicy == PodcastDownloadPolicy.manual) return;
+    final episodes = await repository.listEpisodes(showId);
+    final selected = downloadPolicy == PodcastDownloadPolicy.newestOnly
+        ? episodes.take(1)
+        : episodes;
+    for (final episode in selected) {
+      await downloads.enqueue(episode.id);
+    }
+  }
 }
 
 final class PodcastParseException implements Exception {

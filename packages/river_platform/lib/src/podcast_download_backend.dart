@@ -294,6 +294,15 @@ final class IoPodcastTransferBackend implements PodcastTransferBackend {
     }
   }
 
+  @override
+  Future<bool> isAvailable(String availablePath) async {
+    final root = await _directoryProvider();
+    final file = File(availablePath);
+    return _isInside(root, file) &&
+        await file.exists() &&
+        await file.length() > 0;
+  }
+
   Future<HttpClientResponse> _open(
     HttpClient client,
     Uri initialUri, {
