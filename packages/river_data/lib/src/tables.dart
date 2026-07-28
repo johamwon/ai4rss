@@ -318,6 +318,9 @@ class PodcastEpisodes extends Table {
   IntColumn get durationMs => integer().nullable()();
   IntColumn get episodeNumber => integer().nullable()();
   IntColumn get seasonNumber => integer().nullable()();
+  TextColumn get chaptersUrl => text().nullable()();
+  TextColumn get chaptersMimeType => text().nullable()();
+  TextColumn get transcriptsJson => text().withDefault(const Constant('[]'))();
   TextColumn get explicitRating => text()();
   TextColumn get episodeType => text()();
   DateTimeColumn get createdAt => dateTime()();

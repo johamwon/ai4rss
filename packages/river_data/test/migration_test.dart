@@ -8,7 +8,7 @@ import 'package:sqlite3/sqlite3.dart' as sqlite;
 import 'package:test/test.dart';
 
 void main() {
-  test('v1 fixture migrates to v10 without losing article state', () async {
+  test('v1 fixture migrates to v11 without losing article state', () async {
     final fixture = await _materializeFixture('v001_populated.sql');
     final migrated = await _openFixture(fixture);
 
@@ -17,7 +17,7 @@ void main() {
     expect(article.feedSummary, 'Existing preview survives migration');
     expect(article.starred, isTrue);
     expect(article.feedContentHtml, isNull);
-    expect(await _userVersion(migrated), 10);
+    expect(await _userVersion(migrated), 11);
     expect(
       await _syncTableNames(migrated),
       containsAll(<String>[
@@ -47,7 +47,7 @@ void main() {
 
     final article = await recovered.select(recovered.articles).getSingle();
     expect(article.feedContentHtml, '<p>Recovered body</p>');
-    expect(await _userVersion(recovered), 10);
+    expect(await _userVersion(recovered), 11);
   });
 
   test('v2 fixture creates the settings table and preserves article', () async {
@@ -56,7 +56,7 @@ void main() {
 
     final article = await migrated.select(migrated.articles).getSingle();
     expect(article.feedContentHtml, '<p>Current immediate body</p>');
-    expect(await _userVersion(migrated), 10);
+    expect(await _userVersion(migrated), 11);
     expect(
       await DriftReaderSettingsRepository(migrated).watchSettings().first,
       const ReaderSettings(),
@@ -91,7 +91,7 @@ void main() {
     expect(settings.fontFamily, ReaderFontFamily.serif);
     expect(settings.fontScale, 1.3);
     expect(settings.theme, ReaderThemePreference.dark);
-    expect(await _userVersion(recovered), 10);
+    expect(await _userVersion(recovered), 11);
   });
 
   test('v3 fixture creates a searchable index without data loss', () async {
@@ -118,7 +118,7 @@ void main() {
           .id,
       'article-1',
     );
-    expect(await _userVersion(current), 10);
+    expect(await _userVersion(current), 11);
   });
 
   test('interrupted v4 index creation rebuilds and creates triggers', () async {
@@ -145,7 +145,7 @@ void main() {
       'article-1',
     ]);
     expect(await _searchTriggerCount(recovered), 10);
-    expect(await _userVersion(recovered), 10);
+    expect(await _userVersion(recovered), 11);
   });
 
   test('v4 fixture adds restartable audio state with index intact', () async {
@@ -177,7 +177,7 @@ void main() {
         'language_tag',
       ]),
     );
-    expect(await _userVersion(current), 10);
+    expect(await _userVersion(current), 11);
   });
 
   test('interrupted v5 audio column additions retry idempotently', () async {
@@ -202,7 +202,7 @@ void main() {
         'language_tag',
       ]),
     );
-    expect(await _userVersion(recovered), 10);
+    expect(await _userVersion(recovered), 11);
   });
 
   test('interrupted v6 sync table creation retries idempotently', () async {
@@ -244,7 +244,7 @@ void main() {
         'sync_seen_mutation_rows',
       ]),
     );
-    expect(await _userVersion(recovered), 10);
+    expect(await _userVersion(recovered), 11);
   });
 
   test('interrupted v7 sync history migration retries idempotently', () async {
@@ -284,7 +284,7 @@ void main() {
         'resolved_at',
       ]),
     );
-    expect(await _userVersion(recovered), 10);
+    expect(await _userVersion(recovered), 11);
   });
 
   test('interrupted v8 podcast table creation retries idempotently', () async {
@@ -309,7 +309,7 @@ void main() {
       await _columnNames(recovered, 'podcast_downloads'),
       contains('source_url'),
     );
-    expect(await _userVersion(recovered), 10);
+    expect(await _userVersion(recovered), 11);
   });
 
   test('v8 source binding migration adds the missing column', () async {
@@ -328,7 +328,7 @@ void main() {
       await _columnNames(recovered, 'podcast_downloads'),
       contains('source_url'),
     );
-    expect(await _userVersion(recovered), 10);
+    expect(await _userVersion(recovered), 11);
   });
 
   test('interrupted v9 source binding retries idempotently', () async {
@@ -346,7 +346,7 @@ void main() {
       await _columnNames(recovered, 'podcast_downloads'),
       contains('source_url'),
     );
-    expect(await _userVersion(recovered), 10);
+    expect(await _userVersion(recovered), 11);
   });
 
   test('v9 fixture adds an empty queue without losing audio state', () async {
@@ -366,7 +366,7 @@ void main() {
       isA<AudioQueueSnapshot>(),
     );
     expect((await DriftAudioQueueRepository(migrated).read()).entries, isEmpty);
-    expect(await _userVersion(migrated), 10);
+    expect(await _userVersion(migrated), 11);
   });
 
   test('interrupted v10 queue creation retries without losing rows', () async {
@@ -399,8 +399,57 @@ void main() {
     final queue = await DriftAudioQueueRepository(recovered).read();
     expect(queue.entries.single.item.id, 'queued-v9');
     expect(queue.current?.item.id, 'queued-v9');
-    expect(await _userVersion(recovered), 10);
+    expect(await _userVersion(recovered), 11);
   });
+
+  test('v10 fixture adds empty Podcasting 2.0 metadata safely', () async {
+    final fixture = await _materializeFixture('v010_podcast_metadata.sql');
+    final migrated = await _openFixture(fixture);
+
+    final episode = await DriftPodcastRepository(
+      migrated,
+    ).findEpisodeById('episode-v10');
+    expect(episode?.title, 'Episode before metadata migration');
+    expect(episode?.chapterSource, isNull);
+    expect(episode?.transcripts, isEmpty);
+    expect(
+      await _columnNames(migrated, 'podcast_episodes'),
+      containsAll(<String>[
+        'chapters_url',
+        'chapters_mime_type',
+        'transcripts_json',
+      ]),
+    );
+    expect(await _userVersion(migrated), 11);
+  });
+
+  test(
+    'interrupted v11 metadata columns retry without losing values',
+    () async {
+      final fixture = await _materializeFixture('v010_podcast_metadata.sql');
+      final raw = sqlite.sqlite3.open(fixture.path);
+      raw
+        ..execute('ALTER TABLE podcast_episodes ADD COLUMN chapters_url TEXT')
+        ..execute(
+          "UPDATE podcast_episodes SET chapters_url = "
+          "'https://example.test/chapters-v10.json'",
+        )
+        ..close();
+      final recovered = await _openFixture(fixture);
+
+      final row = await recovered
+          .customSelect(
+            'SELECT chapters_url, transcripts_json FROM podcast_episodes',
+          )
+          .getSingle();
+      expect(
+        row.read<String>('chapters_url'),
+        'https://example.test/chapters-v10.json',
+      );
+      expect(row.read<String>('transcripts_json'), '[]');
+      expect(await _userVersion(recovered), 11);
+    },
+  );
 }
 
 Future<File> _materializeFixture(String name) async {

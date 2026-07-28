@@ -71,6 +71,18 @@ void main() {
       mediaLengthBytes: 8,
       duration: const Duration(minutes: 42),
       publishedAt: now,
+      chapterSource: PodcastChapterSource(
+        url: Uri.parse('https://media.example.test/chapters.json'),
+        mimeType: 'application/json+chapters',
+      ),
+      transcripts: <PodcastTranscriptReference>[
+        PodcastTranscriptReference(
+          url: Uri.parse('https://media.example.test/transcript.vtt'),
+          mimeType: 'text/vtt',
+          language: 'en',
+          rel: 'captions',
+        ),
+      ],
       explicitRating: PodcastExplicitRating.clean,
       episodeType: PodcastEpisodeType.full,
       createdAt: now,
@@ -90,6 +102,7 @@ void main() {
     );
     addTearDown(downloads.close);
     final engine = _AudioEngine();
+    final externalUri = _ExternalUri();
     final audio = AudioPlaybackController(
       engine: engine,
       repository: const UnavailableAudioPlaybackRepository(),
@@ -110,6 +123,8 @@ void main() {
           downloads: downloads,
           audio: audio,
           clock: const _Clock(),
+          chapterLoader: const PodcastChapterLoader(http: _ChapterHttp()),
+          externalUri: externalUri,
         ),
       ),
     );
@@ -123,6 +138,23 @@ void main() {
     expect(engine.loaded?.item.sourceUri, Uri.file(r'C:\River\episode.mp3'));
     expect(engine.settings?.rate, 1.5);
     expect(find.byTooltip('暂停'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('章节与文字稿'));
+    await tester.pumpAndSettle();
+    expect(find.text('Opening'), findsOneWidget);
+    expect(find.text('Main topic'), findsOneWidget);
+    expect(find.text('en · WebVTT'), findsOneWidget);
+    await tester.tap(find.text('Main topic'));
+    await tester.pumpAndSettle();
+    expect(engine.seeks.last.mediaPosition, const Duration(seconds: 65));
+    await tester.tap(find.text('en · WebVTT'));
+    await tester.pump();
+    expect(
+      externalUri.opened,
+      <Uri>[Uri.parse('https://media.example.test/transcript.vtt')],
+    );
+    Navigator.of(tester.element(find.text('章节'))).pop();
+    await tester.pumpAndSettle();
 
     await tester.tap(find.byTooltip('已下载；点击删除本地文件'));
     await tester.pumpAndSettle();
@@ -248,6 +280,7 @@ final class _AudioEngine implements AudioEngine {
       StreamController<AudioEngineEvent>.broadcast();
   AudioLoadRequest? loaded;
   AudioPlaybackSettings? settings;
+  final List<AudioPlaybackPosition> seeks = <AudioPlaybackPosition>[];
 
   @override
   Stream<AudioEngineEvent> get events => _events.stream;
@@ -299,7 +332,16 @@ final class _AudioEngine implements AudioEngine {
   Future<void> resume() => play();
 
   @override
-  Future<void> seek(AudioPlaybackPosition position) async {}
+  Future<void> seek(AudioPlaybackPosition position) async {
+    seeks.add(position);
+    _events.add(
+      AudioEngineEvent(
+        phase: AudioEnginePhase.ready,
+        itemId: loaded?.item.id,
+        position: position,
+      ),
+    );
+  }
 
   @override
   Future<void> stop() async {}
@@ -336,4 +378,34 @@ final class _Http implements HttpPort {
     Map<String, String> headers = const <String, String>{},
   }) async =>
       throw StateError('HTTP is not expected in this widget test');
+}
+
+final class _ChapterHttp implements HttpPort {
+  const _ChapterHttp();
+
+  @override
+  Future<PortHttpResponse> get(
+    Uri uri, {
+    Map<String, String> headers = const <String, String>{},
+  }) async =>
+      PortHttpResponse(
+        statusCode: 200,
+        body: '''
+          {"chapters":[
+            {"startTime":0,"title":"Opening"},
+            {"startTime":65,"title":"Main topic"}
+          ]}
+        ''',
+        effectiveUri: uri,
+      );
+}
+
+final class _ExternalUri implements ExternalUriGateway {
+  final List<Uri> opened = <Uri>[];
+
+  @override
+  Future<ExternalUriOpenOutcome> open(Uri uri) async {
+    opened.add(uri);
+    return ExternalUriOpenOutcome.opened;
+  }
 }

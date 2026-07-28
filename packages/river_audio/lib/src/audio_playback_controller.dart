@@ -331,6 +331,25 @@ final class AudioPlaybackController {
     await seekToSegment(index);
   }
 
+  Future<void> seekToMedia(Duration position) async {
+    final request = _state.request;
+    if (_disposed ||
+        request == null ||
+        request.item.kind != AudioKind.podcastEpisode ||
+        position.isNegative ||
+        position > const Duration(days: 7)) {
+      return;
+    }
+    final wasPlaying = _state.phase == AudioEnginePhase.playing;
+    try {
+      await _engine.seek(AudioPlaybackPosition.media(position));
+      await _persistNow();
+      if (wasPlaying) await _engine.play();
+    } on Object {
+      _fail('audio_seek_failed');
+    }
+  }
+
   Future<void> seekToSegment(
     int segmentIndex, {
     int characterOffset = 0,
