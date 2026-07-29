@@ -1,6 +1,6 @@
 # River 实施状态
 
-更新时间：2026-07-28
+更新时间：2026-07-29
 
 ## 已完成
 
@@ -33,6 +33,7 @@
 - KB-003：统一 Markdown v1 渲染器按固定顺序输出 YAML Front Matter、来源、摘要、正文、高亮与笔记；字符串值始终引用，集合排序去重，换行与控制字符规范化。同标题文件名附加 River ID 短哈希，并限制 UTF-8 长度、替换三端非法字符，为本地导出、Notion 与 IMA 分享提供同一份字节稳定内容。
 - KB-004：连接器统一实现测试连接、Create、Update、Delete 和 Status 协议，错误只暴露稳定码、可重试性与有界 Retry-After。知识导出复用通用持久任务队列，载荷只保存知识对象/连接器/目的地 ID；Create 使用稳定目标幂等键，Update 追加内容哈希。支持租约恢复、45 秒调用上限、指数退避、五次死信、人工重试、远端已删除幂等成功，以及同步期间内容变化后的自动补偿更新；所有入口必须经过耐久管理器。
 - KB-005：单篇远程图片模式可直接保存 UTF-8 `.md`，批量或本地图片模式输出确定性标准 ZIP。导出包按 River ID 排序并用已有安全文件名避免同名覆盖；最多 5,000 篇、5,000 张图片和 200 MiB。图片链接支持 Markdown/HTML，下载后以 SHA-256 内容寻址去重并重写到 `assets/`；只接受签名验证的 PNG/JPEG/GIF/WebP，拒绝凭据 URL、本地地址、HTTPS 降级、伪装资源、超时和超限响应。三端通过同一可注入系统保存网关输出。
+- KB-006：Notion 使用 `2026-03-11` 官方 API；OAuth 服务端内核以一次性 state 和完成码隔离 Client Secret，客户端只经 HTTPS Broker 取回授权并在 Android Keystore、iOS Keychain、Windows DPAPI 的版本化安全仓库保存 Token，401 仅刷新一次。目标选择分页发现 Page/Data Source；数据源自动补齐唯一用途的 `River ID` rich_text 属性并远端查重，父页面使用 SHA-256 River 标记恢复幂等。属性映射适配现有 Schema，正文按 2,000 字符/100 Block 上限分批写入 River 托管 Toggle；更新只替换托管块，保留用户手工添加的 Notion 内容。限流、超时、鉴权、权限、冲突和服务故障映射为稳定连接器错误，创建中断后的重试可收敛而不新增页面。
 - READ-006：离线文章下载使用持久任务、租约恢复、稳定幂等键、有限退避和显式失败重试；飞行模式只入队不请求，启动、回到前台及网络恢复后继续处理。任务仅保存文章 ID，成功正文进入现有净化缓存，关闭并重开数据库后可直接阅读。
 - READ-007：应用遵循系统高对比模式，关键文字配色达到 WCAG AA 4.5:1；首页与阅读页提供阅读顺序焦点路径和 Windows 主操作快捷键。文章行暴露单一可操作语义节点，阅读标题标记为标题，状态同时使用图标、文本和实时播报；200% 系统字号窄屏列表、键盘操作和屏幕阅读器语义均有自动覆盖。
 - TTS-001：定义供应商无关的统一 `AudioEngine` 契约，覆盖能力、音色、加载、事件、播放控制、语速/音调，以及媒体时长或文章句内位置；文章语音计划要求稳定正文版本和连续分段。纯 Dart 分句器保留 UTF-16 正文偏移，覆盖中英文标点、闭合引号、小数、常见缩写、超长句安全切分、围栏代码占位和空正文。
@@ -71,7 +72,7 @@
 1. TTS-004 真机验收：Android/iOS 锁屏、来电/其他音频中断、蓝牙和进程后台矩阵。
 2. 阶段 7 POD-002：完成 Android/iOS/Windows 三端真实网络切换、系统清理文件、磁盘满和长音频播放验收。
 3. 阶段 7 POD-004/005 真机验收：完成章节跳转、文字稿外部打开、后台连续播放、锁屏切换队列项和页面往返矩阵。
-4. 阶段 8 KB-006：实现 Notion OAuth、目标选择、Page/Block 映射和 River ID。
+4. 阶段 8 KB-007：构建知识列表、详情、Notion 连接与目标选择、同步状态和失败恢复 UI。
 
 ## 最近验证
 
@@ -79,15 +80,16 @@
 - `river_feed`：40 个测试通过，新增 Podcasting 2.0 命名空间、Chapters、Transcript、伪命名空间/不安全资源拒绝及 JSON Chapters 时间轴覆盖；继续覆盖 Podcast 策略、RSS 节目/分集模型、enclosure 安全筛选、iTunes 元数据、稳定 GUID、条件刷新、搜索、RSS/Atom/JSON Feed、发现、文章刷新、OPML 与 HTTP 边界。
 - `river_domain`：20 个测试通过，新增连接器请求、公开外部 URL 与无歧义目标键边界；继续覆盖统一知识对象、来源引用、外部映射、DOM/文本双锚点、跨来源队列、统一音频快照、播放参数、后台刷新策略与核心模型。
 - `river_data`：99 个测试通过，新增知识导出创建/更新/删除、稳定幂等、最小任务载荷、死信/人工重试、Retry-After 上限、非重试失败、冷启动租约恢复、编辑竞态补偿及跨操作队列顺序；继续覆盖知识来源并发去重、外部映射、迁移、高亮/笔记、Podcasting 2.0 元数据、统一队列、网络/磁盘/租约恢复、同步与 10,000 篇文章 P95 <500ms 自动门槛。
-- `river_knowledge`：12 个测试通过，新增单篇/批量文件清单、1,000 篇同名导出、Markdown/HTML 图片重写、内容去重、危险资源拒绝及 ZIP 字节稳定/往返/标准 CRC；继续覆盖规范 Markdown、耐久管理器入口和内容哈希。
+- `river_knowledge`：24 个测试通过，新增 Notion OAuth 一次性 state/完成码、服务端 Secret 交换、客户端 Broker、目标分页、数据源/父页面幂等恢复、Page/Block 映射、托管块更新、401 刷新、429 Retry-After 和 100 Block 分批；继续覆盖单篇/批量文件清单、1,000 篇同名导出、Markdown/HTML 图片重写、内容去重、危险资源拒绝及 ZIP 字节稳定/往返/标准 CRC。
 - `river_test_harness`：2 个包级测试通过，Fake Connector 覆盖连接测试、Create、Update、Delete 和 Status 完整契约；确定性场景继续控制时间、HTTP 与 AI 回放。
 - `river_app`：68 个测试通过，新增正文选择、高亮、笔记、管理入口，以及连续渐进正文替换时的显示 revision 原子捕获和过期待替换清理；继续覆盖全局迷你播放器、完整播放页、收听队列、播客、本地文件优先播放、同步状态、冲突历史、阅读器、后台媒体、Windows SMTC 与跨尺寸 Golden。
 - `river_design_system`：2 个测试通过，浅色与深色高对比主题的关键文字组合均达到 WCAG AA 4.5:1。
 - `river_audio`：34 个测试通过，新增 Podcast 章节跳转、继续播放与断点落盘；继续覆盖统一持久队列跨来源选择、完成后连续消费、节目倍速、文章/Podcast 类型路由、两小时长文预算、有界预取、焦点拒绝、系统媒体命令、中断恢复、进度写入、定时暂停与跨语言分句。
 - `river_sync`：75 个测试通过，新增密文服务多租户隔离、授权、原子配额、限流、备份校验、灾演恢复、删除和不可读管理员指标；继续覆盖账号体验、字段/语义合并、幂等重复、墓碑压缩、双设备分页、AES/X25519/HKDF、恢复和设备生命周期。
 - `river_extract`：29 个测试通过，新增完整 Feed 零网页请求、摘要静态下载和失败后平台回退编排覆盖。
-- `river_platform`：43 个测试通过，新增 Markdown 单文件/ZIP 系统保存、取消语义及图片本地地址预检；继续覆盖真实 HTTP Range/If-Range 续传、Podcast 播放/下载、安全仓库、系统音频会话、系统 TTS、外部原文、链路状态、后台调度及动态渲染契约。
+- `river_platform`：45 个测试通过，新增 Notion Token 版本化安全仓库、串行读写、损坏/未来 Schema 保留；继续覆盖 Markdown 单文件/ZIP 系统保存、真实 HTTP Range/If-Range 续传、Podcast 播放/下载、安全仓库、系统音频会话、系统 TTS、外部原文、链路状态、后台调度及动态渲染契约。
 - Harness：fixtures 16/16、feeds 3/3、extraction 7/7、AI replay 1/1、ranking 2/2。
 - 本机 Windows Debug 构建通过；原生命令行测试 1/1、隐藏启动 Smoke 与真实 SMTC MethodChannel Integration Test 均通过。Windows 统一启用 `/utf-8` 并保留 `/WX`，避免非英文系统代码页造成第三方插件误失败。
 - Windows 真实 DPAPI 安全仓库 Integration Test 1/1 通过，测试会写入、读回并清理会话、X25519 私钥和账户数据密钥；已加入 Merge/Nightly CI。
+- Windows 真实 Notion Token 安全仓库 Integration Test 1/1 通过，测试会写入、读回并清理 OAuth access/refresh Token；已加入 Merge/Nightly CI。
 - 三端构建：最近一次 Android/iOS/Windows 主分支 Debug 构建及产物上传均已通过；READ-002 的 Windows 原生滚动/选区旅程和 FEED-007 计划任务 Smoke 已加入 Merge 与 Nightly CI。
