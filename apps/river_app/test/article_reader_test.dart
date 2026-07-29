@@ -211,6 +211,66 @@ void main() {
     expect(find.text('正文变化后已失联'), findsNothing);
   });
 
+  testWidgets(
+    'article, highlight, and note save as one idempotent knowledge item',
+    (tester) async {
+      const selected = 'knowledge-worthy sentence';
+      const preview = 'Opening context. $selected. Closing context.';
+      final details = StreamController<FeedArticleDetailRecord?>();
+      final extraction = Completer<ExtractionResult>();
+      final annotations = FakeArticleAnnotationRepository();
+      final knowledge = MemoryKnowledgeRepository();
+      final controller = buildReaderController(
+        articleId: 'article-1',
+        watch: (_) => details.stream,
+        extract: (_) => extraction.future,
+        annotations: annotations,
+        ids: SequentialReaderIds(),
+        knowledge: knowledge,
+      );
+      addTearDown(() async {
+        controller.dispose();
+        await details.close();
+        await annotations.close();
+        await knowledge.close();
+      });
+      await tester.pumpWidget(_TestHost(controller: controller));
+      details.add(_detail(summary: preview));
+      await tester.pump();
+      await tester.pump();
+
+      final document = tester.state<ArticleDocumentViewState>(
+        find.byType(ArticleDocumentView),
+      );
+      final start = preview.indexOf(selected);
+      document.selectRange(start, start + selected.length);
+      await tester.pump();
+      await tester.tap(find.text('高亮并添加笔记'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).last, '连接到产品决策');
+      await tester.tap(find.text('保存'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('保存到知识库'));
+      await tester.pumpAndSettle();
+
+      expect(knowledge.items, hasLength(1));
+      final first = knowledge.items.single;
+      expect(first.source.sourceId, 'article-1');
+      expect(first.excerpts.single.quote, selected);
+      expect(first.excerpts.single.note, '连接到产品决策');
+      expect(first.notes, <String>['连接到产品决策']);
+      expect(first.markdown, contains(preview));
+      expect(find.textContaining('已保存到知识库'), findsOneWidget);
+      expect(find.byTooltip('更新知识库内容'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('更新知识库内容'));
+      await tester.pumpAndSettle();
+      expect(knowledge.items, hasLength(1));
+      expect(knowledge.items.single.id, first.id);
+    },
+  );
+
   testWidgets('highlight capture uses the revision still visible to selection',
       (
     tester,
