@@ -10,6 +10,7 @@ export 'src/network_monitor.dart';
 export 'src/opml_file_gateway.dart';
 export 'src/podcast_audio_engine.dart';
 export 'src/podcast_download_backend.dart';
+export 'src/secure_notion_authorization_vault.dart';
 export 'src/secure_sync_vault.dart';
 export 'src/share_gateway.dart';
 export 'src/system_audio_session.dart';
