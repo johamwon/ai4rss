@@ -93,6 +93,28 @@ void main() {
     expect(reordered, first);
     expect(changed, isNot(first));
   });
+
+  test('content hash changes with structured summary fields', () {
+    const hasher = KnowledgeContentHasher();
+    String hash(String whyItMatters) => hasher.hash(
+          title: 'Knowledge',
+          markdown: '# Knowledge',
+          sanitizedHtml: '<h1>Knowledge</h1>',
+          summary: ArticleSummary(
+            oneLine: 'Summary',
+            keyPoints: const <String>['One', 'Two', 'Three'],
+            whyItMatters: whyItMatters,
+            topics: const <String>['RSS'],
+            entities: const <String>['River'],
+            estimatedReadingMinutes: 2,
+            language: 'en',
+            model: 'replay',
+            promptVersion: 'article-summary@1',
+          ),
+        );
+
+    expect(hash('First reason'), isNot(hash('Changed reason')));
+  });
 }
 
 KnowledgeItem _item() {

@@ -46,7 +46,7 @@
     },
     {
       "path": "fixtures/ai/article_001.json",
-      "contains": ["River"]
+      "contains": ["River", "本地优先", "RSS"]
     },
     {
       "path": "fixtures/migrations/v001_populated.sql",

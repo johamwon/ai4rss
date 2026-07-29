@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:river_ai/river_ai.dart';
 import 'package:river_domain/river_domain.dart';
 
 final class FakeClock implements Clock {
@@ -47,21 +50,47 @@ final class FakeHttpPort implements HttpPort {
 }
 
 final class ReplayAiProvider implements AiProvider {
-  final Map<String, ArticleSummary> _responses = <String, ArticleSummary>{};
+  final Map<String, String> _responses = <String, String>{};
   final List<String> requests = <String>[];
 
+  @override
+  String get id => 'replay';
+
   void register(String articleId, ArticleSummary summary) {
-    _responses[articleId] = summary;
+    registerRaw(
+      articleId,
+      jsonEncode(
+        <String, Object?>{
+          'schemaVersion': ArticleSummarySchema.name,
+          'oneLine': summary.oneLine,
+          'keyPoints': summary.keyPoints,
+          'whyItMatters': summary.whyItMatters,
+          'topics': summary.topics,
+          'entities': summary.entities,
+          'estimatedReadingMinutes': summary.estimatedReadingMinutes,
+          'language': summary.language,
+        },
+      ),
+    );
+  }
+
+  void registerRaw(String operationId, String output) {
+    _responses[operationId] = output;
   }
 
   @override
-  Future<ArticleSummary> summarize(Article article) async {
-    requests.add(article.id);
-    final response = _responses[article.id];
+  Future<AiProviderResponse> complete(AiProviderRequest request) async {
+    requests.add(request.operationId);
+    final response = _responses[request.operationId];
     if (response == null) {
-      throw StateError('No replay AI response for ${article.id}');
+      throw StateError('No replay AI response for ${request.operationId}');
     }
-    return response;
+    return AiProviderResponse(
+      output: response,
+      model: request.model,
+      usage: AiTokenUsage(inputTokens: 0, outputTokens: 0),
+      elapsed: Duration.zero,
+    );
   }
 }
 

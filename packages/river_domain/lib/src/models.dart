@@ -204,6 +204,10 @@ final class ArticleSummary {
     required this.language,
     required this.model,
     required this.promptVersion,
+    this.whyItMatters = '',
+    this.topics = const <String>[],
+    this.entities = const <String>[],
+    this.estimatedReadingMinutes = 0,
   });
 
   final String oneLine;
@@ -211,6 +215,10 @@ final class ArticleSummary {
   final String language;
   final String model;
   final String promptVersion;
+  final String whyItMatters;
+  final List<String> topics;
+  final List<String> entities;
+  final int estimatedReadingMinutes;
 }
 
 enum ReadingEventType {
