@@ -10,6 +10,7 @@ import 'package:river_feed/river_feed.dart';
 import '../audio/audio_player_page.dart';
 import '../audio/audio_queue_page.dart';
 import '../audio/global_mini_player.dart';
+import '../knowledge/knowledge_library_page.dart';
 import '../podcast/podcast_library_page.dart';
 import '../sync/sync_account_page.dart';
 import 'app_dependencies.dart';
@@ -400,6 +401,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           clock: dependencies.clock,
           audioController: dependencies.audioController,
           audioQueue: dependencies.audioQueue,
+          knowledge: dependencies.knowledge,
         ),
       ),
     );
@@ -459,6 +461,22 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           queue: dependencies.audioQueue,
           player: dependencies.audioQueuePlayer,
           playback: dependencies.audioController,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openKnowledge() async {
+    final dependencies = RiverDependenciesScope.of(context);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => KnowledgeLibraryPage(
+          repository: dependencies.knowledge,
+          files: dependencies.knowledgeFiles,
+          imageFetcher: dependencies.knowledgeImages,
+          externalUri: dependencies.externalUri,
+          exportManager: dependencies.knowledgeExports,
+          notionWorkspace: dependencies.notionWorkspace,
         ),
       ),
     );
@@ -577,6 +595,8 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
   Future<void> _handleSubscriptionAction(_SubscriptionAction action) async {
     final dependencies = RiverDependenciesScope.of(context);
     switch (action) {
+      case _SubscriptionAction.openKnowledge:
+        await _openKnowledge();
       case _SubscriptionAction.createFolder:
         final name = await showDialog<String>(
           context: context,
@@ -643,6 +663,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           final subscriptions =
               subscriptionSnapshot.data ?? const <FeedSubscriptionRecord>[];
           final refreshing = _refreshState.isActive;
+          final compact = MediaQuery.sizeOf(context).width < 600;
           return FocusTraversalGroup(
             policy: ReadingOrderTraversalPolicy(),
             child: CallbackShortcuts(
@@ -672,6 +693,12 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
                   appBar: AppBar(
                     title: const Text('River'),
                     actions: <Widget>[
+                      if (!compact)
+                        IconButton(
+                          onPressed: () => unawaited(_openKnowledge()),
+                          icon: const Icon(Icons.auto_stories_outlined),
+                          tooltip: '知识库',
+                        ),
                       IconButton(
                         onPressed: () => unawaited(_openAudioQueue()),
                         icon: const Icon(Icons.queue_music),
@@ -726,16 +753,24 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
                         onSelected: (action) =>
                             unawaited(_handleSubscriptionAction(action)),
                         itemBuilder: (context) =>
-                            const <PopupMenuEntry<_SubscriptionAction>>[
-                          PopupMenuItem<_SubscriptionAction>(
+                            <PopupMenuEntry<_SubscriptionAction>>[
+                          if (compact)
+                            const PopupMenuItem<_SubscriptionAction>(
+                              value: _SubscriptionAction.openKnowledge,
+                              child: ListTile(
+                                leading: Icon(Icons.auto_stories_outlined),
+                                title: Text('知识库'),
+                              ),
+                            ),
+                          const PopupMenuItem<_SubscriptionAction>(
                             value: _SubscriptionAction.createFolder,
                             child: Text('新建文件夹'),
                           ),
-                          PopupMenuItem<_SubscriptionAction>(
+                          const PopupMenuItem<_SubscriptionAction>(
                             value: _SubscriptionAction.importOpml,
                             child: Text('导入 OPML'),
                           ),
-                          PopupMenuItem<_SubscriptionAction>(
+                          const PopupMenuItem<_SubscriptionAction>(
                             value: _SubscriptionAction.exportOpml,
                             child: Text('导出 OPML'),
                           ),
@@ -786,7 +821,12 @@ enum _FeedAction { toggle, move, delete }
 
 enum _FolderAction { rename, delete }
 
-enum _SubscriptionAction { createFolder, importOpml, exportOpml }
+enum _SubscriptionAction {
+  openKnowledge,
+  createFolder,
+  importOpml,
+  exportOpml,
+}
 
 final class _OfflineStatusBar extends StatelessWidget {
   const _OfflineStatusBar({

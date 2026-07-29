@@ -7,6 +7,7 @@ import 'package:river_design_system/river_design_system.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
 import 'package:river_feed/river_feed.dart';
+import 'package:river_knowledge/river_knowledge.dart';
 
 enum ArticleReaderLoadPhase { loading, ready, missing, failed }
 
@@ -31,11 +32,15 @@ final class ArticleReaderContent {
     required this.text,
     required this.source,
     required this.revision,
+    this.markdown,
+    this.sanitizedHtml,
   });
 
   final String text;
   final ArticleReaderContentSource source;
   final String revision;
+  final String? markdown;
+  final String? sanitizedHtml;
 
   int get priority => switch (source) {
         ArticleReaderContentSource.feed => 0,
@@ -67,8 +72,10 @@ final class ArticleReaderState {
     this.settings = const ReaderSettings(),
     this.annotations = const <ArticleAnnotation>[],
     this.audio = const AudioPlaybackState.initial(),
+    this.knowledgeItemId,
     this.operationFailure,
     this.isMutating = false,
+    this.isSavingKnowledge = false,
   });
 
   const ArticleReaderState.loading()
@@ -83,8 +90,10 @@ final class ArticleReaderState {
   final ReaderSettings settings;
   final List<ArticleAnnotation> annotations;
   final AudioPlaybackState audio;
+  final String? knowledgeItemId;
   final String? operationFailure;
   final bool isMutating;
+  final bool isSavingKnowledge;
 
   ArticleReaderState copyWith({
     ArticleReaderLoadPhase? loadPhase,
@@ -97,9 +106,11 @@ final class ArticleReaderState {
     ReaderSettings? settings,
     List<ArticleAnnotation>? annotations,
     AudioPlaybackState? audio,
+    String? knowledgeItemId,
     String? operationFailure,
     bool clearOperationFailure = false,
     bool? isMutating,
+    bool? isSavingKnowledge,
   }) =>
       ArticleReaderState(
         loadPhase: loadPhase ?? this.loadPhase,
@@ -113,10 +124,12 @@ final class ArticleReaderState {
         settings: settings ?? this.settings,
         annotations: annotations ?? this.annotations,
         audio: audio ?? this.audio,
+        knowledgeItemId: knowledgeItemId ?? this.knowledgeItemId,
         operationFailure: clearOperationFailure
             ? null
             : operationFailure ?? this.operationFailure,
         isMutating: isMutating ?? this.isMutating,
+        isSavingKnowledge: isSavingKnowledge ?? this.isSavingKnowledge,
       );
 }
 
@@ -138,6 +151,7 @@ final class ArticleReaderController extends ChangeNotifier {
         const UnavailableAudioPlaybackRepository(),
     AudioPlaybackController? audioController,
     PersistentAudioQueue? audioQueue,
+    KnowledgeRepository? knowledge,
   })  : _repository = repository,
         _extractor = extractor,
         _readerSettings = readerSettings,
@@ -148,6 +162,7 @@ final class ArticleReaderController extends ChangeNotifier {
         _offlineArticles = offlineArticles,
         _clock = clock,
         _audioQueue = audioQueue,
+        _knowledge = knowledge,
         _audioController = audioController ??
             AudioPlaybackController(
               engine: audio,
@@ -173,6 +188,7 @@ final class ArticleReaderController extends ChangeNotifier {
   final OfflineArticleManager _offlineArticles;
   final Clock _clock;
   final PersistentAudioQueue? _audioQueue;
+  final KnowledgeRepository? _knowledge;
   final AudioPlaybackController _audioController;
   final bool _ownsAudioController;
   StreamSubscription<FeedArticleDetailRecord?>? _articleSubscription;
@@ -193,6 +209,11 @@ final class ArticleReaderController extends ChangeNotifier {
   bool get canAnnotate => _ids != null && _state.content != null;
   bool get canQueueSpeech =>
       _audioQueue != null && _state.detail != null && _state.content != null;
+  bool get canSaveToKnowledge =>
+      _knowledge != null &&
+      _ids != null &&
+      _state.detail != null &&
+      _state.content != null;
 
   void retry() {
     _extractionStarted = false;
@@ -203,6 +224,7 @@ final class ArticleReaderController extends ChangeNotifier {
         settings: _state.settings,
         annotations: _state.annotations,
         audio: _state.audio,
+        knowledgeItemId: _state.knowledgeItemId,
       ),
     );
     _subscribeArticle();
@@ -297,6 +319,7 @@ final class ArticleReaderController extends ChangeNotifier {
           settings: _state.settings,
           annotations: _state.annotations,
           audio: _state.audio,
+          knowledgeItemId: _state.knowledgeItemId,
         ),
       );
       return;
@@ -318,10 +341,13 @@ final class ArticleReaderController extends ChangeNotifier {
         settings: _state.settings,
         annotations: _state.annotations,
         audio: _state.audio,
+        knowledgeItemId: _state.knowledgeItemId,
         operationFailure: _state.operationFailure,
         isMutating: _state.isMutating,
+        isSavingKnowledge: _state.isSavingKnowledge,
       ),
     );
+    unawaited(_refreshKnowledgeState(detail));
     if (!_openedMarked) {
       _openedMarked = true;
       unawaited(_setRead(true, automatic: true));
@@ -385,6 +411,8 @@ final class ArticleReaderController extends ChangeNotifier {
               : ArticleReaderContentSource.extracted,
           revision:
               '${article.extractor}@${article.extractorVersion}:${article.html.hashCode}',
+          markdown: article.plainText.trim(),
+          sanitizedHtml: article.html,
         );
         if (_state.audio.request case final request?
             when request.contentRevision != content.revision) {
@@ -763,6 +791,103 @@ final class ArticleReaderController extends ChangeNotifier {
     }
   }
 
+  Future<KnowledgeItem?> saveToKnowledge() async {
+    final repository = _knowledge;
+    final idGenerator = _ids;
+    final detail = _state.detail;
+    final content = _state.content;
+    if (repository == null ||
+        idGenerator == null ||
+        detail == null ||
+        content == null ||
+        _state.isSavingKnowledge) {
+      return null;
+    }
+    _setState(
+      _state.copyWith(
+        isSavingKnowledge: true,
+        clearOperationFailure: true,
+      ),
+    );
+    try {
+      final source = KnowledgeSourceReference(
+        kind: KnowledgeSourceKind.article,
+        sourceId: detail.id,
+        originalUrl: detail.canonicalUrl,
+        sourceTitle: detail.feedTitle,
+        author: detail.author,
+        publishedAt: detail.publishedAt,
+      );
+      final existing = await repository.findBySource(source);
+      final excerpts = _state.annotations
+          .map(
+            (annotation) => KnowledgeExcerpt(
+              quote: annotation.anchor.exact,
+              note: annotation.note,
+              annotationId: annotation.id,
+            ),
+          )
+          .toList(growable: false);
+      final notes = _state.annotations
+          .map((annotation) => annotation.note?.trim())
+          .whereType<String>()
+          .where((note) => note.isNotEmpty)
+          .toList(growable: false);
+      final markdown = content.markdown?.trim().isNotEmpty == true
+          ? content.markdown!.trim()
+          : content.text.trim();
+      final sanitizedHtml = content.sanitizedHtml ?? '';
+      final hash = const KnowledgeContentHasher().hash(
+        title: detail.title,
+        markdown: markdown,
+        sanitizedHtml: sanitizedHtml,
+        excerpts: excerpts,
+        notes: notes,
+        tags: existing?.tags ?? const <String>[],
+        topics: existing?.topics ?? const <String>[],
+        entities: existing?.entities ?? const <String>[],
+        summary: existing?.summary,
+      );
+      final now = _clock.now().toUtc();
+      final updatedAt = existing != null && !now.isAfter(existing.updatedAt)
+          ? existing.updatedAt.add(const Duration(microseconds: 1))
+          : now;
+      final saved = await repository.saveItem(
+        KnowledgeItem(
+          id: existing?.id ?? idGenerator.next(),
+          source: source,
+          title: detail.title,
+          markdown: markdown,
+          sanitizedHtml: sanitizedHtml,
+          summary: existing?.summary,
+          excerpts: excerpts,
+          notes: notes,
+          tags: existing?.tags ?? const <String>[],
+          topics: existing?.topics ?? const <String>[],
+          entities: existing?.entities ?? const <String>[],
+          contentHash: hash,
+          savedAt: existing?.savedAt ?? now,
+          updatedAt: updatedAt,
+        ),
+      );
+      _setState(
+        _state.copyWith(
+          knowledgeItemId: saved.id,
+          isSavingKnowledge: false,
+        ),
+      );
+      return saved;
+    } on Object {
+      _setState(
+        _state.copyWith(
+          operationFailure: '保存到知识库失败，本地文章与高亮未受影响',
+          isSavingKnowledge: false,
+        ),
+      );
+      return null;
+    }
+  }
+
   void reportProgress(double progress) {
     final normalized = progress.clamp(0, 1).toDouble();
     _pendingProgress = normalized;
@@ -772,6 +897,28 @@ final class ArticleReaderController extends ChangeNotifier {
 
   void clearOperationFailure() =>
       _setState(_state.copyWith(clearOperationFailure: true));
+
+  Future<void> _refreshKnowledgeState(FeedArticleDetailRecord detail) async {
+    final repository = _knowledge;
+    if (repository == null) return;
+    try {
+      final existing = await repository.findBySource(
+        KnowledgeSourceReference(
+          kind: KnowledgeSourceKind.article,
+          sourceId: detail.id,
+          originalUrl: detail.canonicalUrl,
+          sourceTitle: detail.feedTitle,
+          author: detail.author,
+          publishedAt: detail.publishedAt,
+        ),
+      );
+      if (existing != null && _state.detail?.id == detail.id) {
+        _setState(_state.copyWith(knowledgeItemId: existing.id));
+      }
+    } on Object {
+      // Knowledge lookup is an optional enhancement and must not block reading.
+    }
+  }
 
   Future<void> _mutate(
     Future<void> Function() operation, {
@@ -823,6 +970,8 @@ final class ArticleReaderController extends ChangeNotifier {
         revision: cached.contentHash ??
             '${cached.extractorName}@${cached.extractorVersion}:'
                 '${cached.extractedAt.microsecondsSinceEpoch}',
+        markdown: cached.markdown,
+        sanitizedHtml: cached.sanitizedHtml,
       );
     }
     final assessed = const FeedContentAssessor().assess(
@@ -836,6 +985,8 @@ final class ArticleReaderController extends ChangeNotifier {
       text: preview,
       source: ArticleReaderContentSource.feed,
       revision: 'feed:${preview.hashCode}',
+      markdown: preview,
+      sanitizedHtml: assessed.content.html,
     );
   }
 
@@ -924,6 +1075,7 @@ final class ArticleReaderPage extends StatefulWidget {
     this.audioPlayback = const UnavailableAudioPlaybackRepository(),
     this.audioController,
     this.audioQueue,
+    this.knowledge,
     super.key,
   });
 
@@ -941,6 +1093,7 @@ final class ArticleReaderPage extends StatefulWidget {
   final AudioPlaybackRepository audioPlayback;
   final AudioPlaybackController? audioController;
   final PersistentAudioQueue? audioQueue;
+  final KnowledgeRepository? knowledge;
 
   @override
   State<ArticleReaderPage> createState() => _ArticleReaderPageState();
@@ -967,6 +1120,7 @@ final class _ArticleReaderPageState extends State<ArticleReaderPage> {
       audioPlayback: widget.audioPlayback,
       audioController: widget.audioController,
       audioQueue: widget.audioQueue,
+      knowledge: widget.knowledge,
     );
   }
 
@@ -1777,6 +1931,23 @@ final class _ReaderActions extends StatelessWidget {
               ),
               tooltip: state.annotations.isEmpty ? '选择正文即可添加高亮' : '高亮与笔记',
             ),
+            IconButton(
+              onPressed:
+                  !controller.canSaveToKnowledge || state.isSavingKnowledge
+                      ? null
+                      : () => unawaited(_saveToKnowledge(context)),
+              icon: state.isSavingKnowledge
+                  ? const SizedBox.square(
+                      dimension: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      state.knowledgeItemId == null
+                          ? Icons.library_add_outlined
+                          : Icons.library_add_check,
+                    ),
+              tooltip: state.knowledgeItemId == null ? '保存到知识库' : '更新知识库内容',
+            ),
             _OfflineArticleAction(state: state, controller: controller),
             IconButton(
               onPressed: () => unawaited(
@@ -1793,6 +1964,16 @@ final class _ReaderActions extends StatelessWidget {
 
   Future<void> _share(BuildContext context) async {
     await controller.shareArticle(anchor: _shareAnchorFor(context));
+  }
+
+  Future<void> _saveToKnowledge(BuildContext context) async {
+    final saved = await controller.saveToKnowledge();
+    if (!context.mounted || saved == null) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('已保存到知识库，高亮与笔记已一并保留')),
+      );
   }
 }
 

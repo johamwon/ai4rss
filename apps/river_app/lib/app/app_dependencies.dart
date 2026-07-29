@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:drift_flutter/drift_flutter.dart';
@@ -9,6 +10,8 @@ import 'package:river_feed/river_feed.dart';
 import 'package:river_knowledge/river_knowledge.dart';
 import 'package:river_platform/river_platform.dart';
 import 'package:river_sync/river_sync.dart';
+
+import '../knowledge/notion_workspace.dart';
 
 final class AppDependencies {
   AppDependencies({
@@ -31,6 +34,8 @@ final class AppDependencies {
     OpmlFileGateway? opmlFiles,
     KnowledgeMarkdownFileGateway? knowledgeFiles,
     KnowledgeImageFetcher? knowledgeImages,
+    KnowledgeConnector? notionConnector,
+    this.notionWorkspace,
     this.syncAccount,
   })  : knowledgeFiles =
             knowledgeFiles ?? const PlatformKnowledgeMarkdownFileGateway(),
@@ -50,6 +55,16 @@ final class AppDependencies {
     jobs = PersistentJobQueue(database);
     feeds = DriftFeedRepository(database);
     knowledge = DriftKnowledgeRepository(database);
+    knowledgeExports = notionConnector == null
+        ? null
+        : DurableKnowledgeExportManager(
+            jobs: jobs,
+            repository: knowledge,
+            connectors: <KnowledgeConnector>[notionConnector],
+            clock: clock,
+            ids: ids,
+          );
+    unawaited(knowledgeExports?.start());
     podcasts = DriftPodcastRepository(database);
     podcastDownloadStore = DriftPodcastDownloadStore(database);
     podcastDownloads = DurablePodcastDownloadManager(
@@ -148,6 +163,35 @@ final class AppDependencies {
     final audioSystemSession = backgroundExecution
         ? const UnavailableAudioSystemSession()
         : await SystemAudioSession.create();
+    final externalUri = UrlLauncherExternalUriGateway();
+    KnowledgeConnector? notionConnector;
+    NotionWorkspaceExperience? notionWorkspace;
+    const notionBrokerUrl = String.fromEnvironment('RIVER_NOTION_BROKER_URL');
+    if (notionBrokerUrl.isNotEmpty && !backgroundExecution) {
+      final transport = IoNotionHttpTransport();
+      final vault = PlatformSecureNotionAuthorizationVault.standard();
+      final broker = HttpNotionOAuthBroker(
+        brokerBaseUri: Uri.parse(notionBrokerUrl),
+        transport: transport,
+      );
+      final connector = NotionApiConnector(
+        transport: transport,
+        vault: vault,
+        oauthBroker: broker,
+      );
+      notionConnector = connector;
+      notionWorkspace = LiveNotionWorkspaceExperience(
+        vault: vault,
+        connection: NotionConnectionController(
+          broker: broker,
+          vault: vault,
+        ),
+        targets: connector,
+        connector: connector,
+        externalUri: externalUri,
+        selectionStore: SecureNotionTargetSelectionStore.standard(),
+      );
+    }
     return AppDependencies(
       clock: clock,
       ids: SecureIdGenerator(),
@@ -164,11 +208,13 @@ final class AppDependencies {
       share: SharePlusGateway(),
       audio: audio,
       audioSystemSession: audioSystemSession,
-      externalUri: UrlLauncherExternalUriGateway(),
+      externalUri: externalUri,
       network: ConnectivityNetworkMonitor(),
       podcastTransfer: IoPodcastTransferBackend(),
       http: http,
       database: database,
+      notionConnector: notionConnector,
+      notionWorkspace: notionWorkspace,
     );
   }
 
@@ -189,10 +235,12 @@ final class AppDependencies {
   final OpmlFileGateway opmlFiles;
   final KnowledgeMarkdownFileGateway knowledgeFiles;
   final KnowledgeImageFetcher knowledgeImages;
+  final NotionWorkspaceExperience? notionWorkspace;
   final SyncAccountExperience? syncAccount;
   late final PersistentJobQueue jobs;
   late final DriftFeedRepository feeds;
   late final DriftKnowledgeRepository knowledge;
+  late final DurableKnowledgeExportManager? knowledgeExports;
   late final DriftPodcastRepository podcasts;
   late final DriftPodcastDownloadStore podcastDownloadStore;
   late final DurablePodcastDownloadManager podcastDownloads;
@@ -212,6 +260,8 @@ final class AppDependencies {
   final RiverDatabase _database;
 
   Future<void> close() async {
+    await knowledgeExports?.close();
+    await notionWorkspace?.close();
     await audioQueuePlayer.dispose();
     await audioController.dispose();
     await audioSystemSession.dispose();

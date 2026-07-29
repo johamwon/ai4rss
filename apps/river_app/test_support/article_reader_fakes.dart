@@ -344,6 +344,102 @@ final class MemoryAudioPlaybackRepository implements AudioPlaybackRepository {
   }
 }
 
+final class MemoryKnowledgeRepository implements KnowledgeRepository {
+  final List<KnowledgeItem> items = <KnowledgeItem>[];
+  final List<KnowledgeExternalMapping> mappings = <KnowledgeExternalMapping>[];
+  final StreamController<void> _changes =
+      StreamController<void>.broadcast(sync: true);
+
+  @override
+  Stream<List<KnowledgeItem>> watchItems() async* {
+    yield List<KnowledgeItem>.unmodifiable(items);
+    yield* _changes.stream.map(
+      (_) => List<KnowledgeItem>.unmodifiable(items),
+    );
+  }
+
+  @override
+  Stream<KnowledgeItem?> watchItem(String itemId) async* {
+    yield _item(itemId);
+    yield* _changes.stream.map((_) => _item(itemId));
+  }
+
+  @override
+  Future<KnowledgeItem?> findBySource(
+    KnowledgeSourceReference source,
+  ) async {
+    for (final item in items) {
+      if (item.source.stableKey == source.stableKey) return item;
+    }
+    return null;
+  }
+
+  @override
+  Future<KnowledgeItem> saveItem(KnowledgeItem item) async {
+    final existing = await findBySource(item.source);
+    final stored = existing == null
+        ? item
+        : item.withId(existing.id, savedAt: existing.savedAt);
+    items.removeWhere(
+      (value) =>
+          value.id == stored.id ||
+          value.source.stableKey == stored.source.stableKey,
+    );
+    items.add(stored);
+    _changes.add(null);
+    return stored;
+  }
+
+  @override
+  Future<void> deleteItem(String itemId) async {
+    items.removeWhere((item) => item.id == itemId);
+    mappings.removeWhere((mapping) => mapping.knowledgeItemId == itemId);
+    _changes.add(null);
+  }
+
+  @override
+  Stream<List<KnowledgeExternalMapping>> watchExternalMappings(
+    String itemId,
+  ) async* {
+    List<KnowledgeExternalMapping> current() => mappings
+        .where((mapping) => mapping.knowledgeItemId == itemId)
+        .toList(growable: false);
+    yield current();
+    yield* _changes.stream.map((_) => current());
+  }
+
+  @override
+  Future<void> upsertExternalMapping(KnowledgeExternalMapping mapping) async {
+    mappings.removeWhere((value) => value.stableKey == mapping.stableKey);
+    mappings.add(mapping);
+    _changes.add(null);
+  }
+
+  @override
+  Future<void> deleteExternalMapping({
+    required String knowledgeItemId,
+    required String connectorId,
+    required String destinationId,
+  }) async {
+    mappings.removeWhere(
+      (mapping) =>
+          mapping.knowledgeItemId == knowledgeItemId &&
+          mapping.connectorId == connectorId &&
+          mapping.destinationId == destinationId,
+    );
+    _changes.add(null);
+  }
+
+  Future<void> close() => _changes.close();
+
+  KnowledgeItem? _item(String itemId) {
+    for (final item in items) {
+      if (item.id == itemId) return item;
+    }
+    return null;
+  }
+}
+
 ArticleReaderController buildReaderController({
   required String articleId,
   required Stream<FeedArticleDetailRecord?> Function(String articleId) watch,
@@ -358,6 +454,7 @@ ArticleReaderController buildReaderController({
   AudioEngine audio = const UnavailableAudioEngine(),
   AudioPlaybackRepository audioPlayback =
       const UnavailableAudioPlaybackRepository(),
+  KnowledgeRepository? knowledge,
 }) =>
     ArticleReaderController(
       articleId: articleId,
@@ -373,4 +470,5 @@ ArticleReaderController buildReaderController({
       clock: const FixedReaderClock(),
       audio: audio,
       audioPlayback: audioPlayback,
+      knowledge: knowledge,
     );
