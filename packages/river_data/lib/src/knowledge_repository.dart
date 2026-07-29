@@ -232,6 +232,10 @@ String? _encodeSummary(domain.ArticleSummary? summary) => summary == null
     : jsonEncode(<String, Object>{
         'oneLine': summary.oneLine,
         'keyPoints': summary.keyPoints,
+        'whyItMatters': summary.whyItMatters,
+        'topics': summary.topics,
+        'entities': summary.entities,
+        'estimatedReadingMinutes': summary.estimatedReadingMinutes,
         'language': summary.language,
         'model': summary.model,
         'promptVersion': summary.promptVersion,
@@ -247,6 +251,14 @@ domain.ArticleSummary? _decodeSummary(String? encoded) {
     return domain.ArticleSummary(
       oneLine: value['oneLine'] as String,
       keyPoints: keyPoints.cast<String>(),
+      whyItMatters: value['whyItMatters'] as String? ?? '',
+      topics:
+          (value['topics'] as List<Object?>?)?.cast<String>() ??
+          const <String>[],
+      entities:
+          (value['entities'] as List<Object?>?)?.cast<String>() ??
+          const <String>[],
+      estimatedReadingMinutes: value['estimatedReadingMinutes'] as int? ?? 0,
       language: value['language'] as String,
       model: value['model'] as String,
       promptVersion: value['promptVersion'] as String,

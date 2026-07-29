@@ -54,6 +54,10 @@ void main() {
     expect(second.id, 'knowledge-first');
     expect(second.savedAt, now);
     expect(second.markdown, '# Updated');
+    expect(second.summary?.whyItMatters, 'Useful context');
+    expect(second.summary?.topics, <String>['RSS']);
+    expect(second.summary?.entities, <String>['River']);
+    expect(second.summary?.estimatedReadingMinutes, 3);
     expect(await database.select(database.knowledgeItems).get(), hasLength(1));
     expect(
       (await repository.findBySource(second.source))?.contentHash,
@@ -186,7 +190,11 @@ KnowledgeItem _item(
   sanitizedHtml: '<h1>Knowledge</h1>',
   summary: const ArticleSummary(
     oneLine: 'One line',
-    keyPoints: <String>['One', 'Two'],
+    keyPoints: <String>['One', 'Two', 'Three'],
+    whyItMatters: 'Useful context',
+    topics: <String>['RSS'],
+    entities: <String>['River'],
+    estimatedReadingMinutes: 3,
     language: 'en',
     model: 'fixture',
     promptVersion: '1',

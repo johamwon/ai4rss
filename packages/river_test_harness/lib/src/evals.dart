@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:river_ai/river_ai.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
 import 'package:river_feed/river_feed.dart';
@@ -172,17 +173,24 @@ final class HarnessEvals {
     for (final item in cases) {
       final id = item['id'] as String;
       final replay = _map(item['replay']);
-      final oneLine = replay['oneLine'];
-      final keyPoints = replay['keyPoints'];
-      if (oneLine is! String || oneLine.trim().isEmpty) {
-        failures.add(EvalFailure(id, 'oneLine is missing'));
-      }
-      if (keyPoints is! List || keyPoints.isEmpty) {
-        failures.add(EvalFailure(id, 'keyPoints are missing'));
+      ArticleSummary summary;
+      try {
+        summary = const ArticleSummarySchema().parse(
+          jsonEncode(replay),
+          model: item['model'] as String,
+          promptVersion: item['promptVersion'] as String,
+          expectedLanguage: item['language'] as String,
+        );
+      } on AiSchemaFailure catch (failure) {
+        failures.add(EvalFailure(id, 'schema failure: ${failure.code.name}'));
+        continue;
       }
       final combined = <String>[
-        if (oneLine is String) oneLine,
-        if (keyPoints is List) ...keyPoints.whereType<String>(),
+        summary.oneLine,
+        ...summary.keyPoints,
+        summary.whyItMatters,
+        ...summary.topics,
+        ...summary.entities,
       ].join(' ');
       for (final fact in _strings(item['requiredFacts'])) {
         if (!combined.contains(fact)) {

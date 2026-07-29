@@ -3,14 +3,24 @@
     {
       "id": "summary-article-001",
       "fixture": "fixtures/ai/article_001.json",
+      "model": "replay-model",
+      "promptVersion": "article-summary@1",
+      "language": "zh-CN",
       "requiredFacts": ["本地优先", "RSS"],
       "forbiddenClaims": ["出售用户数据"],
       "replay": {
+        "schemaVersion": "river.article-summary.v1",
         "oneLine": "River 是本地优先的 RSS 阅读工具。",
-        "keyPoints": ["基础阅读不要求云端账号"],
-        "language": "zh-CN",
-        "model": "replay-model",
-        "promptVersion": "summary-v1"
+        "keyPoints": [
+          "River 面向 RSS 阅读。",
+          "基础阅读不依赖云端账号。",
+          "产品采用本地优先原则。"
+        ],
+        "whyItMatters": "用户无需交出基础阅读数据即可使用核心能力。",
+        "topics": ["RSS", "本地优先"],
+        "entities": ["River"],
+        "estimatedReadingMinutes": 1,
+        "language": "zh-CN"
       }
     }
   ]

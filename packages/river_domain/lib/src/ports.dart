@@ -65,10 +65,6 @@ abstract interface class ExtractionCache {
   });
 }
 
-abstract interface class AiProvider {
-  Future<ArticleSummary> summarize(Article article);
-}
-
 abstract interface class ReaderSettingsRepository {
   Stream<ReaderSettings> watchSettings();
 

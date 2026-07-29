@@ -71,6 +71,10 @@ final class KnowledgeContentHasher {
           : <String, Object>{
               'oneLine': summary.oneLine,
               'keyPoints': summary.keyPoints,
+              'whyItMatters': summary.whyItMatters,
+              'topics': summary.topics,
+              'entities': summary.entities,
+              'estimatedReadingMinutes': summary.estimatedReadingMinutes,
               'language': summary.language,
               'model': summary.model,
               'promptVersion': summary.promptVersion,
