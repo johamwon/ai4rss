@@ -12,6 +12,9 @@ final class DriftReadingEventRepository
   static const _settingsId = 'reading-behavior';
 
   @override
+  Future<bool> needsIntroduction() async => await _readSettingsRow() == null;
+
+  @override
   Future<domain.ReadingEventRecordResult> record(domain.ReadingEvent event) {
     event.validate();
     return database.transaction(() async {
@@ -138,10 +141,14 @@ final class DriftReadingEventRepository
   }
 
   Future<domain.ReadingBehaviorSettings> _readSettings() async {
+    return _settingsFromRow(await _readSettingsRow());
+  }
+
+  Future<ReadingBehaviorSettingsRow?> _readSettingsRow() {
     final query = database.select(database.readingBehaviorSettingsRows)
       ..where((row) => row.id.equals(_settingsId))
       ..limit(1);
-    return _settingsFromRow(await query.getSingleOrNull());
+    return query.getSingleOrNull();
   }
 
   Future<void> _checkpointSecureDeletion() =>

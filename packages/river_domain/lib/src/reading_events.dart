@@ -13,6 +13,7 @@ abstract interface class ReadingEventRepository {
 
 abstract interface class ReadingBehaviorRepository
     implements ReadingEventRepository {
+  Future<bool> needsIntroduction();
   Stream<ReadingBehaviorSettings> watchSettings();
   Future<ReadingBehaviorSettings> readSettings();
   Future<void> saveSettings(
@@ -27,7 +28,7 @@ abstract interface class ReadingBehaviorRepository
 
 final class ReadingBehaviorSettings {
   const ReadingBehaviorSettings({
-    this.captureEnabled = true,
+    this.captureEnabled = false,
     this.retentionDays = 90,
   });
 

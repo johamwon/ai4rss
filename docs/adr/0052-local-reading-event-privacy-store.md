@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted for PREF-003.
+Accepted for PREF-003. The unacknowledged default in Decision 1 is amended
+by ADR 0053.
 
 ## Context
 
@@ -19,10 +20,9 @@ export their data independently of account or cloud availability.
 ## Decision
 
 1. Drift schema v15 adds one additive singleton
-   `reading_behavior_settings_rows` table. Capture defaults to enabled and
-   retention defaults to 90 days; supported retention is 1–3650 days. No row is
-   required for defaults, and an explicit disabled value persists across
-   restart.
+   `reading_behavior_settings_rows` table. Retention defaults to 90 days and
+   supported retention is 1–3650 days. A row is not required for the storage
+   schema; ADR 0053 defines a missing row as unacknowledged and capture-disabled.
 2. `ReadingBehaviorRepository` extends the event recorder with settings watch,
    read and save, ordered local event read, retention purge, complete clear, and
    JSON export. It exposes no network or upload method.
@@ -46,8 +46,8 @@ export their data independently of account or cloud availability.
 
 ## Evidence
 
-- Defaults are enabled/90 days and a saved disabled/30-day preference is
-  observable and blocks new rows.
+- The repository persists enabled/90-day and disabled/30-day choices, and a
+  disabled choice blocks new rows.
 - Retention removes a 91-day-old event while preserving the exact 90-day
   boundary and a recent event.
 - Export sorts out-of-order inserts and contains no seeded article title or
@@ -59,10 +59,9 @@ export their data independently of account or cloud availability.
 
 ## Consequences and rollback
 
-PREF-004 can expose the already durable controls and explain them before capture
-is first enabled in the UI. Existing events are not automatically deleted when
-capture is disabled; users choose clear independently, and retention still
-applies.
+PREF-004 exposes the durable controls and explains them before capture is first
+enabled. Existing events are not automatically deleted when capture is
+disabled; users choose clear independently, and retention still applies.
 
 The v15 table is additive and may remain unused during a feature rollback.
 However, a binary rollback to code that does not read the v15 capture gate could
