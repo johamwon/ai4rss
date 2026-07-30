@@ -37,6 +37,7 @@
 - KB-007：阅读页将当前净化正文、高亮和笔记按来源幂等保存为同一 KnowledgeItem，并在窄屏列表→详情、Windows 宽屏列表＋详情布局中浏览、筛选和导出 Markdown。Notion 体验页通过系统浏览器启动 OAuth，接受一次性完成码或匹配 pending flow 的安全回调，展示工作区与 Page/Data Source 目标并在安全存储中保留选择；断开时撤销 Token 但不删除本地知识或远端页面。详情页只经耐久导出管理器排队，显示未排队/等待/运行/成功/失败/取消状态、稳定失败说明、人工重试和外部页面入口。未配置 Broker、离线或 Notion 故障均不影响本地知识与 Markdown 兜底。
 - AI-001：AI Provider 使用供应商无关的有界结构化请求/响应、Token 用量、耗时和稳定失败码，所有诊断字符串排除文章、Prompt、模型输出、Token 与远端错误正文。`river.article-summary.v1` 严格要求一句话、3–7 个要点、阅读价值、主题、实体、阅读时长、语言和版本，不接受额外字段；首次 Schema 失败只允许一次修复。Prompt 以 `id@正整数版本` 注册，变量必须精确声明，同版本内容变化直接拒绝并要求升版。生产 Schema 已接入确定性 Replay Harness。
 - AI-002：统一 OpenAI-compatible BYOK 适配器覆盖 OpenAI、Anthropic、Gemini、DeepSeek 与通义千问五个预置，并允许显式 HTTPS 自定义端点和模型；按供应商能力选择严格 JSON Schema、JSON Object 或本地 Prompt/Schema 校验，兼容两种 Token 上限参数。网络层只执行无重定向的有界 POST，限制请求/响应、超时和 Retry-After，将鉴权、配额、限流、超时、离线、服务端及非法响应映射为稳定失败码；所有诊断排除 API Key、正文、模型输出、远端错误正文和自定义 URL 路径。完整 BYOK 配置通过 Android Keystore、iOS Keychain、Windows DPAPI 的版本化安全仓库保存，损坏或未来 Schema 不静默删除。五类供应商确定性 Replay、真实 Windows 安全仓库 Integration Test 与 Merge/Nightly CI 已覆盖。
+- AI-003：长文按原始段落安全分块，默认重叠一个段落单元；超长单段在标点/空白附近切分且不破坏代理对。Map Schema 强制每条事实携带文章 ID 与半开段落范围，越界、错语言和结构漂移在本地拒绝；跨块相同事实去重并保留全部引用。Reduce 在字符与 240 KiB UTF-8 请求双预算内先保证每块至少一条事实，再纳入附加事实，输出实际采用的来源和省略数。调用前以 Unicode 感知 Token 估算器、模型单价和包含一次修复的调用上限给出费用上界，实际 Token 独立累计。版本化检查点保存内容/模型/Prompt/语言/预算指纹、已完成 Map 与累计用量；三端应用私有目录以临时文件和备份恢复持久化，进程重启后跳过已完成分块，成功后清除，损坏/未来 Schema 不静默删除。
 - READ-006：离线文章下载使用持久任务、租约恢复、稳定幂等键、有限退避和显式失败重试；飞行模式只入队不请求，启动、回到前台及网络恢复后继续处理。任务仅保存文章 ID，成功正文进入现有净化缓存，关闭并重开数据库后可直接阅读。
 - READ-007：应用遵循系统高对比模式，关键文字配色达到 WCAG AA 4.5:1；首页与阅读页提供阅读顺序焦点路径和 Windows 主操作快捷键。文章行暴露单一可操作语义节点，阅读标题标记为标题，状态同时使用图标、文本和实时播报；200% 系统字号窄屏列表、键盘操作和屏幕阅读器语义均有自动覆盖。
 - TTS-001：定义供应商无关的统一 `AudioEngine` 契约，覆盖能力、音色、加载、事件、播放控制、语速/音调，以及媒体时长或文章句内位置；文章语音计划要求稳定正文版本和连续分段。纯 Dart 分句器保留 UTF-16 正文偏移，覆盖中英文标点、闭合引号、小数、常见缩写、超长句安全切分、围栏代码占位和空正文。
@@ -75,7 +76,7 @@
 1. TTS-004 真机验收：Android/iOS 锁屏、来电/其他音频中断、蓝牙和进程后台矩阵。
 2. 阶段 7 POD-002：完成 Android/iOS/Windows 三端真实网络切换、系统清理文件、磁盘满和长音频播放验收。
 3. 阶段 7 POD-004/005 真机验收：完成章节跳转、文字稿外部打开、后台连续播放、锁屏切换队列项和页面往返矩阵。
-4. 阶段 9 AI-003：实现长文 Map-Reduce、多语言输出与费用预估。
+4. 阶段 9 AI-004：实现摘要缓存键、持久缓存与同请求合并。
 
 ## 最近验证
 
@@ -84,18 +85,19 @@
 - `river_domain`：20 个测试通过，新增连接器请求、公开外部 URL 与无歧义目标键边界；继续覆盖统一知识对象、来源引用、外部映射、DOM/文本双锚点、跨来源队列、统一音频快照、播放参数、后台刷新策略与核心模型。
 - `river_data`：99 个测试通过，结构化 AI 摘要新增字段可在现有知识 JSON 列中完整往返，旧摘要缺失字段仍向后兼容且无需迁移；继续覆盖知识导出耐久队列、来源并发去重、外部映射、迁移、高亮/笔记、Podcasting 2.0 元数据、统一队列、网络/磁盘/租约恢复、同步与 10,000 篇文章 P95 <500ms 自动门槛。
 - `river_knowledge`：25 个测试通过，结构化 AI 摘要的阅读价值、主题、实体与预计时长现已进入知识内容哈希，任一字段变化都会触发正确的外部同步；继续覆盖 Notion OAuth、目标分页、幂等恢复、托管块更新、单篇/批量文件、1,000 篇同名导出、图片重写、危险资源拒绝及 ZIP 稳定性。
-- `river_ai`：26 个测试通过，新增五类 OpenAI-compatible BYOK 预置、供应商差异化请求、真实 HTTP 适配器、无重定向与请求/响应上限、稳定错误映射、Retry-After 边界、API Key/正文/输出/URL 路径诊断脱敏，以及超大多字节请求不可重试保护；继续覆盖严格摘要 Schema、完整字段映射、一次修复和 Prompt 版本不可变。
+- `river_ai`：37 个测试通过，新增段落分块/重叠、超长单段与代理对安全、Map 引用 Schema、边界/跨块事实、去重保留多引用、中断恢复、清理降级、UTF-8/字符/块数预算、多语言 Reduce、调用前 Token/费用上界和 60 块预检性能门槛；继续覆盖五类 BYOK、严格摘要 Schema、一次修复和 Prompt 版本不可变。
 - `river_test_harness`：2 个包级测试通过，Fake Connector 覆盖连接测试、Create、Update、Delete 和 Status 完整契约；确定性场景继续控制时间、HTTP 与 AI 回放。
 - `river_app`：74 个测试通过，新增文章→高亮/笔记→幂等知识保存、响应式知识列表/详情、Markdown 导出、Notion OAuth/目标选择、Token 脱敏、同步失败重试和外部页面入口；继续覆盖全局迷你播放器、完整播放页、收听队列、播客、本地文件优先播放、同步状态、冲突历史、阅读器、后台媒体、Windows SMTC 与跨尺寸 Golden。
 - `river_design_system`：2 个测试通过，浅色与深色高对比主题的关键文字组合均达到 WCAG AA 4.5:1。
 - `river_audio`：34 个测试通过，新增 Podcast 章节跳转、继续播放与断点落盘；继续覆盖统一持久队列跨来源选择、完成后连续消费、节目倍速、文章/Podcast 类型路由、两小时长文预算、有界预取、焦点拒绝、系统媒体命令、中断恢复、进度写入、定时暂停与跨语言分句。
 - `river_sync`：75 个测试通过，新增密文服务多租户隔离、授权、原子配额、限流、备份校验、灾演恢复、删除和不可读管理员指标；继续覆盖账号体验、字段/语义合并、幂等重复、墓碑压缩、双设备分页、AES/X25519/HKDF、恢复和设备生命周期。
 - `river_extract`：29 个测试通过，新增完整 Feed 零网页请求、摘要静态下载和失败后平台回退编排覆盖。
-- `river_platform`：48 个测试通过，新增完整 BYOK 配置的版本化安全仓库、串行读写、清除及损坏/未来 Schema 保留；继续覆盖 Notion Token、Markdown 单文件/ZIP 系统保存、真实 HTTP Range/If-Range 续传、Podcast 播放/下载、安全仓库、系统音频会话、系统 TTS、外部原文、链路状态、后台调度及动态渲染契约。
-- Harness：fixtures 16/16、feeds 3/3、extraction 7/7、AI replay 1/1、AI provider replay 5/5、ranking 2/2。
+- `river_platform`：50 个测试通过，新增长文 Map 检查点的应用私有目录持久化、跨实例恢复、临时文件/备份写入和损坏值保留；继续覆盖完整 BYOK、Notion Token、Markdown 单文件/ZIP 系统保存、真实 HTTP Range/If-Range 续传、Podcast 播放/下载、安全仓库、系统音频会话、系统 TTS、外部原文、链路状态、后台调度及动态渲染契约。
+- Harness：fixtures 16/16、feeds 3/3、extraction 7/7、AI replay 1/1、AI provider replay 5/5、AI long replay 1/1、ranking 2/2。
 - 本机 Windows Debug 构建通过；原生命令行测试 1/1、隐藏启动 Smoke 与真实 SMTC MethodChannel Integration Test 均通过。Windows 统一启用 `/utf-8` 并保留 `/WX`，避免非英文系统代码页造成第三方插件误失败。
 - Windows 真实 DPAPI 安全仓库 Integration Test 1/1 通过，测试会写入、读回并清理会话、X25519 私钥和账户数据密钥；已加入 Merge/Nightly CI。
 - Windows 真实 Notion Token 安全仓库 Integration Test 1/1 通过，测试会写入、读回并清理 OAuth access/refresh Token；已加入 Merge/Nightly CI。
 - Windows 真实 AI BYOK 安全仓库 Integration Test 1/1 通过，测试会写入、读回并清理 Provider、模型、自定义端点和 API Key；已加入 Merge/Nightly CI。
+- Windows 真实 AI 长文检查点 Integration Test 1/1 通过，使用系统应用支持目录写入、跨 Store 实例恢复并清理 Map 事实与累计 Token；已加入 Merge/Nightly CI。
 - Windows 真实知识闭环 Integration Test 1/1 通过，在桌面 Runner 内执行文章→高亮/笔记→本地知识→Notion 目标→成功同步状态；已加入 Merge/Nightly CI。
 - 三端构建：最近一次 Android/iOS/Windows 主分支 Debug 构建及产物上传均已通过；READ-002 的 Windows 原生滚动/选区旅程和 FEED-007 计划任务 Smoke 已加入 Merge 与 Nightly CI。

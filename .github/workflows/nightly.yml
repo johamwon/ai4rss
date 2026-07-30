@@ -82,6 +82,7 @@ jobs:
           flutter test integration_test/secure_sync_vault_test.dart -d windows
           flutter test integration_test/secure_notion_authorization_vault_test.dart -d windows
           flutter test integration_test/secure_ai_byok_configuration_vault_test.dart -d windows
+          flutter test integration_test/ai_long_summary_checkpoint_store_test.dart -d windows
           flutter test integration_test/knowledge_journey_test.dart -d windows
         working-directory: apps/river_app
 

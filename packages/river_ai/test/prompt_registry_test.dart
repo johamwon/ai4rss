@@ -12,7 +12,12 @@ void main() {
     expect(registry.latest('article-summary').version, 1);
     expect(
       registry.templates.map((template) => template.versionKey),
-      <String>['article-summary@1', 'article-summary-repair@1'],
+      <String>[
+        'article-summary@1',
+        'article-summary-map@1',
+        'article-summary-reduce@1',
+        'article-summary-repair@1',
+      ],
     );
   });
 
