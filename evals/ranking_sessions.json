@@ -141,6 +141,153 @@
           "exploration": 0.2
         }
       }
+    },
+    {
+      "id": "diversity-exploration-negative-guardrails",
+      "kind": "guardrail-ranking",
+      "expectedGuardrailVersion": 1,
+      "limit": 6,
+      "profileEvidence": [
+        {
+          "eventId": "negative-bad",
+          "articleId": "history-bad",
+          "type": "notInterested",
+          "sourceId": "source-bad",
+          "topics": ["toxic"]
+        }
+      ],
+      "blockedTopics": ["gambling"],
+      "candidates": [
+        {
+          "articleId": "source-a-0",
+          "sourceId": "source-a",
+          "ageHours": 0,
+          "semantic": 1.0,
+          "completion": 0.5,
+          "exploration": 0.0,
+          "topics": []
+        },
+        {
+          "articleId": "source-a-1",
+          "sourceId": "source-a",
+          "ageHours": 0,
+          "semantic": 0.98,
+          "completion": 0.5,
+          "exploration": 0.0,
+          "topics": []
+        },
+        {
+          "articleId": "source-a-2",
+          "sourceId": "source-a",
+          "ageHours": 0,
+          "semantic": 0.96,
+          "completion": 0.5,
+          "exploration": 0.0,
+          "topics": []
+        },
+        {
+          "articleId": "source-a-3",
+          "sourceId": "source-a",
+          "ageHours": 0,
+          "semantic": 0.94,
+          "completion": 0.5,
+          "exploration": 0.0,
+          "topics": []
+        },
+        {
+          "articleId": "source-a-4",
+          "sourceId": "source-a",
+          "ageHours": 0,
+          "semantic": 0.92,
+          "completion": 0.5,
+          "exploration": 0.0,
+          "topics": []
+        },
+        {
+          "articleId": "source-a-5",
+          "sourceId": "source-a",
+          "ageHours": 0,
+          "semantic": 0.9,
+          "completion": 0.5,
+          "exploration": 0.0,
+          "topics": []
+        },
+        {
+          "articleId": "source-b-0",
+          "sourceId": "source-b",
+          "ageHours": 0,
+          "semantic": 0.75,
+          "completion": 0.5,
+          "exploration": 0.0,
+          "topics": []
+        },
+        {
+          "articleId": "source-b-1",
+          "sourceId": "source-b",
+          "ageHours": 0,
+          "semantic": 0.7,
+          "completion": 0.5,
+          "exploration": 0.0,
+          "topics": []
+        },
+        {
+          "articleId": "explore-c-0",
+          "sourceId": "source-c",
+          "ageHours": 0,
+          "semantic": 0.45,
+          "completion": 0.5,
+          "exploration": 0.95,
+          "topics": []
+        },
+        {
+          "articleId": "explore-c-1",
+          "sourceId": "source-c",
+          "ageHours": 0,
+          "semantic": 0.4,
+          "completion": 0.5,
+          "exploration": 0.9,
+          "topics": []
+        },
+        {
+          "articleId": "bad-source",
+          "sourceId": "source-bad",
+          "ageHours": 0,
+          "semantic": 1.0,
+          "completion": 1.0,
+          "exploration": 0.0,
+          "topics": ["neutral"]
+        },
+        {
+          "articleId": "bad-topic",
+          "sourceId": "source-ok",
+          "ageHours": 0,
+          "semantic": 1.0,
+          "completion": 1.0,
+          "exploration": 0.0,
+          "topics": ["toxic"]
+        },
+        {
+          "articleId": "blocked-topic",
+          "sourceId": "source-ok",
+          "ageHours": 0,
+          "semantic": 1.0,
+          "completion": 1.0,
+          "exploration": 0.0,
+          "topics": ["gambling"]
+        }
+      ],
+      "expectedOrder": [
+        "source-a-0",
+        "source-a-1",
+        "source-a-2",
+        "source-b-0",
+        "explore-c-0",
+        "explore-c-1"
+      ],
+      "expectedExplorationIds": ["explore-c-0", "explore-c-1"],
+      "expectedMaximumSourceShare": 0.5,
+      "expectedBlockedCount": 1,
+      "expectedNegativeCount": 2
     }
   ]
 }
