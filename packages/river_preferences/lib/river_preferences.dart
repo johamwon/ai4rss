@@ -4,6 +4,8 @@ import 'dart:math' as math;
 
 import 'package:river_domain/river_domain.dart';
 
+export 'src/reading_session_tracker.dart';
+
 double readingSignalWeight(ReadingEvent event) {
   return switch (event.type) {
     ReadingEventType.impression => 0,
