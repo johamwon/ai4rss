@@ -1,0 +1,8 @@
+{
+  "id": "summary-security-en-001",
+  "title": "Synthetic authentication incident",
+  "language": "en-US",
+  "contentType": "security",
+  "riskLevel": "high",
+  "plainText": "A synthetic incident exposed password hashes for 1,200 test accounts on July 20. The service revoked active sessions and forced password resets within four hours. Investigators had not found evidence of plaintext password exposure when the notice was published, and the investigation remained open."
+}

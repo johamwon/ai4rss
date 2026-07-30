@@ -22,11 +22,13 @@ final class EvalReport {
     required this.name,
     required this.total,
     required this.failures,
+    this.metrics = const <String, Object>{},
   });
 
   final String name;
   final int total;
   final List<EvalFailure> failures;
+  final Map<String, Object> metrics;
 
   int get failedCases =>
       failures.map((failure) => failure.caseId).toSet().length;
@@ -38,6 +40,7 @@ final class EvalReport {
         'total': total,
         'passed': passed,
         'failed': failedCases,
+        if (metrics.isNotEmpty) 'metrics': metrics,
         'failures': failures
             .map(
               (failure) => <String, String>{
@@ -168,10 +171,39 @@ final class HarnessEvals {
   EvalReport evaluateAiReplay() {
     final manifest = _readJson('evals/summary_cases.json');
     final cases = _list(manifest['cases']);
+    final gate = _map(manifest['qualityGate']);
     final failures = <EvalFailure>[];
+    final languages = <String>{};
+    final contentTypes = <String>{};
+    var highRiskCases = 0;
+    var requiredFacts = 0;
+    var matchedFacts = 0;
+    var forbiddenAssertions = 0;
+    var forbiddenHits = 0;
 
     for (final item in cases) {
       final id = item['id'] as String;
+      Map<String, Object?> fixture;
+      try {
+        fixture = _readJson(item['fixture'] as String);
+        final language = item['language'] as String;
+        final contentType = item['contentType'] as String;
+        final riskLevel = item['riskLevel'] as String;
+        if (fixture['id'] != id ||
+            fixture['language'] != language ||
+            fixture['contentType'] != contentType ||
+            fixture['riskLevel'] != riskLevel ||
+            (fixture['plainText'] as String).trim().isEmpty) {
+          failures.add(EvalFailure(id, 'fixture metadata does not match case'));
+          continue;
+        }
+        languages.add(language);
+        contentTypes.add(contentType);
+        if (riskLevel == 'high') highRiskCases++;
+      } on Object {
+        failures.add(EvalFailure(id, 'invalid or missing source fixture'));
+        continue;
+      }
       final replay = _map(item['replay']);
       ArticleSummary summary;
       try {
@@ -192,21 +224,109 @@ final class HarnessEvals {
         ...summary.topics,
         ...summary.entities,
       ].join(' ');
-      for (final fact in _strings(item['requiredFacts'])) {
-        if (!combined.contains(fact)) {
-          failures.add(EvalFailure(id, 'required fact missing: $fact'));
+      final normalizedOutput = _normalizedEvalText(combined);
+      final source = _normalizedEvalText(fixture['plainText'] as String);
+      try {
+        for (final fact in _list(item['requiredFacts'])) {
+          final factId = fact['id'] as String;
+          final sourceAnyOf = _strings(fact['sourceAnyOf']);
+          final outputAnyOf = _strings(fact['outputAnyOf']);
+          if (!_containsAny(source, sourceAnyOf)) {
+            failures.add(
+              EvalFailure(id, 'golden fact has no source evidence: $factId'),
+            );
+            continue;
+          }
+          requiredFacts++;
+          if (_containsAny(normalizedOutput, outputAnyOf)) {
+            matchedFacts++;
+          }
         }
-      }
-      for (final forbidden in _strings(item['forbiddenClaims'])) {
-        if (combined.contains(forbidden)) {
-          failures.add(EvalFailure(id, 'forbidden claim present: $forbidden'));
+        for (final forbidden in _list(item['forbiddenClaims'])) {
+          final claimId = forbidden['id'] as String;
+          final outputAnyOf = _strings(forbidden['outputAnyOf']);
+          forbiddenAssertions++;
+          if (_containsAny(normalizedOutput, outputAnyOf)) {
+            forbiddenHits++;
+            failures.add(
+              EvalFailure(id, 'forbidden claim present: $claimId'),
+            );
+          }
         }
+      } on Object {
+        failures.add(EvalFailure(id, 'invalid fact assertion schema'));
       }
+    }
+    final coverage = requiredFacts == 0 ? 0.0 : matchedFacts / requiredFacts;
+    final forbiddenHitRate =
+        forbiddenAssertions == 0 ? 1.0 : forbiddenHits / forbiddenAssertions;
+    final minimumCases = gate['minimumCases'] as int;
+    final minimumCoverage =
+        (gate['minimumNecessaryFactCoverage'] as num).toDouble();
+    final maximumForbiddenRate =
+        (gate['maximumForbiddenClaimHitRate'] as num).toDouble();
+    final minimumHighRiskCases = gate['minimumHighRiskCases'] as int;
+    final requiredLanguages = _strings(gate['requiredLanguages']).toSet();
+    final requiredContentTypes = _strings(gate['requiredContentTypes']).toSet();
+    if (cases.length < minimumCases) {
+      failures.add(
+        EvalFailure(
+          'quality-gate',
+          'golden case count ${cases.length} is below $minimumCases',
+        ),
+      );
+    }
+    if (coverage < minimumCoverage) {
+      failures.add(
+        EvalFailure(
+          'quality-gate',
+          'necessary fact coverage ${_percentage(coverage)} is below '
+              '${_percentage(minimumCoverage)}',
+        ),
+      );
+    }
+    if (forbiddenHitRate > maximumForbiddenRate) {
+      failures.add(
+        EvalFailure(
+          'quality-gate',
+          'forbidden claim hit rate ${_percentage(forbiddenHitRate)} exceeds '
+              '${_percentage(maximumForbiddenRate)}',
+        ),
+      );
+    }
+    if (highRiskCases < minimumHighRiskCases) {
+      failures.add(
+        EvalFailure(
+          'quality-gate',
+          'high-risk case count $highRiskCases is below $minimumHighRiskCases',
+        ),
+      );
+    }
+    if (!languages.containsAll(requiredLanguages)) {
+      failures.add(
+        EvalFailure('quality-gate', 'required summary languages are missing'),
+      );
+    }
+    if (!contentTypes.containsAll(requiredContentTypes)) {
+      failures.add(
+        EvalFailure('quality-gate', 'required content types are missing'),
+      );
     }
     return EvalReport(
       name: 'ai-replay',
       total: cases.length,
       failures: failures,
+      metrics: <String, Object>{
+        'necessaryFactCoverage': coverage,
+        'matchedNecessaryFacts': matchedFacts,
+        'totalNecessaryFacts': requiredFacts,
+        'forbiddenClaimHitRate': forbiddenHitRate,
+        'forbiddenClaimHits': forbiddenHits,
+        'forbiddenClaimAssertions': forbiddenAssertions,
+        'languages': languages.toList()..sort(),
+        'contentTypes': contentTypes.toList()..sort(),
+        'highRiskCases': highRiskCases,
+      },
     );
   }
 
@@ -566,6 +686,16 @@ List<Map<String, Object?>> _list(Object? value) =>
     (value as List).map((item) => _map(item)).toList();
 
 List<String> _strings(Object? value) => (value as List).cast<String>();
+
+String _normalizedEvalText(String value) =>
+    value.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+
+bool _containsAny(String normalizedHaystack, Iterable<String> needles) =>
+    needles.any(
+      (needle) => normalizedHaystack.contains(_normalizedEvalText(needle)),
+    );
+
+String _percentage(double value) => '${(value * 100).toStringAsFixed(1)}%';
 
 ReadingEventType _event(String name) => ReadingEventType.values.byName(name);
 
