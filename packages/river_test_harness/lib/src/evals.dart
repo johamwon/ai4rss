@@ -619,10 +619,22 @@ final class HarnessEvals {
       final negative = _event(item['negative'] as String);
       final at = DateTime.utc(2026, 7, 14);
       final positiveWeight = readingSignalWeight(
-        ReadingEvent(articleId: id, type: positive, occurredAt: at),
+        ReadingEvent(
+          eventId: '$id-positive',
+          articleId: id,
+          type: positive,
+          occurredAt: at,
+          completionRatio: positive == ReadingEventType.completed ? 1 : 0,
+        ),
       );
       final negativeWeight = readingSignalWeight(
-        ReadingEvent(articleId: id, type: negative, occurredAt: at),
+        ReadingEvent(
+          eventId: '$id-negative',
+          articleId: id,
+          type: negative,
+          occurredAt: at,
+          completionRatio: negative == ReadingEventType.completed ? 1 : 0,
+        ),
       );
       if (negativeWeight >= positiveWeight) {
         failures.add(

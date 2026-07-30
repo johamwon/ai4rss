@@ -6,11 +6,13 @@ void main() {
   test('explicit negative feedback dominates a click', () {
     final now = DateTime.utc(2026, 7, 14);
     final open = ReadingEvent(
+      eventId: 'event-open',
       articleId: 'a',
       type: ReadingEventType.open,
       occurredAt: now,
     );
     final negative = ReadingEvent(
+      eventId: 'event-negative',
       articleId: 'a',
       type: ReadingEventType.notInterested,
       occurredAt: now,

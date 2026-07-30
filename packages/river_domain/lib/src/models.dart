@@ -221,32 +221,6 @@ final class ArticleSummary {
   final int estimatedReadingMinutes;
 }
 
-enum ReadingEventType {
-  impression,
-  open,
-  activeRead,
-  completed,
-  starred,
-  savedToKnowledge,
-  notInterested,
-}
-
-final class ReadingEvent {
-  const ReadingEvent({
-    required this.articleId,
-    required this.type,
-    required this.occurredAt,
-    this.activeSeconds = 0,
-    this.completionRatio = 0,
-  });
-
-  final String articleId;
-  final ReadingEventType type;
-  final DateTime occurredAt;
-  final int activeSeconds;
-  final double completionRatio;
-}
-
 enum ReaderFontFamily { system, serif, sansSerif }
 
 enum ReaderThemePreference { system, light, dark }
