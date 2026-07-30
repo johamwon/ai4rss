@@ -675,24 +675,9 @@ final class HarnessEvals {
               );
             }
           case 'profile':
-            final evidence = _list(item['evidence']).map(
-              (entry) {
-                final type = _event(entry['type'] as String);
-                return PreferenceEvidence(
-                  event: ReadingEvent(
-                    eventId: entry['eventId'] as String,
-                    articleId: entry['articleId'] as String,
-                    type: type,
-                    occurredAt: now,
-                    activeSeconds: (entry['activeSeconds'] as int?) ?? 0,
-                    completionRatio:
-                        (entry['completionRatio'] as num?)?.toDouble() ?? 0,
-                  ),
-                  sourceId: entry['sourceId'] as String,
-                  topics: _strings(entry['topics']),
-                );
-              },
-            ).toList(growable: false);
+            final evidence = _list(item['evidence'])
+                .map((entry) => _rankingEvidence(entry, now))
+                .toList(growable: false);
             final profile = const LocalPreferenceProfileModel().build(
               now: now,
               evidence: evidence,
@@ -721,6 +706,91 @@ final class HarnessEvals {
               actual: profile.topicScore,
               failures: failures,
             );
+          case 'article-ranking':
+            final evidence = _list(item['profileEvidence'])
+                .map((entry) => _rankingEvidence(entry, now))
+                .toList(growable: false);
+            final profile = const LocalPreferenceProfileModel().build(
+              now: now,
+              evidence: evidence,
+            );
+            final candidates = _list(item['candidates'])
+                .map((entry) => _articleRankingCandidate(entry, now))
+                .toList(growable: false);
+            final ranked = const LocalArticleRanker().rank(
+              candidates: candidates,
+              profile: profile,
+              now: now,
+            );
+            final expectedOrder = _strings(item['expectedOrder']);
+            final actualOrder = ranked
+                .map((result) => result.candidate.articleId)
+                .toList(growable: false);
+            if (!_sameStrings(actualOrder, expectedOrder)) {
+              failures.add(
+                EvalFailure(
+                  id,
+                  'expected order $expectedOrder, got $actualOrder',
+                ),
+              );
+            }
+            final expectedVersion = item['expectedModelVersion'] as int;
+            final expectedScores =
+                item['expectedScores'] as Map<String, Object?>;
+            for (final result in ranked) {
+              final articleId = result.candidate.articleId;
+              if (result.explanation.modelVersion != expectedVersion) {
+                failures.add(
+                  EvalFailure(
+                    id,
+                    '$articleId model version expected $expectedVersion, '
+                    'got ${result.explanation.modelVersion}',
+                  ),
+                );
+              }
+              final expectedScore =
+                  (expectedScores[articleId] as num).toDouble();
+              if ((result.score - expectedScore).abs() > 1e-12) {
+                failures.add(
+                  EvalFailure(
+                    id,
+                    '$articleId expected $expectedScore, got ${result.score}',
+                  ),
+                );
+              }
+              final explained = result.explanation.factors.fold<double>(
+                0,
+                (sum, factor) => sum + factor.contribution,
+              );
+              if ((explained - result.score).abs() > 1e-12) {
+                failures.add(
+                  EvalFailure(id, '$articleId explanation does not sum'),
+                );
+              }
+            }
+            final expectedFactors =
+                item['expectedFactors'] as Map<String, Object?>;
+            for (final articleEntry in expectedFactors.entries) {
+              final result = ranked.singleWhere(
+                (candidate) =>
+                    candidate.candidate.articleId == articleEntry.key,
+              );
+              final factors = _map(articleEntry.value);
+              for (final factorEntry in factors.entries) {
+                final factor = RankingFactor.values.byName(factorEntry.key);
+                final actual = result.explanation.factor(factor).value;
+                final expected = (factorEntry.value as num).toDouble();
+                if ((actual - expected).abs() > 1e-12) {
+                  failures.add(
+                    EvalFailure(
+                      id,
+                      '${articleEntry.key} ${factorEntry.key} '
+                      'expected $expected, got $actual',
+                    ),
+                  );
+                }
+              }
+            }
           default:
             failures.add(EvalFailure(id, 'unknown ranking replay kind'));
         }
@@ -785,6 +855,14 @@ List<Map<String, Object?>> _list(Object? value) =>
 
 List<String> _strings(Object? value) => (value as List).cast<String>();
 
+bool _sameStrings(List<String> left, List<String> right) {
+  if (left.length != right.length) return false;
+  for (var index = 0; index < left.length; index += 1) {
+    if (left[index] != right[index]) return false;
+  }
+  return true;
+}
+
 String _normalizedEvalText(String value) =>
     value.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
 
@@ -810,6 +888,41 @@ ReadingEvent _rankingEvent(
       occurredAt: occurredAt,
       activeSeconds: type == ReadingEventType.activeRead ? 120 : 0,
       completionRatio: type == ReadingEventType.completed ? 1 : 0,
+    );
+
+PreferenceEvidence _rankingEvidence(
+  Map<String, Object?> entry,
+  DateTime occurredAt,
+) {
+  final type = _event(entry['type'] as String);
+  return PreferenceEvidence(
+    event: ReadingEvent(
+      eventId: entry['eventId'] as String,
+      articleId: entry['articleId'] as String,
+      type: type,
+      occurredAt: occurredAt,
+      activeSeconds: (entry['activeSeconds'] as int?) ?? 0,
+      completionRatio: (entry['completionRatio'] as num?)?.toDouble() ?? 0,
+    ),
+    sourceId: entry['sourceId'] as String,
+    topics: _strings(entry['topics']),
+  );
+}
+
+ArticleRankingCandidate _articleRankingCandidate(
+  Map<String, Object?> entry,
+  DateTime now,
+) =>
+    ArticleRankingCandidate(
+      articleId: entry['articleId'] as String,
+      sourceId: entry['sourceId'] as String,
+      publishedAt: now.subtract(
+        Duration(hours: entry['ageHours'] as int),
+      ),
+      semanticSimilarity: (entry['semantic'] as num).toDouble(),
+      completionProbability: (entry['completion'] as num).toDouble(),
+      explorationProbability: (entry['exploration'] as num).toDouble(),
+      topics: _strings(entry['topics']),
     );
 
 void _compareRankingScores({

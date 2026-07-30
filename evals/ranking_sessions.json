@@ -71,6 +71,76 @@
         "dart": 0.6,
         "gossip": -4.0
       }
+    },
+    {
+      "id": "fixed-multi-factor-candidate-ranking",
+      "kind": "article-ranking",
+      "expectedModelVersion": 1,
+      "profileEvidence": [
+        {
+          "eventId": "saved-tech",
+          "articleId": "history-tech",
+          "type": "savedToKnowledge",
+          "sourceId": "source-tech",
+          "topics": ["flutter"]
+        },
+        {
+          "eventId": "negative-noise",
+          "articleId": "history-noise",
+          "type": "notInterested",
+          "sourceId": "source-noise",
+          "topics": ["gossip"]
+        }
+      ],
+      "candidates": [
+        {
+          "articleId": "article-explore",
+          "sourceId": "source-unknown",
+          "ageHours": 72,
+          "semantic": 0.89,
+          "completion": 0.8,
+          "exploration": 0.8,
+          "topics": []
+        },
+        {
+          "articleId": "article-noise",
+          "sourceId": "source-noise",
+          "ageHours": 0,
+          "semantic": 0.95,
+          "completion": 0.9,
+          "exploration": 0.1,
+          "topics": ["gossip"]
+        },
+        {
+          "articleId": "article-tech",
+          "sourceId": "source-tech",
+          "ageHours": 0,
+          "semantic": 0.8,
+          "completion": 0.7,
+          "exploration": 0.2,
+          "topics": ["flutter"]
+        }
+      ],
+      "expectedOrder": [
+        "article-tech",
+        "article-noise",
+        "article-explore"
+      ],
+      "expectedScores": {
+        "article-tech": 0.7542857142857143,
+        "article-noise": 0.695,
+        "article-explore": 0.692
+      },
+      "expectedFactors": {
+        "article-tech": {
+          "semantic": 0.8,
+          "source": 0.7142857142857143,
+          "topic": 0.7142857142857143,
+          "completion": 0.7,
+          "freshness": 1.0,
+          "exploration": 0.2
+        }
+      }
     }
   ]
 }
