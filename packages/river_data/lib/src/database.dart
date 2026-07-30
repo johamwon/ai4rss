@@ -13,6 +13,7 @@ part 'database.g.dart';
     ArticleContents,
     AiArtifacts,
     ReadingEvents,
+    ReadingBehaviorSettingsRows,
     ReaderSettingsRows,
     KnowledgeItems,
     KnowledgeExternalMappings,
@@ -41,7 +42,7 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -253,10 +254,14 @@ final class RiverDatabase extends _$RiverDatabase {
         }
         await _createAiArtifactIndex();
       }
+      if (from < 15 && !await _hasTable('reading_behavior_settings_rows')) {
+        await migrator.createTable(readingBehaviorSettingsRows);
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
       await customStatement('PRAGMA journal_mode = WAL');
+      await customStatement('PRAGMA secure_delete = ON');
     },
   );
 

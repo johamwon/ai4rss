@@ -132,4 +132,71 @@ void main() {
     expect(first.idempotencyKey, 'river.reading-event/1/device-1:42');
     expect(conflicting.idempotencyKey, first.idempotencyKey);
   });
+
+  test('behavior settings validate retention and preserve immutable updates',
+      () {
+    const defaults = ReadingBehaviorSettings();
+    final disabled = defaults.copyWith(
+      captureEnabled: false,
+      retentionDays: 30,
+    );
+
+    expect(defaults.captureEnabled, isTrue);
+    expect(defaults.retentionDays, 90);
+    expect(
+      disabled,
+      const ReadingBehaviorSettings(
+        captureEnabled: false,
+        retentionDays: 30,
+      ),
+    );
+    expect(
+      () => const ReadingBehaviorSettings(retentionDays: 0).validate(),
+      throwsFormatException,
+    );
+  });
+
+  test('behavior export is ordered and contains only bounded event fields', () {
+    final later = ReadingEvent(
+      eventId: 'event-later',
+      articleId: 'article-1',
+      type: ReadingEventType.starred,
+      occurredAt: DateTime.utc(2026, 7, 30, 13),
+    );
+    final earlier = ReadingEvent(
+      eventId: 'event-earlier',
+      articleId: 'article-1',
+      type: ReadingEventType.open,
+      occurredAt: DateTime.utc(2026, 7, 30, 12),
+    );
+
+    final export = jsonDecode(
+      ReadingBehaviorExportCodec.encode(
+        settings: const ReadingBehaviorSettings(),
+        events: <ReadingEvent>[later, earlier],
+        exportedAt: DateTime.utc(2026, 7, 31),
+      ),
+    ) as Map<String, Object?>;
+    final events = (export['events'] as List).cast<Map<String, Object?>>();
+
+    expect(export['schema'], readingBehaviorExportSchema);
+    expect(export['version'], readingBehaviorExportSchemaVersion);
+    expect(events.map((event) => event['eventId']), <String>[
+      'event-earlier',
+      'event-later',
+    ]);
+    expect(export.toString(), isNot(contains('article body')));
+    expect(
+      events.first.keys,
+      unorderedEquals(<String>[
+        'schema',
+        'version',
+        'eventId',
+        'articleId',
+        'type',
+        'occurredAt',
+        'payload',
+      ]),
+    );
+  });
 }

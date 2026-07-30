@@ -119,6 +119,18 @@ class ReadingEvents extends Table {
   ];
 }
 
+@DataClassName('ReadingBehaviorSettingsRow')
+class ReadingBehaviorSettingsRows extends Table {
+  TextColumn get id => text()();
+  BoolColumn get captureEnabled =>
+      boolean().withDefault(const Constant(true))();
+  IntColumn get retentionDays => integer().withDefault(const Constant(90))();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
 class ReaderSettingsRows extends Table {
   TextColumn get id => text()();
   TextColumn get fontFamily => text().withDefault(const Constant('system'))();
