@@ -791,6 +791,99 @@ final class HarnessEvals {
                 }
               }
             }
+          case 'guardrail-ranking':
+            final evidence = _list(item['profileEvidence'])
+                .map((entry) => _rankingEvidence(entry, now))
+                .toList(growable: false);
+            final profile = const LocalPreferenceProfileModel().build(
+              now: now,
+              evidence: evidence,
+            );
+            final candidates = _list(item['candidates'])
+                .map((entry) => _articleRankingCandidate(entry, now))
+                .toList(growable: false);
+            final ranked = const LocalArticleRanker().rank(
+              candidates: candidates,
+              profile: profile,
+              now: now,
+            );
+            final guardrails = const LocalRankingGuardrails();
+            final result = guardrails.apply(
+              rankedCandidates: ranked,
+              profile: profile,
+              limit: item['limit'] as int,
+              blockedTopics: _strings(item['blockedTopics']),
+            );
+            final replayed = guardrails.apply(
+              rankedCandidates: ranked.reversed,
+              profile: profile,
+              limit: item['limit'] as int,
+              blockedTopics: _strings(item['blockedTopics']),
+            );
+            final actualOrder = result.items
+                .map((entry) => entry.ranked.candidate.articleId)
+                .toList(growable: false);
+            final replayedOrder = replayed.items
+                .map((entry) => entry.ranked.candidate.articleId)
+                .toList(growable: false);
+            final expectedOrder = _strings(item['expectedOrder']);
+            if (!_sameStrings(actualOrder, expectedOrder) ||
+                !_sameStrings(replayedOrder, expectedOrder)) {
+              failures.add(
+                EvalFailure(
+                  id,
+                  'expected guarded order $expectedOrder, '
+                  'got $actualOrder and replay $replayedOrder',
+                ),
+              );
+            }
+            final actualExplorationIds = result.items
+                .where(
+                  (entry) =>
+                      entry.selectionKind ==
+                      RankingSelectionKind.explorationQuota,
+                )
+                .map((entry) => entry.ranked.candidate.articleId)
+                .toList(growable: false);
+            final expectedExplorationIds =
+                _strings(item['expectedExplorationIds']);
+            if (!_sameStrings(
+              actualExplorationIds,
+              expectedExplorationIds,
+            )) {
+              failures.add(
+                EvalFailure(
+                  id,
+                  'expected exploration $expectedExplorationIds, '
+                  'got $actualExplorationIds',
+                ),
+              );
+            }
+            final expectedShare =
+                (item['expectedMaximumSourceShare'] as num).toDouble();
+            if (result.modelVersion != item['expectedGuardrailVersion'] ||
+                (result.observedMaximumSourceShare - expectedShare).abs() >
+                    1e-12 ||
+                !result.sourceCapSatisfied ||
+                !result.sourceShareSatisfied ||
+                !result.explorationQuotaSatisfied) {
+              failures.add(
+                EvalFailure(
+                  id,
+                  'guardrail shares or quotas did not hold',
+                ),
+              );
+            }
+            if (result.filteredByBlockedTopic != item['expectedBlockedCount'] ||
+                result.filteredByNegativeFeedback !=
+                    item['expectedNegativeCount']) {
+              failures.add(
+                EvalFailure(
+                  id,
+                  'guardrail filter counts did not match',
+                ),
+              );
+            }
           default:
             failures.add(EvalFailure(id, 'unknown ranking replay kind'));
         }
