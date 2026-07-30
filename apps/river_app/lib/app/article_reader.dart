@@ -2,12 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:river_ai/river_ai.dart';
 import 'package:river_audio/river_audio.dart';
 import 'package:river_design_system/river_design_system.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
 import 'package:river_feed/river_feed.dart';
 import 'package:river_knowledge/river_knowledge.dart';
+
+import 'article_summary.dart';
 
 enum ArticleReaderLoadPhase { loading, ready, missing, failed }
 
@@ -20,6 +23,57 @@ enum ArticleEnhancementPhase {
 }
 
 enum ArticleReaderContentSource { feed, cache, extracted }
+
+enum ArticleSummaryPhase {
+  hidden,
+  inspecting,
+  idle,
+  generating,
+  ready,
+  stale,
+  cancelled,
+  offline,
+  failed,
+  unavailable,
+}
+
+final class ArticleSummaryUiState {
+  const ArticleSummaryUiState({
+    this.phase = ArticleSummaryPhase.hidden,
+    this.preparation,
+    this.summary,
+    this.contentHash,
+    this.failureCode,
+    this.retryable = false,
+  });
+
+  final ArticleSummaryPhase phase;
+  final ArticleSummaryPreparation? preparation;
+  final ArticleSummary? summary;
+  final String? contentHash;
+  final ArticleSummaryExperienceFailureCode? failureCode;
+  final bool retryable;
+
+  bool get isVisible => phase != ArticleSummaryPhase.hidden;
+
+  ArticleSummaryUiState copyWith({
+    ArticleSummaryPhase? phase,
+    ArticleSummaryPreparation? preparation,
+    ArticleSummary? summary,
+    String? contentHash,
+    ArticleSummaryExperienceFailureCode? failureCode,
+    bool clearFailure = false,
+    bool? retryable,
+  }) =>
+      ArticleSummaryUiState(
+        phase: phase ?? this.phase,
+        preparation: preparation ?? this.preparation,
+        summary: summary ?? this.summary,
+        contentHash: contentHash ?? this.contentHash,
+        failureCode: clearFailure ? null : failureCode ?? this.failureCode,
+        retryable: retryable ?? this.retryable,
+      );
+}
 
 typedef ArticleAnnotationCreator = Future<void> Function({
   required ArticleTextAnchor anchor,
@@ -72,6 +126,7 @@ final class ArticleReaderState {
     this.settings = const ReaderSettings(),
     this.annotations = const <ArticleAnnotation>[],
     this.audio = const AudioPlaybackState.initial(),
+    this.summaryState = const ArticleSummaryUiState(),
     this.knowledgeItemId,
     this.operationFailure,
     this.isMutating = false,
@@ -90,6 +145,7 @@ final class ArticleReaderState {
   final ReaderSettings settings;
   final List<ArticleAnnotation> annotations;
   final AudioPlaybackState audio;
+  final ArticleSummaryUiState summaryState;
   final String? knowledgeItemId;
   final String? operationFailure;
   final bool isMutating;
@@ -106,6 +162,7 @@ final class ArticleReaderState {
     ReaderSettings? settings,
     List<ArticleAnnotation>? annotations,
     AudioPlaybackState? audio,
+    ArticleSummaryUiState? summaryState,
     String? knowledgeItemId,
     String? operationFailure,
     bool clearOperationFailure = false,
@@ -124,6 +181,7 @@ final class ArticleReaderState {
         settings: settings ?? this.settings,
         annotations: annotations ?? this.annotations,
         audio: audio ?? this.audio,
+        summaryState: summaryState ?? this.summaryState,
         knowledgeItemId: knowledgeItemId ?? this.knowledgeItemId,
         operationFailure: clearOperationFailure
             ? null
@@ -152,6 +210,7 @@ final class ArticleReaderController extends ChangeNotifier {
     AudioPlaybackController? audioController,
     PersistentAudioQueue? audioQueue,
     KnowledgeRepository? knowledge,
+    ArticleSummaryExperience? summaries,
   })  : _repository = repository,
         _extractor = extractor,
         _readerSettings = readerSettings,
@@ -163,6 +222,7 @@ final class ArticleReaderController extends ChangeNotifier {
         _clock = clock,
         _audioQueue = audioQueue,
         _knowledge = knowledge,
+        _summaries = summaries,
         _audioController = audioController ??
             AudioPlaybackController(
               engine: audio,
@@ -189,6 +249,7 @@ final class ArticleReaderController extends ChangeNotifier {
   final Clock _clock;
   final PersistentAudioQueue? _audioQueue;
   final KnowledgeRepository? _knowledge;
+  final ArticleSummaryExperience? _summaries;
   final AudioPlaybackController _audioController;
   final bool _ownsAudioController;
   StreamSubscription<FeedArticleDetailRecord?>? _articleSubscription;
@@ -200,6 +261,7 @@ final class ArticleReaderController extends ChangeNotifier {
   var _extractionStarted = false;
   var _subscriptionGeneration = 0;
   var _extractionGeneration = 0;
+  var _summaryGeneration = 0;
   var _openedMarked = false;
   Timer? _progressTimer;
   double? _pendingProgress;
@@ -214,6 +276,7 @@ final class ArticleReaderController extends ChangeNotifier {
       _ids != null &&
       _state.detail != null &&
       _state.content != null;
+  bool get canOpenSummary => _state.content != null;
 
   void retry() {
     _extractionStarted = false;
@@ -224,6 +287,7 @@ final class ArticleReaderController extends ChangeNotifier {
         settings: _state.settings,
         annotations: _state.annotations,
         audio: _state.audio,
+        summaryState: _state.summaryState,
         knowledgeItemId: _state.knowledgeItemId,
       ),
     );
@@ -319,6 +383,7 @@ final class ArticleReaderController extends ChangeNotifier {
           settings: _state.settings,
           annotations: _state.annotations,
           audio: _state.audio,
+          summaryState: _state.summaryState,
           knowledgeItemId: _state.knowledgeItemId,
         ),
       );
@@ -330,7 +395,7 @@ final class ArticleReaderController extends ChangeNotifier {
             (current != null && candidate.priority < current.priority)
         ? current
         : candidate;
-    _setState(
+    _setContentState(
       ArticleReaderState(
         loadPhase: ArticleReaderLoadPhase.ready,
         enhancementPhase: _state.enhancementPhase,
@@ -341,6 +406,7 @@ final class ArticleReaderController extends ChangeNotifier {
         settings: _state.settings,
         annotations: _state.annotations,
         audio: _state.audio,
+        summaryState: _state.summaryState,
         knowledgeItemId: _state.knowledgeItemId,
         operationFailure: _state.operationFailure,
         isMutating: _state.isMutating,
@@ -419,7 +485,7 @@ final class ArticleReaderController extends ChangeNotifier {
           await _audioController.stop();
           if (_disposed || generation != _extractionGeneration) return;
         }
-        _setState(
+        _setContentState(
           _state.copyWith(
             enhancementPhase: ArticleEnhancementPhase.ready,
             content: content.text.isEmpty ? _state.content : content,
@@ -459,6 +525,173 @@ final class ArticleReaderController extends ChangeNotifier {
     _setState(
       _state.copyWith(
         enhancementPhase: ArticleEnhancementPhase.usingAvailable,
+      ),
+    );
+  }
+
+  void toggleSummaryPanel() {
+    if (_state.summaryState.isVisible) {
+      _summaryGeneration += 1;
+      _setState(
+        _state.copyWith(
+          summaryState: _state.summaryState.copyWith(
+            phase: ArticleSummaryPhase.hidden,
+          ),
+        ),
+      );
+      return;
+    }
+    unawaited(_inspectSummary());
+  }
+
+  Future<void> retrySummaryInspection() => _inspectSummary();
+
+  Future<void> _inspectSummary() async {
+    final experience = _summaries;
+    final article = _summaryArticle();
+    if (experience == null || article == null) {
+      _setState(
+        _state.copyWith(
+          summaryState: const ArticleSummaryUiState(
+            phase: ArticleSummaryPhase.unavailable,
+            failureCode:
+                ArticleSummaryExperienceFailureCode.configurationRequired,
+          ),
+        ),
+      );
+      return;
+    }
+    final generation = ++_summaryGeneration;
+    final contentHash = summaryContentHash(article.plainText!);
+    _setState(
+      _state.copyWith(
+        summaryState: _state.summaryState.copyWith(
+          phase: ArticleSummaryPhase.inspecting,
+          clearFailure: true,
+          retryable: false,
+        ),
+      ),
+    );
+    try {
+      final inspection = await experience.inspect(article);
+      if (!_isCurrentSummaryRequest(generation, contentHash)) return;
+      final cached = inspection.cachedSummary;
+      _setState(
+        _state.copyWith(
+          summaryState: ArticleSummaryUiState(
+            phase: cached == null
+                ? ArticleSummaryPhase.idle
+                : ArticleSummaryPhase.ready,
+            preparation: inspection.preparation,
+            summary: cached,
+            contentHash: cached == null ? null : contentHash,
+          ),
+        ),
+      );
+    } on Object catch (error) {
+      if (!_isCurrentSummaryRequest(generation, contentHash)) return;
+      _setSummaryFailure(error);
+    }
+  }
+
+  Future<void> generateSummary() async {
+    final experience = _summaries;
+    final article = _summaryArticle();
+    if (experience == null || article == null) return;
+    final generation = ++_summaryGeneration;
+    final contentHash = summaryContentHash(article.plainText!);
+    _setState(
+      _state.copyWith(
+        summaryState: _state.summaryState.copyWith(
+          phase: ArticleSummaryPhase.generating,
+          clearFailure: true,
+          retryable: false,
+        ),
+      ),
+    );
+    try {
+      final summary = await experience.summarize(article);
+      if (!_isCurrentSummaryRequest(generation, contentHash)) return;
+      _setState(
+        _state.copyWith(
+          summaryState: ArticleSummaryUiState(
+            phase: ArticleSummaryPhase.ready,
+            preparation: _state.summaryState.preparation,
+            summary: summary,
+            contentHash: contentHash,
+          ),
+        ),
+      );
+    } on Object catch (error) {
+      if (!_isCurrentSummaryRequest(generation, contentHash)) return;
+      _setSummaryFailure(error);
+    }
+  }
+
+  void cancelSummary() {
+    if (_state.summaryState.phase != ArticleSummaryPhase.generating &&
+        _state.summaryState.phase != ArticleSummaryPhase.inspecting) {
+      return;
+    }
+    _summaryGeneration += 1;
+    _setState(
+      _state.copyWith(
+        summaryState: _state.summaryState.copyWith(
+          phase: ArticleSummaryPhase.cancelled,
+          clearFailure: true,
+          retryable: true,
+        ),
+      ),
+    );
+  }
+
+  bool _isCurrentSummaryRequest(int generation, String contentHash) =>
+      !_disposed &&
+      generation == _summaryGeneration &&
+      _state.content != null &&
+      summaryContentHash(_state.content!.text) == contentHash;
+
+  Article? _summaryArticle() {
+    final detail = _state.detail;
+    final content = _state.content;
+    if (detail == null || content == null || content.text.trim().isEmpty) {
+      return null;
+    }
+    return Article(
+      id: detail.id,
+      url: detail.canonicalUrl,
+      title: detail.title,
+      source: detail.canonicalUrl.host == 'mp.weixin.qq.com'
+          ? ContentSource.weChat
+          : ContentSource.web,
+      author: detail.author,
+      publishedAt: detail.publishedAt,
+      plainText: content.text,
+    );
+  }
+
+  void _setSummaryFailure(Object error) {
+    final failure = error is ArticleSummaryExperienceFailure
+        ? error
+        : const ArticleSummaryExperienceFailure(
+            code: ArticleSummaryExperienceFailureCode.providerUnavailable,
+            retryable: true,
+          );
+    final phase = switch (failure.code) {
+      ArticleSummaryExperienceFailureCode.configurationRequired ||
+      ArticleSummaryExperienceFailureCode.secureStorageUnavailable =>
+        ArticleSummaryPhase.unavailable,
+      ArticleSummaryExperienceFailureCode.offline =>
+        ArticleSummaryPhase.offline,
+      _ => ArticleSummaryPhase.failed,
+    };
+    _setState(
+      _state.copyWith(
+        summaryState: _state.summaryState.copyWith(
+          phase: phase,
+          failureCode: failure.code,
+          retryable: failure.retryable,
+        ),
       ),
     );
   }
@@ -837,6 +1070,12 @@ final class ArticleReaderController extends ChangeNotifier {
           ? content.markdown!.trim()
           : content.text.trim();
       final sanitizedHtml = content.sanitizedHtml ?? '';
+      final currentSummary = _currentSummaryFor(content);
+      final summary = currentSummary ?? existing?.summary;
+      final topics =
+          currentSummary?.topics ?? existing?.topics ?? const <String>[];
+      final entities =
+          currentSummary?.entities ?? existing?.entities ?? const <String>[];
       final hash = const KnowledgeContentHasher().hash(
         title: detail.title,
         markdown: markdown,
@@ -844,9 +1083,9 @@ final class ArticleReaderController extends ChangeNotifier {
         excerpts: excerpts,
         notes: notes,
         tags: existing?.tags ?? const <String>[],
-        topics: existing?.topics ?? const <String>[],
-        entities: existing?.entities ?? const <String>[],
-        summary: existing?.summary,
+        topics: topics,
+        entities: entities,
+        summary: summary,
       );
       final now = _clock.now().toUtc();
       final updatedAt = existing != null && !now.isAfter(existing.updatedAt)
@@ -859,12 +1098,12 @@ final class ArticleReaderController extends ChangeNotifier {
           title: detail.title,
           markdown: markdown,
           sanitizedHtml: sanitizedHtml,
-          summary: existing?.summary,
+          summary: summary,
           excerpts: excerpts,
           notes: notes,
           tags: existing?.tags ?? const <String>[],
-          topics: existing?.topics ?? const <String>[],
-          entities: existing?.entities ?? const <String>[],
+          topics: topics,
+          entities: entities,
           contentHash: hash,
           savedAt: existing?.savedAt ?? now,
           updatedAt: updatedAt,
@@ -1003,6 +1242,81 @@ final class ArticleReaderController extends ChangeNotifier {
         OfflineArticleState.notDownloaded(articleId);
   }
 
+  ArticleSummary? _currentSummaryFor(ArticleReaderContent content) {
+    final summaryState = _state.summaryState;
+    if (summaryState.phase != ArticleSummaryPhase.ready ||
+        summaryState.summary == null ||
+        summaryState.contentHash != summaryContentHash(content.text)) {
+      return null;
+    }
+    return summaryState.summary;
+  }
+
+  void _setContentState(ArticleReaderState value) {
+    final previousHash = _state.content == null
+        ? null
+        : summaryContentHash(_state.content!.text);
+    final nextHash =
+        value.content == null ? null : summaryContentHash(value.content!.text);
+    _setState(value);
+    if (previousHash == nextHash || !_state.summaryState.isVisible) return;
+    _summaryGeneration += 1;
+    final summaryState = _state.summaryState;
+    if (summaryState.summary != null) {
+      _setState(
+        _state.copyWith(
+          summaryState: ArticleSummaryUiState(
+            phase: ArticleSummaryPhase.stale,
+            summary: summaryState.summary,
+            contentHash: summaryState.contentHash,
+            retryable: true,
+          ),
+        ),
+      );
+      unawaited(
+        _refreshStaleSummaryInspection(
+          generation: _summaryGeneration,
+          staleSummary: summaryState.summary!,
+          staleContentHash: summaryState.contentHash,
+        ),
+      );
+      return;
+    }
+    unawaited(_inspectSummary());
+  }
+
+  Future<void> _refreshStaleSummaryInspection({
+    required int generation,
+    required ArticleSummary staleSummary,
+    required String? staleContentHash,
+  }) async {
+    final experience = _summaries;
+    final article = _summaryArticle();
+    if (experience == null || article == null) return;
+    final contentHash = summaryContentHash(article.plainText!);
+    try {
+      final inspection = await experience.inspect(article);
+      if (!_isCurrentSummaryRequest(generation, contentHash)) return;
+      final cached = inspection.cachedSummary;
+      _setState(
+        _state.copyWith(
+          summaryState: ArticleSummaryUiState(
+            phase: cached == null
+                ? ArticleSummaryPhase.stale
+                : ArticleSummaryPhase.ready,
+            preparation: inspection.preparation,
+            summary: cached ?? staleSummary,
+            contentHash: cached == null ? staleContentHash : contentHash,
+            retryable: cached == null,
+          ),
+        ),
+      );
+    } on Object {
+      // The prior summary remains visibly stale. A later explicit action can
+      // retry inspection without affecting the readable article body.
+    }
+  }
+
   void _setState(ArticleReaderState value) {
     if (_disposed) return;
     _state = value;
@@ -1016,6 +1330,7 @@ final class ArticleReaderController extends ChangeNotifier {
     _progressTimer?.cancel();
     _subscriptionGeneration += 1;
     _extractionGeneration += 1;
+    _summaryGeneration += 1;
     unawaited(_articleSubscription?.cancel());
     unawaited(_settingsSubscription?.cancel());
     unawaited(_annotationSubscription?.cancel());
@@ -1076,6 +1391,7 @@ final class ArticleReaderPage extends StatefulWidget {
     this.audioController,
     this.audioQueue,
     this.knowledge,
+    this.summaries,
     super.key,
   });
 
@@ -1094,6 +1410,7 @@ final class ArticleReaderPage extends StatefulWidget {
   final AudioPlaybackController? audioController;
   final PersistentAudioQueue? audioQueue;
   final KnowledgeRepository? knowledge;
+  final ArticleSummaryExperience? summaries;
 
   @override
   State<ArticleReaderPage> createState() => _ArticleReaderPageState();
@@ -1121,6 +1438,7 @@ final class _ArticleReaderPageState extends State<ArticleReaderPage> {
       audioController: widget.audioController,
       audioQueue: widget.audioQueue,
       knowledge: widget.knowledge,
+      summaries: widget.summaries,
     );
   }
 
@@ -1512,6 +1830,11 @@ final class _ReaderReady extends StatelessWidget {
             controller: controller,
           ),
         _ReaderActions(state: state, controller: controller),
+        if (state.summaryState.isVisible)
+          _ArticleSummaryPanel(
+            state: state.summaryState,
+            controller: controller,
+          ),
         if (resolvedAnnotations.any((annotation) => !annotation.isAttached))
           const MaterialBanner(
             content: Text('部分高亮因正文变化已失联，可在“高亮与笔记”中查看'),
@@ -1550,6 +1873,337 @@ final class _ReaderReady extends StatelessWidget {
       ],
     );
   }
+}
+
+final class _ArticleSummaryPanel extends StatelessWidget {
+  const _ArticleSummaryPanel({
+    required this.state,
+    required this.controller,
+  });
+
+  final ArticleSummaryUiState state;
+  final ArticleReaderController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    final status = _statusLabel(state);
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: 'AI 摘要，$status',
+      child: ColoredBox(
+        color: colors.secondaryContainer,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.42,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Icon(
+                      Icons.auto_awesome,
+                      color: colors.onSecondaryContainer,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'AI 摘要',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: controller.toggleSummaryPanel,
+                      icon: const Icon(Icons.close),
+                      tooltip: '关闭 AI 摘要',
+                    ),
+                  ],
+                ),
+                switch (state.phase) {
+                  ArticleSummaryPhase.inspecting => _busy(
+                      context,
+                      '正在检查本地摘要缓存',
+                      canCancel: true,
+                    ),
+                  ArticleSummaryPhase.generating => Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        _disclosure(context),
+                        const SizedBox(height: 12),
+                        _busy(context, '正在生成摘要', canCancel: true),
+                      ],
+                    ),
+                  ArticleSummaryPhase.idle => Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        _disclosure(context),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: FilledButton.icon(
+                            onPressed: () => _confirmAndGenerate(context),
+                            icon: const Icon(Icons.auto_awesome),
+                            label: const Text('生成摘要'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ArticleSummaryPhase.ready => _summary(
+                      context,
+                      stale: false,
+                    ),
+                  ArticleSummaryPhase.stale => _summary(
+                      context,
+                      stale: true,
+                    ),
+                  ArticleSummaryPhase.cancelled => _recovery(
+                      context,
+                      '已停止等待摘要，正文阅读不受影响。已发出的请求可能仍会完成并写入本地缓存。',
+                      actionLabel: '重新生成',
+                      onAction: () => _confirmAndGenerate(context),
+                    ),
+                  ArticleSummaryPhase.offline => _recovery(
+                      context,
+                      _failureLabel(state.failureCode),
+                      actionLabel: '联网后重试',
+                      onAction: () => _confirmAndGenerate(context),
+                    ),
+                  ArticleSummaryPhase.failed => _recovery(
+                      context,
+                      _failureLabel(state.failureCode),
+                      actionLabel: state.retryable ? '重试' : null,
+                      onAction: state.retryable
+                          ? () => _confirmAndGenerate(context)
+                          : null,
+                    ),
+                  ArticleSummaryPhase.unavailable => _recovery(
+                      context,
+                      _failureLabel(state.failureCode),
+                      actionLabel: '重新检查',
+                      onAction: controller.retrySummaryInspection,
+                    ),
+                  ArticleSummaryPhase.hidden => const SizedBox.shrink(),
+                },
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _busy(
+    BuildContext context,
+    String label, {
+    required bool canCancel,
+  }) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          const LinearProgressIndicator(),
+          const SizedBox(height: 10),
+          Row(
+            children: <Widget>[
+              Expanded(child: Text(label)),
+              if (canCancel)
+                TextButton(
+                  key: const Key('article-summary-cancel'),
+                  onPressed: controller.cancelSummary,
+                  child: const Text('取消'),
+                ),
+            ],
+          ),
+        ],
+      );
+
+  Widget _disclosure(BuildContext context) {
+    final preparation = state.preparation;
+    if (preparation == null) return const SizedBox.shrink();
+    final route = preparation.isLongArticle
+        ? '长文分块处理，最多 ${preparation.maximumProviderCalls} 次模型请求'
+        : '标准摘要，结构修复时最多 ${preparation.maximumProviderCalls} 次模型请求';
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              '${preparation.providerLabel} · ${preparation.model}',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '确认后会发送文章标题和当前正文'
+              '（${preparation.contentCharacters} 字符）；不会发送笔记、高亮、Feed 凭据或 API Key。',
+            ),
+            const SizedBox(height: 4),
+            Text(route, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _summary(BuildContext context, {required bool stale}) {
+    final summary = state.summary;
+    if (summary == null) {
+      return _recovery(
+        context,
+        '本地摘要状态不完整，请重新检查。',
+        actionLabel: '重新检查',
+        onAction: controller.retrySummaryInspection,
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        if (stale)
+          MaterialBanner(
+            content: const Text('正文已更新，当前摘要可能过期。'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () => _confirmAndGenerate(context),
+                child: const Text('重新生成'),
+              ),
+            ],
+          ),
+        Text(
+          summary.oneLine,
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 12),
+        Text('关键点', style: Theme.of(context).textTheme.labelLarge),
+        const SizedBox(height: 4),
+        for (final point in summary.keyPoints)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text('• $point'),
+          ),
+        if (summary.whyItMatters.trim().isNotEmpty) ...<Widget>[
+          const SizedBox(height: 8),
+          Text('为什么值得阅读', style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 4),
+          Text(summary.whyItMatters),
+        ],
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: <Widget>[
+            if (summary.estimatedReadingMinutes > 0)
+              Chip(
+                avatar: const Icon(Icons.schedule, size: 16),
+                label: Text('约 ${summary.estimatedReadingMinutes} 分钟'),
+              ),
+            for (final topic in summary.topics)
+              Chip(label: Text('主题 · $topic')),
+            for (final entity in summary.entities)
+              Chip(label: Text('实体 · $entity')),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _recovery(
+    BuildContext context,
+    String message, {
+    required String? actionLabel,
+    required VoidCallback? onAction,
+  }) =>
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          const Icon(Icons.info_outline, size: 20),
+          const SizedBox(width: 8),
+          Expanded(child: Text(message)),
+          if (actionLabel != null)
+            TextButton(
+              onPressed: onAction,
+              child: Text(actionLabel),
+            ),
+        ],
+      );
+
+  Future<void> _confirmAndGenerate(BuildContext context) async {
+    final preparation = state.preparation;
+    if (preparation == null) {
+      await controller.retrySummaryInspection();
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('生成 AI 摘要？'),
+        content: Text(
+          'River 将向 ${preparation.providerLabel} 的 '
+          '${preparation.model} 模型发送文章标题和当前正文'
+          '（${preparation.contentCharacters} 字符）。'
+          '这可能计入你的供应商用量。',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('确认生成'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await controller.generateSummary();
+    }
+  }
+
+  static String _statusLabel(ArticleSummaryUiState state) =>
+      switch (state.phase) {
+        ArticleSummaryPhase.hidden => '已关闭',
+        ArticleSummaryPhase.inspecting => '正在检查缓存',
+        ArticleSummaryPhase.idle => '等待确认',
+        ArticleSummaryPhase.generating => '正在生成',
+        ArticleSummaryPhase.ready => '摘要已就绪',
+        ArticleSummaryPhase.stale => '摘要可能过期',
+        ArticleSummaryPhase.cancelled => '生成已取消',
+        ArticleSummaryPhase.offline => '离线且没有可用缓存',
+        ArticleSummaryPhase.failed => '生成失败',
+        ArticleSummaryPhase.unavailable => '摘要暂不可用',
+      };
+
+  static String _failureLabel(
+    ArticleSummaryExperienceFailureCode? code,
+  ) =>
+      switch (code) {
+        ArticleSummaryExperienceFailureCode.configurationRequired =>
+          '当前设备还没有安全保存的 BYOK 配置。配置提供商、模型和 API Key 后可重新检查。',
+        ArticleSummaryExperienceFailureCode.secureStorageUnavailable =>
+          '暂时无法读取安全 AI 配置，正文阅读不受影响。',
+        ArticleSummaryExperienceFailureCode.offline => '当前离线且没有匹配当前正文的本地摘要。',
+        ArticleSummaryExperienceFailureCode.authenticationRequired =>
+          'AI 提供商拒绝了密钥，请检查 BYOK 配置。',
+        ArticleSummaryExperienceFailureCode.quotaExceeded =>
+          'AI 提供商额度不足，请检查供应商账户。',
+        ArticleSummaryExperienceFailureCode.rateLimited => 'AI 提供商请求过多，请稍后重试。',
+        ArticleSummaryExperienceFailureCode.timeout => 'AI 摘要请求超时，请重试。',
+        ArticleSummaryExperienceFailureCode.articleTooLong =>
+          '这篇文章超出当前模型的安全处理预算。',
+        ArticleSummaryExperienceFailureCode.invalidResponse =>
+          'AI 返回内容未通过本地结构校验，未保存该结果。',
+        ArticleSummaryExperienceFailureCode.providerUnavailable =>
+          'AI 提供商暂时不可用，请稍后重试。',
+        null => 'AI 摘要暂时不可用，正文阅读不受影响。',
+      };
 }
 
 final class _ArticleTtsControls extends StatelessWidget {
@@ -1917,6 +2571,17 @@ final class _ReaderActions extends StatelessWidget {
               onPressed: () => unawaited(controller.openOriginal()),
               icon: const Icon(Icons.open_in_new),
               tooltip: '打开原文',
+            ),
+            IconButton(
+              onPressed: controller.canOpenSummary
+                  ? controller.toggleSummaryPanel
+                  : null,
+              icon: Icon(
+                state.summaryState.isVisible
+                    ? Icons.auto_awesome
+                    : Icons.auto_awesome_outlined,
+              ),
+              tooltip: state.summaryState.isVisible ? '关闭 AI 摘要' : 'AI 摘要',
             ),
             IconButton(
               onPressed: state.annotations.isEmpty

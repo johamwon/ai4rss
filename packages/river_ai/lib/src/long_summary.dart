@@ -920,17 +920,29 @@ final class LongArticleSummaryService {
 
   Future<LongArticleSummaryResult> summarize(Article article) {
     final plan = preflight(article);
-    final content = normalizeSummaryContent(article.plainText!);
+    final (content, identity) = _cacheIdentityFor(article);
+    return _requests.run(
+      identity.cacheKey,
+      () => _summarize(article, content, plan, identity),
+    );
+  }
+
+  /// Reads a previously validated long-article result without provider calls.
+  Future<LongArticleSummaryResult?> readCached(Article article) {
+    final plan = preflight(article);
+    final (_, identity) = _cacheIdentityFor(article);
+    return _readCached(article, identity, plan);
+  }
+
+  (String, SummaryCacheIdentity) _cacheIdentityFor(Article article) {
+    final content = normalizeSummaryContent(article.plainText ?? '');
     final identity = SummaryCacheIdentity(
       contentHash: summaryContentHash(content),
       model: model,
       promptVersion: prompts.resolve('article-summary-reduce', 1).versionKey,
       language: outputLanguage,
     );
-    return _requests.run(
-      identity.cacheKey,
-      () => _summarize(article, content, plan, identity),
-    );
+    return (content, identity);
   }
 
   Future<LongArticleSummaryResult> _summarize(

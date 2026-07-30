@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:river_app/app/article_reader.dart';
+import 'package:river_app/app/article_summary.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
 
@@ -455,6 +456,7 @@ ArticleReaderController buildReaderController({
   AudioPlaybackRepository audioPlayback =
       const UnavailableAudioPlaybackRepository(),
   KnowledgeRepository? knowledge,
+  ArticleSummaryExperience? summaries,
 }) =>
     ArticleReaderController(
       articleId: articleId,
@@ -471,4 +473,5 @@ ArticleReaderController buildReaderController({
       audio: audio,
       audioPlayback: audioPlayback,
       knowledge: knowledge,
+      summaries: summaries,
     );

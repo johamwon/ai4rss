@@ -51,6 +51,28 @@ final class SummaryService {
   final AiSummaryRequestCoalescer _requests;
 
   Future<ArticleSummary> summarize(Article article) {
+    final request = _requestFor(article);
+    return _requests.run(
+      request.identity.cacheKey,
+      () => _summarize(
+        article,
+        request.content,
+        request.template,
+        request.identity,
+      ),
+    );
+  }
+
+  /// Reads a previously validated summary without contacting the provider.
+  ///
+  /// This is intentionally separate from [summarize] so a UI may restore a
+  /// cached result on panel open without silently creating a paid request.
+  Future<ArticleSummary?> readCached(Article article) {
+    final request = _requestFor(article);
+    return _readCached(request.identity);
+  }
+
+  _SummaryRequest _requestFor(Article article) {
     final content = normalizeSummaryContent(article.plainText ?? '');
     if (content.isEmpty) {
       throw ArgumentError.value(article.id, 'article', 'Article has no text');
@@ -62,9 +84,10 @@ final class SummaryService {
       promptVersion: template.versionKey,
       language: outputLanguage,
     );
-    return _requests.run(
-      identity.cacheKey,
-      () => _summarize(article, content, template, identity),
+    return _SummaryRequest(
+      content: content,
+      template: template,
+      identity: identity,
     );
   }
 
@@ -212,4 +235,16 @@ final class SummaryService {
       // A corrupt cache value is never returned even if cleanup is deferred.
     }
   }
+}
+
+final class _SummaryRequest {
+  const _SummaryRequest({
+    required this.content,
+    required this.template,
+    required this.identity,
+  });
+
+  final String content;
+  final PromptTemplate template;
+  final SummaryCacheIdentity identity;
 }
