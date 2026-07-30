@@ -16,6 +16,10 @@ void main() {
     database = RiverDatabase(NativeDatabase.memory());
     repository = DriftReadingEventRepository(database);
     await _seedArticle(database);
+    await repository.saveSettings(
+      const domain.ReadingBehaviorSettings(captureEnabled: true),
+      updatedAt: DateTime.utc(2026, 7, 30),
+    );
   });
 
   tearDown(() async {
@@ -81,8 +85,10 @@ void main() {
   });
 
   test(
-    'capture is local by default and disabling it blocks new rows',
+    'capture waits for local consent and disabling it blocks new rows',
     () async {
+      await database.delete(database.readingBehaviorSettingsRows).go();
+      expect(await repository.needsIntroduction(), isTrue);
       expect(
         await repository.readSettings(),
         const domain.ReadingBehaviorSettings(),
@@ -98,6 +104,7 @@ void main() {
         ),
         updatedAt: DateTime.utc(2026, 7, 30),
       );
+      expect(await repository.needsIntroduction(), isFalse);
 
       expect(
         await repository.record(_openEvent('disabled-event')),
@@ -171,6 +178,10 @@ void main() {
       database = RiverDatabase(NativeDatabase(file));
       repository = DriftReadingEventRepository(database);
       await _seedArticle(database);
+      await repository.saveSettings(
+        const domain.ReadingBehaviorSettings(captureEnabled: true),
+        updatedAt: DateTime.utc(2026, 7, 30),
+      );
       await repository.record(_openEvent('private-event-identity'));
 
       expect(_databaseBytes(directory), contains('private-event-identity'));

@@ -706,6 +706,10 @@ void main() {
         await DriftReadingEventRepository(migrated).readSettings(),
         const ReadingBehaviorSettings(),
       );
+      expect(
+        await DriftReadingEventRepository(migrated).needsIntroduction(),
+        isTrue,
+      );
       expect(await _userVersion(migrated), 15);
     },
   );

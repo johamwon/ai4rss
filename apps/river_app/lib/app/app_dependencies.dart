@@ -25,6 +25,7 @@ final class AppDependencies {
     required this.http,
     required RiverDatabase database,
     this.automaticRefreshEnabled = true,
+    this.readingBehaviorIntroductionEnabled = false,
     BackgroundRefreshScheduler? backgroundRefresh,
     ExternalUriGateway? externalUri,
     AudioEngine? audio,
@@ -41,6 +42,7 @@ final class AppDependencies {
     AiByokConfigurationVault? aiConfigurations,
     AiLongSummaryCheckpointStore? aiSummaryCheckpoints,
     ArticleSummaryExperience? articleSummaries,
+    ReadingBehaviorRepository? readingBehaviorRepository,
     this.notionWorkspace,
     this.syncAccount,
   })  : knowledgeFiles =
@@ -123,6 +125,8 @@ final class AppDependencies {
       ids: ids,
     );
     readerSettings = DriftReaderSettingsRepository(database);
+    readingBehavior =
+        readingBehaviorRepository ?? DriftReadingEventRepository(database);
     annotations = DriftArticleAnnotationRepository(database);
     audioQueueRepository = DriftAudioQueueRepository(database);
     audioQueue = PersistentAudioQueue(
@@ -231,6 +235,7 @@ final class AppDependencies {
       podcastTransfer: IoPodcastTransferBackend(),
       http: http,
       database: database,
+      readingBehaviorIntroductionEnabled: true,
       notionConnector: notionConnector,
       notionWorkspace: notionWorkspace,
     );
@@ -251,6 +256,7 @@ final class AppDependencies {
   final HttpPort http;
   final AiHttpTransport aiTransport;
   final bool automaticRefreshEnabled;
+  final bool readingBehaviorIntroductionEnabled;
   final OpmlFileGateway opmlFiles;
   final KnowledgeMarkdownFileGateway knowledgeFiles;
   final KnowledgeImageFetcher knowledgeImages;
@@ -271,6 +277,7 @@ final class AppDependencies {
   late final FeedDiscoveryService feedDiscovery;
   late final SubscriptionOrganizerService subscriptionOrganizer;
   late final DriftReaderSettingsRepository readerSettings;
+  late final ReadingBehaviorRepository readingBehavior;
   late final DriftArticleAnnotationRepository annotations;
   late final DriftAudioQueueRepository audioQueueRepository;
   late final PersistentAudioQueue audioQueue;

@@ -136,17 +136,17 @@ void main() {
   test('behavior settings validate retention and preserve immutable updates',
       () {
     const defaults = ReadingBehaviorSettings();
-    final disabled = defaults.copyWith(
-      captureEnabled: false,
+    final enabled = defaults.copyWith(
+      captureEnabled: true,
       retentionDays: 30,
     );
 
-    expect(defaults.captureEnabled, isTrue);
+    expect(defaults.captureEnabled, isFalse);
     expect(defaults.retentionDays, 90);
     expect(
-      disabled,
+      enabled,
       const ReadingBehaviorSettings(
-        captureEnabled: false,
+        captureEnabled: true,
         retentionDays: 30,
       ),
     );

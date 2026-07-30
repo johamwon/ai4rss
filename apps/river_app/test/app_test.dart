@@ -150,11 +150,13 @@ void main() {
   late _FakeHttp http;
   late _FakeNetworkMonitor network;
   late _FakeOpmlFiles opmlFiles;
+  late RiverDatabase database;
 
-  setUp(() {
+  setUp(() async {
     http = _FakeHttp();
     network = _FakeNetworkMonitor();
     opmlFiles = _FakeOpmlFiles();
+    database = RiverDatabase.inMemory();
     dependencies = AppDependencies(
       clock: _FixedClock(),
       ids: _FixedIds(),
@@ -164,14 +166,51 @@ void main() {
       network: network,
       http: http,
       opmlFiles: opmlFiles,
-      database: RiverDatabase.inMemory(),
+      database: database,
       automaticRefreshEnabled: false,
+      readingBehaviorIntroductionEnabled: true,
+    );
+    await dependencies.readingBehavior.saveSettings(
+      const ReadingBehaviorSettings(),
+      updatedAt: _FixedClock().now(),
     );
   });
 
   tearDown(() async {
     await network.close();
     await dependencies.close();
+  });
+
+  testWidgets('first launch requires an explicit local preference choice',
+      (tester) async {
+    await database.delete(database.readingBehaviorSettingsRows).go();
+
+    await tester.pumpWidget(RiverApp(dependencies: dependencies));
+    await tester.pumpAndSettle();
+
+    expect(find.text('是否启用本地阅读偏好？'), findsOneWidget);
+    expect(find.text('仅在本机启用'), findsOneWidget);
+    expect(find.text('暂不开启'), findsOneWidget);
+    expect(
+      (await dependencies.readingBehavior.readSettings()).captureEnabled,
+      isFalse,
+    );
+
+    await tester.tap(find.text('暂不开启'));
+    await tester.pumpAndSettle();
+    expect(await dependencies.readingBehavior.needsIntroduction(), isFalse);
+    expect(
+      (await dependencies.readingBehavior.readSettings()).captureEnabled,
+      isFalse,
+    );
+    expect(find.byTooltip('阅读偏好与隐私'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('阅读偏好与隐私'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('不会自动上传'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
   });
 
   testWidgets('empty inbox is accessible', (tester) async {

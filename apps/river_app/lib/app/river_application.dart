@@ -12,6 +12,7 @@ import '../audio/audio_queue_page.dart';
 import '../audio/global_mini_player.dart';
 import '../knowledge/knowledge_library_page.dart';
 import '../podcast/podcast_library_page.dart';
+import '../preferences/reading_behavior_privacy_page.dart';
 import '../sync/sync_account_page.dart';
 import 'app_dependencies.dart';
 import 'article_list.dart';
@@ -126,6 +127,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
   late Stream<List<FeedSubscriptionRecord>> _subscriptions;
   late Stream<List<FeedFolderRecord>> _folders;
   ArticleListController? _articleListController;
+  var _readingBehaviorIntroductionScheduled = false;
 
   @override
   void initState() {
@@ -172,6 +174,48 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
       }
       unawaited(dependencies.offlineArticles.resumePending());
       unawaited(dependencies.podcastDownloads.start());
+      if (dependencies.readingBehaviorIntroductionEnabled) {
+        _scheduleReadingBehaviorIntroduction(dependencies);
+      }
+    }
+  }
+
+  void _scheduleReadingBehaviorIntroduction(AppDependencies dependencies) {
+    if (_readingBehaviorIntroductionScheduled) return;
+    _readingBehaviorIntroductionScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(_offerReadingBehaviorIntroduction(dependencies));
+      }
+    });
+  }
+
+  Future<void> _offerReadingBehaviorIntroduction(
+    AppDependencies dependencies,
+  ) async {
+    try {
+      if (!await dependencies.readingBehavior.needsIntroduction() ||
+          !mounted ||
+          !identical(dependencies, _dependencies)) {
+        return;
+      }
+      final enabled = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const ReadingBehaviorIntroductionDialog(),
+          ) ??
+          false;
+      await dependencies.readingBehavior.saveSettings(
+        ReadingBehaviorSettings(captureEnabled: enabled),
+        updatedAt: dependencies.clock.now(),
+      );
+      if (mounted) {
+        _showMessage(
+          enabled ? '本地阅读偏好已启用，可随时在隐私设置中关闭' : '本地阅读偏好未启用，可稍后在隐私设置中开启',
+        );
+      }
+    } on Object {
+      if (mounted) _showMessage('阅读偏好设置暂不可用');
     }
   }
 
@@ -483,6 +527,18 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
     );
   }
 
+  Future<void> _openReadingBehaviorPrivacy() async {
+    final dependencies = RiverDependenciesScope.of(context);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => ReadingBehaviorPrivacyPage(
+          repository: dependencies.readingBehavior,
+          clock: dependencies.clock,
+        ),
+      ),
+    );
+  }
+
   Future<void> _run(Future<String?> Function() operation) async {
     setState(() => _busy = true);
     try {
@@ -709,6 +765,12 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
                         onPressed: () => unawaited(_openPodcasts()),
                         icon: const Icon(Icons.podcasts_outlined),
                         tooltip: '播客',
+                      ),
+                      IconButton(
+                        onPressed: () =>
+                            unawaited(_openReadingBehaviorPrivacy()),
+                        icon: const Icon(Icons.privacy_tip_outlined),
+                        tooltip: '阅读偏好与隐私',
                       ),
                       if (_dependencies?.syncAccount != null)
                         IconButton(
