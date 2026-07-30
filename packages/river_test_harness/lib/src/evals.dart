@@ -295,6 +295,98 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluateAiLongReplay() async {
+    final manifest = _readJson('evals/long_summary_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final article = Article(
+        id: id,
+        url: Uri.parse('https://replay.invalid/$id'),
+        title: 'Deterministic long article',
+        source: ContentSource.web,
+        plainText: _strings(item['paragraphs']).join('\n\n'),
+      );
+      const budget = AiContextBudget(
+        mapContentCharacters: 1000,
+        maxMapPromptCharacters: 5000,
+        maxReducePromptCharacters: 10000,
+      );
+      final chunks = const ArticleSummaryChunkPlanner().plan(
+        articleId: id,
+        content: article.plainText!,
+        budget: budget,
+      );
+      final mapFacts = (item['mapFacts'] as List<Object?>)
+          .map((value) => _strings(value))
+          .toList(growable: false);
+      if (mapFacts.length != chunks.length) {
+        failures.add(
+          EvalFailure(id, 'map replay count does not match planned chunks'),
+        );
+        continue;
+      }
+      final provider = _LongSummaryReplayProvider(
+        articleId: id,
+        chunks: chunks,
+        mapFacts: mapFacts,
+        finalOutput: jsonEncode(_map(item['replay'])),
+        language: item['language'] as String,
+      );
+      final service = LongArticleSummaryService(
+        provider,
+        checkpoints: MemoryAiLongSummaryCheckpointStore(),
+        model: item['model'] as String,
+        outputLanguage: item['language'] as String,
+        budget: budget,
+        pricing: const AiTokenPricing(
+          inputUsdPerMillion: 1,
+          outputUsdPerMillion: 4,
+        ),
+      );
+      try {
+        final result = await service.summarize(article);
+        final facts = result.sourcedFacts.map((fact) => fact.text).toList();
+        for (final required in _strings(item['requiredSourcedFacts'])) {
+          if (!facts.contains(required)) {
+            failures.add(EvalFailure(id, 'sourced fact missing: $required'));
+          }
+        }
+        if (facts.where((fact) => fact == 'shared cross-block fact').length !=
+            1) {
+          failures
+              .add(EvalFailure(id, 'cross-block fact was not deduplicated'));
+        }
+        if (result.sourcedFacts.any(
+          (fact) => fact.citations.any(
+            (citation) => citation.articleId != id,
+          ),
+        )) {
+          failures.add(EvalFailure(id, 'citation lost source article id'));
+        }
+        if (result.summary.language != item['language']) {
+          failures.add(EvalFailure(id, 'final language mismatch'));
+        }
+        if (provider.requests.length >
+            service.preflight(article).estimate.providerCalls) {
+          failures.add(EvalFailure(id, 'provider calls exceeded preflight'));
+        }
+        if (result.preflightEstimate.upperBoundUsd <= 0) {
+          failures.add(EvalFailure(id, 'cost estimate is not positive'));
+        }
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'long summary replay failed: $error'));
+      }
+    }
+    return EvalReport(
+      name: 'ai-long-replay',
+      total: cases.length,
+      failures: failures,
+    );
+  }
+
   EvalReport evaluateRanking() {
     final manifest = _readJson('evals/ranking_sessions.json');
     final cases = _list(manifest['cases']);
@@ -394,4 +486,64 @@ final class _ZeroAiClock implements AiMonotonicClock {
 
   @override
   Duration elapsed() => Duration.zero;
+}
+
+final class _LongSummaryReplayProvider implements AiProvider {
+  _LongSummaryReplayProvider({
+    required this.articleId,
+    required this.chunks,
+    required this.mapFacts,
+    required this.finalOutput,
+    required this.language,
+  });
+
+  final String articleId;
+  final List<ArticleSummaryChunk> chunks;
+  final List<List<String>> mapFacts;
+  final String finalOutput;
+  final String language;
+  final List<AiProviderRequest> requests = <AiProviderRequest>[];
+
+  @override
+  String get id => 'long-summary-replay';
+
+  @override
+  Future<AiProviderResponse> complete(AiProviderRequest request) async {
+    requests.add(request);
+    final output = request.operationId.endsWith(':reduce')
+        ? finalOutput
+        : _mapOutput(request);
+    return AiProviderResponse(
+      output: output,
+      model: request.model,
+      usage: AiTokenUsage(inputTokens: 10, outputTokens: 5),
+      elapsed: Duration.zero,
+    );
+  }
+
+  String _mapOutput(AiProviderRequest request) {
+    final index = int.parse(request.operationId.split(':').last);
+    final chunk = chunks[index];
+    return jsonEncode(
+      <String, Object?>{
+        'schemaVersion': AiChunkSummarySchema.name,
+        'articleId': articleId,
+        'chunkIndex': index,
+        'paragraphStart': chunk.paragraphStart,
+        'paragraphEnd': chunk.paragraphEnd,
+        'facts': <Map<String, Object?>>[
+          for (final fact in mapFacts[index])
+            <String, Object?>{
+              'text': fact,
+              'articleId': articleId,
+              'paragraphStart': chunk.paragraphStart,
+              'paragraphEnd': chunk.paragraphStart + 1,
+            },
+        ],
+        'topics': <String>['RSS', 'AI'],
+        'entities': <String>['River'],
+        'language': language,
+      },
+    );
+  }
 }
