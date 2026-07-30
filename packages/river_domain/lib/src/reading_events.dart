@@ -1,10 +1,92 @@
+import 'dart:convert';
+
 const String readingEventSchema = 'river.reading-event';
 const int readingEventSchemaVersion = 1;
+const String readingBehaviorExportSchema = 'river.reading-event-export';
+const int readingBehaviorExportSchemaVersion = 1;
 
-enum ReadingEventRecordResult { inserted, duplicate }
+enum ReadingEventRecordResult { inserted, duplicate, captureDisabled }
 
 abstract interface class ReadingEventRepository {
   Future<ReadingEventRecordResult> record(ReadingEvent event);
+}
+
+abstract interface class ReadingBehaviorRepository
+    implements ReadingEventRepository {
+  Stream<ReadingBehaviorSettings> watchSettings();
+  Future<ReadingBehaviorSettings> readSettings();
+  Future<void> saveSettings(
+    ReadingBehaviorSettings settings, {
+    required DateTime updatedAt,
+  });
+  Future<List<ReadingEvent>> readEvents();
+  Future<int> purgeExpired({required DateTime now});
+  Future<int> clearEvents();
+  Future<String> exportJson({required DateTime exportedAt});
+}
+
+final class ReadingBehaviorSettings {
+  const ReadingBehaviorSettings({
+    this.captureEnabled = true,
+    this.retentionDays = 90,
+  });
+
+  final bool captureEnabled;
+  final int retentionDays;
+
+  ReadingBehaviorSettings copyWith({
+    bool? captureEnabled,
+    int? retentionDays,
+  }) =>
+      ReadingBehaviorSettings(
+        captureEnabled: captureEnabled ?? this.captureEnabled,
+        retentionDays: retentionDays ?? this.retentionDays,
+      );
+
+  void validate() {
+    if (retentionDays < 1 || retentionDays > 3650) {
+      throw const FormatException(
+        'Reading event retention must be between 1 and 3650 days.',
+      );
+    }
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is ReadingBehaviorSettings &&
+      other.captureEnabled == captureEnabled &&
+      other.retentionDays == retentionDays;
+
+  @override
+  int get hashCode => Object.hash(captureEnabled, retentionDays);
+}
+
+abstract final class ReadingBehaviorExportCodec {
+  static String encode({
+    required ReadingBehaviorSettings settings,
+    required Iterable<ReadingEvent> events,
+    required DateTime exportedAt,
+  }) {
+    settings.validate();
+    final ordered = events.toList()
+      ..sort((left, right) {
+        final byTime = left.occurredAt.compareTo(right.occurredAt);
+        return byTime != 0 ? byTime : left.eventId.compareTo(right.eventId);
+      });
+    for (final event in ordered) {
+      event.validate();
+    }
+    return jsonEncode(<String, Object>{
+      'schema': readingBehaviorExportSchema,
+      'version': readingBehaviorExportSchemaVersion,
+      'exportedAt': exportedAt.toUtc().toIso8601String(),
+      'settings': <String, Object>{
+        'captureEnabled': settings.captureEnabled,
+        'retentionDays': settings.retentionDays,
+      },
+      'events': ordered.map((event) => event.toJson()).toList(),
+    });
+  }
 }
 
 final class ReadingEventIdentityConflict implements Exception {

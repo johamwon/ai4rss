@@ -4035,6 +4035,341 @@ class ReadingEventsCompanion extends UpdateCompanion<ReadingEvent> {
   }
 }
 
+class $ReadingBehaviorSettingsRowsTable extends ReadingBehaviorSettingsRows
+    with
+        TableInfo<
+          $ReadingBehaviorSettingsRowsTable,
+          ReadingBehaviorSettingsRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReadingBehaviorSettingsRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _captureEnabledMeta = const VerificationMeta(
+    'captureEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> captureEnabled = GeneratedColumn<bool>(
+    'capture_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("capture_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _retentionDaysMeta = const VerificationMeta(
+    'retentionDays',
+  );
+  @override
+  late final GeneratedColumn<int> retentionDays = GeneratedColumn<int>(
+    'retention_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(90),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    captureEnabled,
+    retentionDays,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'reading_behavior_settings_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReadingBehaviorSettingsRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('capture_enabled')) {
+      context.handle(
+        _captureEnabledMeta,
+        captureEnabled.isAcceptableOrUnknown(
+          data['capture_enabled']!,
+          _captureEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('retention_days')) {
+      context.handle(
+        _retentionDaysMeta,
+        retentionDays.isAcceptableOrUnknown(
+          data['retention_days']!,
+          _retentionDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReadingBehaviorSettingsRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReadingBehaviorSettingsRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      captureEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}capture_enabled'],
+      )!,
+      retentionDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}retention_days'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ReadingBehaviorSettingsRowsTable createAlias(String alias) {
+    return $ReadingBehaviorSettingsRowsTable(attachedDatabase, alias);
+  }
+}
+
+class ReadingBehaviorSettingsRow extends DataClass
+    implements Insertable<ReadingBehaviorSettingsRow> {
+  final String id;
+  final bool captureEnabled;
+  final int retentionDays;
+  final DateTime updatedAt;
+  const ReadingBehaviorSettingsRow({
+    required this.id,
+    required this.captureEnabled,
+    required this.retentionDays,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['capture_enabled'] = Variable<bool>(captureEnabled);
+    map['retention_days'] = Variable<int>(retentionDays);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ReadingBehaviorSettingsRowsCompanion toCompanion(bool nullToAbsent) {
+    return ReadingBehaviorSettingsRowsCompanion(
+      id: Value(id),
+      captureEnabled: Value(captureEnabled),
+      retentionDays: Value(retentionDays),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ReadingBehaviorSettingsRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReadingBehaviorSettingsRow(
+      id: serializer.fromJson<String>(json['id']),
+      captureEnabled: serializer.fromJson<bool>(json['captureEnabled']),
+      retentionDays: serializer.fromJson<int>(json['retentionDays']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'captureEnabled': serializer.toJson<bool>(captureEnabled),
+      'retentionDays': serializer.toJson<int>(retentionDays),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ReadingBehaviorSettingsRow copyWith({
+    String? id,
+    bool? captureEnabled,
+    int? retentionDays,
+    DateTime? updatedAt,
+  }) => ReadingBehaviorSettingsRow(
+    id: id ?? this.id,
+    captureEnabled: captureEnabled ?? this.captureEnabled,
+    retentionDays: retentionDays ?? this.retentionDays,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ReadingBehaviorSettingsRow copyWithCompanion(
+    ReadingBehaviorSettingsRowsCompanion data,
+  ) {
+    return ReadingBehaviorSettingsRow(
+      id: data.id.present ? data.id.value : this.id,
+      captureEnabled: data.captureEnabled.present
+          ? data.captureEnabled.value
+          : this.captureEnabled,
+      retentionDays: data.retentionDays.present
+          ? data.retentionDays.value
+          : this.retentionDays,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReadingBehaviorSettingsRow(')
+          ..write('id: $id, ')
+          ..write('captureEnabled: $captureEnabled, ')
+          ..write('retentionDays: $retentionDays, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, captureEnabled, retentionDays, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReadingBehaviorSettingsRow &&
+          other.id == this.id &&
+          other.captureEnabled == this.captureEnabled &&
+          other.retentionDays == this.retentionDays &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ReadingBehaviorSettingsRowsCompanion
+    extends UpdateCompanion<ReadingBehaviorSettingsRow> {
+  final Value<String> id;
+  final Value<bool> captureEnabled;
+  final Value<int> retentionDays;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const ReadingBehaviorSettingsRowsCompanion({
+    this.id = const Value.absent(),
+    this.captureEnabled = const Value.absent(),
+    this.retentionDays = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReadingBehaviorSettingsRowsCompanion.insert({
+    required String id,
+    this.captureEnabled = const Value.absent(),
+    this.retentionDays = const Value.absent(),
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       updatedAt = Value(updatedAt);
+  static Insertable<ReadingBehaviorSettingsRow> custom({
+    Expression<String>? id,
+    Expression<bool>? captureEnabled,
+    Expression<int>? retentionDays,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (captureEnabled != null) 'capture_enabled': captureEnabled,
+      if (retentionDays != null) 'retention_days': retentionDays,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReadingBehaviorSettingsRowsCompanion copyWith({
+    Value<String>? id,
+    Value<bool>? captureEnabled,
+    Value<int>? retentionDays,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ReadingBehaviorSettingsRowsCompanion(
+      id: id ?? this.id,
+      captureEnabled: captureEnabled ?? this.captureEnabled,
+      retentionDays: retentionDays ?? this.retentionDays,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (captureEnabled.present) {
+      map['capture_enabled'] = Variable<bool>(captureEnabled.value);
+    }
+    if (retentionDays.present) {
+      map['retention_days'] = Variable<int>(retentionDays.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReadingBehaviorSettingsRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('captureEnabled: $captureEnabled, ')
+          ..write('retentionDays: $retentionDays, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ReaderSettingsRowsTable extends ReaderSettingsRows
     with TableInfo<$ReaderSettingsRowsTable, ReaderSettingsRow> {
   @override
@@ -14827,6 +15162,8 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
   );
   late final $AiArtifactsTable aiArtifacts = $AiArtifactsTable(this);
   late final $ReadingEventsTable readingEvents = $ReadingEventsTable(this);
+  late final $ReadingBehaviorSettingsRowsTable readingBehaviorSettingsRows =
+      $ReadingBehaviorSettingsRowsTable(this);
   late final $ReaderSettingsRowsTable readerSettingsRows =
       $ReaderSettingsRowsTable(this);
   late final $KnowledgeItemsTable knowledgeItems = $KnowledgeItemsTable(this);
@@ -14866,6 +15203,7 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
     articleContents,
     aiArtifacts,
     readingEvents,
+    readingBehaviorSettingsRows,
     readerSettingsRows,
     knowledgeItems,
     knowledgeExternalMappings,
@@ -17936,6 +18274,210 @@ typedef $$ReadingEventsTableProcessedTableManager =
       (ReadingEvent, $$ReadingEventsTableReferences),
       ReadingEvent,
       PrefetchHooks Function({bool articleId})
+    >;
+typedef $$ReadingBehaviorSettingsRowsTableCreateCompanionBuilder =
+    ReadingBehaviorSettingsRowsCompanion Function({
+      required String id,
+      Value<bool> captureEnabled,
+      Value<int> retentionDays,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ReadingBehaviorSettingsRowsTableUpdateCompanionBuilder =
+    ReadingBehaviorSettingsRowsCompanion Function({
+      Value<String> id,
+      Value<bool> captureEnabled,
+      Value<int> retentionDays,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ReadingBehaviorSettingsRowsTableFilterComposer
+    extends Composer<_$RiverDatabase, $ReadingBehaviorSettingsRowsTable> {
+  $$ReadingBehaviorSettingsRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get captureEnabled => $composableBuilder(
+    column: $table.captureEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReadingBehaviorSettingsRowsTableOrderingComposer
+    extends Composer<_$RiverDatabase, $ReadingBehaviorSettingsRowsTable> {
+  $$ReadingBehaviorSettingsRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get captureEnabled => $composableBuilder(
+    column: $table.captureEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReadingBehaviorSettingsRowsTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $ReadingBehaviorSettingsRowsTable> {
+  $$ReadingBehaviorSettingsRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<bool> get captureEnabled => $composableBuilder(
+    column: $table.captureEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get retentionDays => $composableBuilder(
+    column: $table.retentionDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ReadingBehaviorSettingsRowsTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $ReadingBehaviorSettingsRowsTable,
+          ReadingBehaviorSettingsRow,
+          $$ReadingBehaviorSettingsRowsTableFilterComposer,
+          $$ReadingBehaviorSettingsRowsTableOrderingComposer,
+          $$ReadingBehaviorSettingsRowsTableAnnotationComposer,
+          $$ReadingBehaviorSettingsRowsTableCreateCompanionBuilder,
+          $$ReadingBehaviorSettingsRowsTableUpdateCompanionBuilder,
+          (
+            ReadingBehaviorSettingsRow,
+            BaseReferences<
+              _$RiverDatabase,
+              $ReadingBehaviorSettingsRowsTable,
+              ReadingBehaviorSettingsRow
+            >,
+          ),
+          ReadingBehaviorSettingsRow,
+          PrefetchHooks Function()
+        > {
+  $$ReadingBehaviorSettingsRowsTableTableManager(
+    _$RiverDatabase db,
+    $ReadingBehaviorSettingsRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReadingBehaviorSettingsRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$ReadingBehaviorSettingsRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ReadingBehaviorSettingsRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<bool> captureEnabled = const Value.absent(),
+                Value<int> retentionDays = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReadingBehaviorSettingsRowsCompanion(
+                id: id,
+                captureEnabled: captureEnabled,
+                retentionDays: retentionDays,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<bool> captureEnabled = const Value.absent(),
+                Value<int> retentionDays = const Value.absent(),
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ReadingBehaviorSettingsRowsCompanion.insert(
+                id: id,
+                captureEnabled: captureEnabled,
+                retentionDays: retentionDays,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReadingBehaviorSettingsRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $ReadingBehaviorSettingsRowsTable,
+      ReadingBehaviorSettingsRow,
+      $$ReadingBehaviorSettingsRowsTableFilterComposer,
+      $$ReadingBehaviorSettingsRowsTableOrderingComposer,
+      $$ReadingBehaviorSettingsRowsTableAnnotationComposer,
+      $$ReadingBehaviorSettingsRowsTableCreateCompanionBuilder,
+      $$ReadingBehaviorSettingsRowsTableUpdateCompanionBuilder,
+      (
+        ReadingBehaviorSettingsRow,
+        BaseReferences<
+          _$RiverDatabase,
+          $ReadingBehaviorSettingsRowsTable,
+          ReadingBehaviorSettingsRow
+        >,
+      ),
+      ReadingBehaviorSettingsRow,
+      PrefetchHooks Function()
     >;
 typedef $$ReaderSettingsRowsTableCreateCompanionBuilder =
     ReaderSettingsRowsCompanion Function({
@@ -24151,6 +24693,12 @@ class $RiverDatabaseManager {
       $$AiArtifactsTableTableManager(_db, _db.aiArtifacts);
   $$ReadingEventsTableTableManager get readingEvents =>
       $$ReadingEventsTableTableManager(_db, _db.readingEvents);
+  $$ReadingBehaviorSettingsRowsTableTableManager
+  get readingBehaviorSettingsRows =>
+      $$ReadingBehaviorSettingsRowsTableTableManager(
+        _db,
+        _db.readingBehaviorSettingsRows,
+      );
   $$ReaderSettingsRowsTableTableManager get readerSettingsRows =>
       $$ReaderSettingsRowsTableTableManager(_db, _db.readerSettingsRows);
   $$KnowledgeItemsTableTableManager get knowledgeItems =>
