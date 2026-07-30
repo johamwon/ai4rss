@@ -1,0 +1,8 @@
+{
+  "id": "summary-tutorial-zh-001",
+  "title": "离线 RSS 备份步骤",
+  "language": "zh-CN",
+  "contentType": "tutorial",
+  "riskLevel": "low",
+  "plainText": "先从阅读器导出 OPML 文件，再把文件复制到两个独立存储位置。恢复时应先在测试配置中导入并核对订阅数量，确认无误后再替换主配置。OPML 只包含订阅结构，不包含已读状态和文章正文。"
+}

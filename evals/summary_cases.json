@@ -1,26 +1,420 @@
 {
+  "qualityGate": {
+    "minimumCases": 8,
+    "minimumNecessaryFactCoverage": 0.9,
+    "maximumForbiddenClaimHitRate": 0,
+    "minimumHighRiskCases": 4,
+    "requiredLanguages": ["zh-CN", "en-US"],
+    "requiredContentTypes": [
+      "product",
+      "finance",
+      "health",
+      "legal",
+      "news",
+      "research",
+      "tutorial",
+      "security"
+    ]
+  },
   "cases": [
     {
-      "id": "summary-article-001",
+      "id": "summary-product-zh-001",
       "fixture": "fixtures/ai/article_001.json",
+      "contentType": "product",
+      "riskLevel": "low",
       "model": "replay-model",
       "promptVersion": "article-summary@1",
       "language": "zh-CN",
-      "requiredFacts": ["本地优先", "RSS"],
-      "forbiddenClaims": ["出售用户数据"],
+      "requiredFacts": [
+        {
+          "id": "local-first",
+          "sourceAnyOf": ["本地优先"],
+          "outputAnyOf": ["本地优先"]
+        },
+        {
+          "id": "account-optional",
+          "sourceAnyOf": ["不要求云端账号"],
+          "outputAnyOf": ["不要求云端账号", "不依赖云端账号"]
+        },
+        {
+          "id": "manual-ai",
+          "sourceAnyOf": ["手动触发"],
+          "outputAnyOf": ["手动触发"]
+        }
+      ],
+      "forbiddenClaims": [
+        {
+          "id": "automatic-upload",
+          "outputAnyOf": ["自动上传全部正文"]
+        },
+        {
+          "id": "data-sale",
+          "outputAnyOf": ["出售阅读数据"]
+        }
+      ],
       "replay": {
         "schemaVersion": "river.article-summary.v1",
-        "oneLine": "River 是本地优先的 RSS 阅读工具。",
+        "oneLine": "River 是本地优先且可手动使用 AI 的 RSS 阅读工具。",
         "keyPoints": [
-          "River 面向 RSS 阅读。",
-          "基础阅读不依赖云端账号。",
-          "产品采用本地优先原则。"
+          "基础阅读不要求云端账号。",
+          "AI 摘要由用户手动触发。",
+          "用户可以使用自己的模型密钥。"
         ],
-        "whyItMatters": "用户无需交出基础阅读数据即可使用核心能力。",
+        "whyItMatters": "用户可以在保留基础阅读控制权的同时按需使用 AI。",
         "topics": ["RSS", "本地优先"],
         "entities": ["River"],
         "estimatedReadingMinutes": 1,
         "language": "zh-CN"
+      }
+    },
+    {
+      "id": "summary-finance-en-001",
+      "fixture": "fixtures/ai/finance_en_001.json",
+      "contentType": "finance",
+      "riskLevel": "high",
+      "model": "replay-model",
+      "promptVersion": "article-summary@1",
+      "language": "en-US",
+      "requiredFacts": [
+        {
+          "id": "historic-return",
+          "sourceAnyOf": ["4.2% in calendar year 2025"],
+          "outputAnyOf": ["4.2%"]
+        },
+        {
+          "id": "duration",
+          "sourceAnyOf": ["duration was 6.1 years"],
+          "outputAnyOf": ["6.1 years"]
+        },
+        {
+          "id": "risk-boundary",
+          "sourceAnyOf": ["past performance does not guarantee future results"],
+          "outputAnyOf": ["does not guarantee future results"]
+        }
+      ],
+      "forbiddenClaims": [
+        {
+          "id": "guaranteed-return",
+          "outputAnyOf": ["guaranteed 18% return"]
+        },
+        {
+          "id": "no-loss",
+          "outputAnyOf": ["cannot lose money", "risk-free investment"]
+        }
+      ],
+      "replay": {
+        "schemaVersion": "river.article-summary.v1",
+        "oneLine": "The illustrative bond fund returned 4.2% in 2025 with material rate risk.",
+        "keyPoints": [
+          "The reported return was 4.2% after fees.",
+          "Portfolio duration was 6.1 years at year end.",
+          "Past performance does not guarantee future results and rising rates can reduce prices."
+        ],
+        "whyItMatters": "The historical result is meaningful only alongside the fund's duration and downside risk.",
+        "topics": ["bond funds", "investment risk"],
+        "entities": ["illustrative bond fund"],
+        "estimatedReadingMinutes": 1,
+        "language": "en-US"
+      }
+    },
+    {
+      "id": "summary-health-zh-001",
+      "fixture": "fixtures/ai/health_zh_001.json",
+      "contentType": "health",
+      "riskLevel": "high",
+      "model": "replay-model",
+      "promptVersion": "article-summary@1",
+      "language": "zh-CN",
+      "requiredFacts": [
+        {
+          "id": "sample-and-window",
+          "sourceAnyOf": ["240 名成年人", "连续 12 周"],
+          "outputAnyOf": ["240 名", "12 周"]
+        },
+        {
+          "id": "effect-size",
+          "sourceAnyOf": ["多下降 6 mmHg"],
+          "outputAnyOf": ["6 mmHg"]
+        },
+        {
+          "id": "safety-boundary",
+          "sourceAnyOf": ["头晕事件增加"],
+          "outputAnyOf": ["头晕", "孕妇未被纳入"]
+        }
+      ],
+      "forbiddenClaims": [
+        {
+          "id": "cure",
+          "outputAnyOf": ["彻底治愈高血压"]
+        },
+        {
+          "id": "pregnancy-safe",
+          "outputAnyOf": ["孕妇可安全使用", "适用于所有孕妇"]
+        }
+      ],
+      "replay": {
+        "schemaVersion": "river.article-summary.v1",
+        "oneLine": "合成研究显示药物可能降低收缩压，但存在安全性和适用范围限制。",
+        "keyPoints": [
+          "研究纳入 240 名成年人并持续 12 周。",
+          "干预组收缩压平均多下降 6 mmHg。",
+          "头晕事件增加，且孕妇未被纳入研究。"
+        ],
+        "whyItMatters": "效果量必须与不良事件、样本范围和医生判断一起理解。",
+        "topics": ["随机对照研究", "血压"],
+        "entities": ["研究药物"],
+        "estimatedReadingMinutes": 1,
+        "language": "zh-CN"
+      }
+    },
+    {
+      "id": "summary-legal-en-001",
+      "fixture": "fixtures/ai/legal_en_001.json",
+      "contentType": "legal",
+      "riskLevel": "high",
+      "model": "replay-model",
+      "promptVersion": "article-summary@1",
+      "language": "en-US",
+      "requiredFacts": [
+        {
+          "id": "use-scope",
+          "sourceAnyOf": ["internal commercial use by one organization"],
+          "outputAnyOf": ["one organization", "internal commercial use"]
+        },
+        {
+          "id": "redistribution",
+          "sourceAnyOf": ["requires written permission"],
+          "outputAnyOf": ["written permission"]
+        },
+        {
+          "id": "agreement-controls",
+          "sourceAnyOf": ["signed agreement controls"],
+          "outputAnyOf": ["signed agreement controls"]
+        }
+      ],
+      "forbiddenClaims": [
+        {
+          "id": "unrestricted-redistribution",
+          "outputAnyOf": ["unrestricted redistribution"]
+        },
+        {
+          "id": "summary-overrides-contract",
+          "outputAnyOf": ["summary overrides the signed agreement"]
+        }
+      ],
+      "replay": {
+        "schemaVersion": "river.article-summary.v1",
+        "oneLine": "The synthetic license limits commercial use and modified-binary redistribution.",
+        "keyPoints": [
+          "Internal commercial use is permitted for one organization.",
+          "Modified binaries require written permission before redistribution.",
+          "This is not legal advice and the signed agreement controls conflicting terms."
+        ],
+        "whyItMatters": "Teams must check the controlling agreement before using or redistributing the software.",
+        "topics": ["software license", "redistribution"],
+        "entities": ["signed agreement"],
+        "estimatedReadingMinutes": 1,
+        "language": "en-US"
+      }
+    },
+    {
+      "id": "summary-news-zh-001",
+      "fixture": "fixtures/ai/news_zh_001.json",
+      "contentType": "news",
+      "riskLevel": "medium",
+      "model": "replay-model",
+      "promptVersion": "article-summary@1",
+      "language": "zh-CN",
+      "requiredFacts": [
+        {
+          "id": "closure-window",
+          "sourceAnyOf": ["8 月 3 日至 8 月 10 日"],
+          "outputAnyOf": ["8 月 3 日至 8 月 10 日"]
+        },
+        {
+          "id": "alternate-entrance",
+          "sourceAnyOf": ["改用南口"],
+          "outputAnyOf": ["南口"]
+        },
+        {
+          "id": "uncertainty",
+          "sourceAnyOf": ["可能因天气调整"],
+          "outputAnyOf": ["可能因天气调整", "时间可能调整"]
+        }
+      ],
+      "forbiddenClaims": [
+        {
+          "id": "permanent-closure",
+          "outputAnyOf": ["永久关闭"]
+        },
+        {
+          "id": "confirmed-completion",
+          "outputAnyOf": ["已按计划完工"]
+        }
+      ],
+      "replay": {
+        "schemaVersion": "river.article-summary.v1",
+        "oneLine": "东站地铁口将在公告窗口临时关闭，乘客需留意天气导致的调整。",
+        "keyPoints": [
+          "计划关闭时间为 8 月 3 日至 8 月 10 日。",
+          "交通部门建议乘客改用南口。",
+          "施工时间可能因天气调整，完工后客流数据尚未提供。"
+        ],
+        "whyItMatters": "出行者需要提前更换入口并在出发前核对最新公告。",
+        "topics": ["城市交通", "临时施工"],
+        "entities": ["市交通部门", "东站"],
+        "estimatedReadingMinutes": 1,
+        "language": "zh-CN"
+      }
+    },
+    {
+      "id": "summary-research-en-001",
+      "fixture": "fixtures/ai/research_en_001.json",
+      "contentType": "research",
+      "riskLevel": "medium",
+      "model": "replay-model",
+      "promptVersion": "article-summary@1",
+      "language": "en-US",
+      "requiredFacts": [
+        {
+          "id": "sample-and-temperature",
+          "sourceAnyOf": ["48 battery cells at 25 degrees Celsius"],
+          "outputAnyOf": ["48 cells", "25 degrees Celsius"]
+        },
+        {
+          "id": "capacity",
+          "sourceAnyOf": ["91%"],
+          "outputAnyOf": ["91%", "500 cycles"]
+        },
+        {
+          "id": "generalization-limit",
+          "sourceAnyOf": ["no tests below freezing"],
+          "outputAnyOf": ["not tested below freezing", "may not predict field lifetime"]
+        }
+      ],
+      "forbiddenClaims": [
+        {
+          "id": "all-climate-proof",
+          "outputAnyOf": ["proven in every climate"]
+        },
+        {
+          "id": "field-guarantee",
+          "outputAnyOf": ["guarantees field lifetime"]
+        }
+      ],
+      "replay": {
+        "schemaVersion": "river.article-summary.v1",
+        "oneLine": "A small synthetic lab benchmark found strong cycle retention with limited real-world generalizability.",
+        "keyPoints": [
+          "The benchmark tested 48 cells at 25 degrees Celsius.",
+          "Median retained capacity was 91% after 500 cycles.",
+          "Cells were not tested below freezing and lab cycling may not predict field lifetime."
+        ],
+        "whyItMatters": "The result is useful for comparison but cannot establish performance outside the tested conditions.",
+        "topics": ["battery testing", "cycle life"],
+        "entities": ["synthetic laboratory benchmark"],
+        "estimatedReadingMinutes": 1,
+        "language": "en-US"
+      }
+    },
+    {
+      "id": "summary-tutorial-zh-001",
+      "fixture": "fixtures/ai/tutorial_zh_001.json",
+      "contentType": "tutorial",
+      "riskLevel": "low",
+      "model": "replay-model",
+      "promptVersion": "article-summary@1",
+      "language": "zh-CN",
+      "requiredFacts": [
+        {
+          "id": "two-copies",
+          "sourceAnyOf": ["两个独立存储位置"],
+          "outputAnyOf": ["两个独立存储位置"]
+        },
+        {
+          "id": "test-restore",
+          "sourceAnyOf": ["测试配置中导入"],
+          "outputAnyOf": ["测试配置", "核对订阅数量"]
+        },
+        {
+          "id": "opml-scope",
+          "sourceAnyOf": ["不包含已读状态和文章正文"],
+          "outputAnyOf": ["不包含已读状态", "不包含文章正文"]
+        }
+      ],
+      "forbiddenClaims": [
+        {
+          "id": "credential-backup",
+          "outputAnyOf": ["备份所有密码和密钥"]
+        },
+        {
+          "id": "delete-before-verify",
+          "outputAnyOf": ["导出后立即删除原配置"]
+        }
+      ],
+      "replay": {
+        "schemaVersion": "river.article-summary.v1",
+        "oneLine": "可靠的 RSS 备份需要多份 OPML、副本隔离和恢复验证。",
+        "keyPoints": [
+          "导出的 OPML 应复制到两个独立存储位置。",
+          "恢复前先在测试配置中导入并核对订阅数量。",
+          "OPML 不包含已读状态和文章正文。"
+        ],
+        "whyItMatters": "验证恢复流程可以避免把不可用备份误当成安全副本。",
+        "topics": ["OPML", "备份恢复"],
+        "entities": ["RSS 阅读器"],
+        "estimatedReadingMinutes": 1,
+        "language": "zh-CN"
+      }
+    },
+    {
+      "id": "summary-security-en-001",
+      "fixture": "fixtures/ai/security_en_001.json",
+      "contentType": "security",
+      "riskLevel": "high",
+      "model": "replay-model",
+      "promptVersion": "article-summary@1",
+      "language": "en-US",
+      "requiredFacts": [
+        {
+          "id": "scope-and-date",
+          "sourceAnyOf": ["1,200 test accounts on July 20"],
+          "outputAnyOf": ["1,200 test accounts", "July 20"]
+        },
+        {
+          "id": "response",
+          "sourceAnyOf": ["forced password resets within four hours"],
+          "outputAnyOf": ["within four hours", "forced password resets"]
+        },
+        {
+          "id": "open-investigation",
+          "sourceAnyOf": ["investigation remained open"],
+          "outputAnyOf": ["investigation remained open", "no evidence of plaintext"]
+        }
+      ],
+      "forbiddenClaims": [
+        {
+          "id": "confirmed-plaintext-theft",
+          "outputAnyOf": ["plaintext passwords were definitely stolen"]
+        },
+        {
+          "id": "closed-no-impact",
+          "outputAnyOf": ["investigation closed with no impact"]
+        }
+      ],
+      "replay": {
+        "schemaVersion": "river.article-summary.v1",
+        "oneLine": "A synthetic password-hash exposure triggered rapid session revocation and password resets.",
+        "keyPoints": [
+          "The July 20 incident affected 1,200 test accounts.",
+          "Sessions were revoked and forced password resets completed within four hours.",
+          "There was no evidence of plaintext exposure at publication, and the investigation remained open."
+        ],
+        "whyItMatters": "The response reduced active-session risk, but the open investigation limits definitive conclusions.",
+        "topics": ["authentication", "incident response"],
+        "entities": ["synthetic service"],
+        "estimatedReadingMinutes": 1,
+        "language": "en-US"
       }
     }
   ]

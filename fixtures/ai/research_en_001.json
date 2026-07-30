@@ -1,0 +1,8 @@
+{
+  "id": "summary-research-en-001",
+  "title": "Synthetic battery benchmark",
+  "language": "en-US",
+  "contentType": "research",
+  "riskLevel": "medium",
+  "plainText": "A synthetic laboratory benchmark tested 48 battery cells at 25 degrees Celsius. The median retained capacity after 500 cycles was 91%. The authors reported no tests below freezing and cautioned that laboratory cycling may not predict field lifetime."
+}

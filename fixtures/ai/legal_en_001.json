@@ -1,0 +1,8 @@
+{
+  "id": "summary-legal-en-001",
+  "title": "Synthetic software license notice",
+  "language": "en-US",
+  "contentType": "legal",
+  "riskLevel": "high",
+  "plainText": "The synthetic license permits internal commercial use by one organization. Redistribution of modified binaries requires written permission. The notice is an illustrative summary, not legal advice, and the signed agreement controls if its terms differ."
+}

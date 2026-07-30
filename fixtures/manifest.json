@@ -49,6 +49,34 @@
       "contains": ["River", "本地优先", "RSS"]
     },
     {
+      "path": "fixtures/ai/finance_en_001.json",
+      "contains": ["4.2%", "6.1 years", "past performance"]
+    },
+    {
+      "path": "fixtures/ai/health_zh_001.json",
+      "contains": ["240 名成年人", "6 mmHg", "头晕事件增加"]
+    },
+    {
+      "path": "fixtures/ai/legal_en_001.json",
+      "contains": ["internal commercial use", "written permission", "signed agreement"]
+    },
+    {
+      "path": "fixtures/ai/news_zh_001.json",
+      "contains": ["8 月 3 日", "改用南口", "可能因天气调整"]
+    },
+    {
+      "path": "fixtures/ai/research_en_001.json",
+      "contains": ["48 battery cells", "91%", "below freezing"]
+    },
+    {
+      "path": "fixtures/ai/tutorial_zh_001.json",
+      "contains": ["OPML", "两个独立存储位置", "不包含已读状态"]
+    },
+    {
+      "path": "fixtures/ai/security_en_001.json",
+      "contains": ["1,200 test accounts", "within four hours", "investigation remained open"]
+    },
+    {
       "path": "fixtures/migrations/v001_populated.sql",
       "contains": ["PRAGMA user_version = 1", "River v1 migration fixture"]
     },
