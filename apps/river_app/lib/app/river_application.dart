@@ -402,6 +402,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           audioController: dependencies.audioController,
           audioQueue: dependencies.audioQueue,
           knowledge: dependencies.knowledge,
+          summaries: dependencies.articleSummaries,
         ),
       ),
     );

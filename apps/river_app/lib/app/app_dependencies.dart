@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:drift_flutter/drift_flutter.dart';
+import 'package:river_ai/river_ai.dart';
 import 'package:river_audio/river_audio.dart';
 import 'package:river_data/river_data.dart' hide AudioItem, AudioQueueEntry;
 import 'package:river_domain/river_domain.dart';
@@ -12,6 +13,7 @@ import 'package:river_platform/river_platform.dart';
 import 'package:river_sync/river_sync.dart';
 
 import '../knowledge/notion_workspace.dart';
+import 'article_summary.dart';
 
 final class AppDependencies {
   AppDependencies({
@@ -35,6 +37,10 @@ final class AppDependencies {
     KnowledgeMarkdownFileGateway? knowledgeFiles,
     KnowledgeImageFetcher? knowledgeImages,
     KnowledgeConnector? notionConnector,
+    AiHttpTransport? aiTransport,
+    AiByokConfigurationVault? aiConfigurations,
+    AiLongSummaryCheckpointStore? aiSummaryCheckpoints,
+    ArticleSummaryExperience? articleSummaries,
     this.notionWorkspace,
     this.syncAccount,
   })  : knowledgeFiles =
@@ -51,6 +57,7 @@ final class AppDependencies {
         externalUri = externalUri ?? const UnavailableExternalUriGateway(),
         backgroundRefresh =
             backgroundRefresh ?? PlatformBackgroundRefreshScheduler(),
+        aiTransport = aiTransport ?? PackageHttpAiTransport(),
         _database = database {
     jobs = PersistentJobQueue(database);
     feeds = DriftFeedRepository(database);
@@ -135,6 +142,17 @@ final class AppDependencies {
       playback: audioController,
       resolve: _resolveQueuedAudio,
     );
+    this.articleSummaries = articleSummaries ??
+        ByokArticleSummaryExperience(
+          configurations: aiConfigurations ??
+              PlatformSecureAiByokConfigurationVault.standard(),
+          artifacts: DriftAiArtifactRepository(database),
+          checkpoints:
+              aiSummaryCheckpoints ?? PlatformAiLongSummaryCheckpointStore(),
+          network: this.network,
+          clock: clock,
+          transport: this.aiTransport,
+        );
   }
 
   static Future<AppDependencies> production({
@@ -231,6 +249,7 @@ final class AppDependencies {
   final NetworkMonitor network;
   final PodcastTransferBackend podcastTransfer;
   final HttpPort http;
+  final AiHttpTransport aiTransport;
   final bool automaticRefreshEnabled;
   final OpmlFileGateway opmlFiles;
   final KnowledgeMarkdownFileGateway knowledgeFiles;
@@ -257,6 +276,7 @@ final class AppDependencies {
   late final PersistentAudioQueue audioQueue;
   late final AudioPlaybackController audioController;
   late final AudioQueuePlaybackCoordinator audioQueuePlayer;
+  late final ArticleSummaryExperience articleSummaries;
   final RiverDatabase _database;
 
   Future<void> close() async {
@@ -272,6 +292,10 @@ final class AppDependencies {
     final httpPort = http;
     if (httpPort is BoundedHttpPort) {
       httpPort.close();
+    }
+    final aiHttp = aiTransport;
+    if (aiHttp is PackageHttpAiTransport) {
+      aiHttp.close();
     }
     await _database.close();
   }

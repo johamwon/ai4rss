@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:river_app/app/article_reader.dart';
+import 'package:river_app/app/article_summary.dart';
 import 'package:river_design_system/river_design_system.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
@@ -852,6 +853,209 @@ void main() {
     );
     semantics.dispose();
   });
+
+  testWidgets('AI summary discloses scope and renders structured result', (
+    tester,
+  ) async {
+    final summaries = _FakeSummaryExperience(
+      results: <Future<ArticleSummary> Function()>[
+        () async => _articleSummary(),
+      ],
+    );
+    final controller = _summaryController(summaries);
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(_TestHost(controller: controller));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('AI 摘要'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.textContaining('Test Provider · test-model'), findsOneWidget);
+    expect(find.textContaining('不会发送笔记、高亮'), findsOneWidget);
+
+    await tester.tap(find.text('生成摘要'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('可能计入你的供应商用量'), findsOneWidget);
+    await tester.tap(find.text('确认生成'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('一句话结论'), findsOneWidget);
+    expect(find.text('• 关键点一'), findsOneWidget);
+    expect(find.text('为什么值得阅读'), findsOneWidget);
+    expect(find.text('主题 · RSS'), findsOneWidget);
+    expect(find.text('实体 · River'), findsOneWidget);
+    expect(find.text('约 4 分钟'), findsOneWidget);
+    expect(summaries.summarizeCalls, 1);
+  });
+
+  testWidgets('AI summary cancellation ignores a late provider result', (
+    tester,
+  ) async {
+    final pending = Completer<ArticleSummary>();
+    final summaries = _FakeSummaryExperience(
+      results: <Future<ArticleSummary> Function()>[
+        () => pending.future,
+      ],
+    );
+    final controller = _summaryController(summaries);
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(_TestHost(controller: controller));
+    await tester.pump();
+    await tester.pump();
+
+    await _openAndConfirmSummary(tester);
+    expect(find.text('正在生成摘要'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('article-summary-cancel')));
+    await tester.pump();
+    expect(find.textContaining('已停止等待摘要'), findsOneWidget);
+
+    pending.complete(_articleSummary());
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('一句话结论'), findsNothing);
+    expect(controller.state.summaryState.phase, ArticleSummaryPhase.cancelled);
+  });
+
+  testWidgets('AI summary failure retries without breaking article reading', (
+    tester,
+  ) async {
+    final summaries = _FakeSummaryExperience(
+      results: <Future<ArticleSummary> Function()>[
+        () async => throw const ArticleSummaryExperienceFailure(
+              code: ArticleSummaryExperienceFailureCode.providerUnavailable,
+              retryable: true,
+            ),
+        () async => _articleSummary(),
+      ],
+    );
+    final controller = _summaryController(summaries);
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(_TestHost(controller: controller));
+    await tester.pump();
+    await tester.pump();
+
+    await _openAndConfirmSummary(tester);
+    await tester.pump();
+    expect(find.textContaining('AI 提供商暂时不可用'), findsOneWidget);
+    expect(find.text('Summary source body'), findsOneWidget);
+
+    await tester.tap(find.text('重试'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('确认生成'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('一句话结论'), findsOneWidget);
+    expect(summaries.summarizeCalls, 2);
+  });
+
+  testWidgets('AI summary becomes stale when full text replaces feed content', (
+    tester,
+  ) async {
+    final details = StreamController<FeedArticleDetailRecord?>();
+    final extraction = Completer<ExtractionResult>();
+    final summaries = _FakeSummaryExperience(
+      results: <Future<ArticleSummary> Function()>[
+        () async => _articleSummary(),
+      ],
+    );
+    final controller = buildReaderController(
+      articleId: 'article-1',
+      watch: (_) => details.stream,
+      extract: (_) => extraction.future,
+      summaries: summaries,
+    );
+    addTearDown(() async {
+      controller.dispose();
+      await details.close();
+    });
+    await tester.pumpWidget(_TestHost(controller: controller));
+    details.add(_detail(summary: 'Summary source body'));
+    await tester.pump();
+    await tester.pump();
+
+    await _openAndConfirmSummary(tester);
+    await tester.pump();
+    expect(find.text('一句话结论'), findsOneWidget);
+
+    extraction.complete(_success('A different complete article body'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('正文已更新，当前摘要可能过期。'), findsOneWidget);
+    expect(controller.state.summaryState.phase, ArticleSummaryPhase.stale);
+  });
+
+  testWidgets('AI summary shows stable offline recovery and keeps body', (
+    tester,
+  ) async {
+    final summaries = _FakeSummaryExperience(
+      results: <Future<ArticleSummary> Function()>[
+        () async => throw const ArticleSummaryExperienceFailure(
+              code: ArticleSummaryExperienceFailureCode.offline,
+              retryable: true,
+            ),
+      ],
+    );
+    final controller = _summaryController(summaries);
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(_TestHost(controller: controller));
+    await tester.pump();
+    await tester.pump();
+
+    await _openAndConfirmSummary(tester);
+    await tester.pump();
+    expect(find.textContaining('当前离线且没有匹配'), findsOneWidget);
+    expect(find.text('Summary source body'), findsOneWidget);
+  });
+
+  testWidgets('AI summary restores a cached result without provider call', (
+    tester,
+  ) async {
+    final summaries = _FakeSummaryExperience(cached: _articleSummary());
+    final controller = _summaryController(summaries);
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(_TestHost(controller: controller));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('AI 摘要'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('一句话结论'), findsOneWidget);
+    expect(summaries.summarizeCalls, 0);
+  });
+
+  testWidgets('current AI summary is included in the knowledge snapshot', (
+    tester,
+  ) async {
+    final knowledge = MemoryKnowledgeRepository();
+    final summaries = _FakeSummaryExperience(
+      results: <Future<ArticleSummary> Function()>[
+        () async => _articleSummary(),
+      ],
+    );
+    final controller = _summaryController(
+      summaries,
+      knowledge: knowledge,
+      ids: SequentialReaderIds(),
+    );
+    addTearDown(() async {
+      controller.dispose();
+      await knowledge.close();
+    });
+    await tester.pumpWidget(_TestHost(controller: controller));
+    await tester.pump();
+    await tester.pump();
+    await _openAndConfirmSummary(tester);
+    await tester.pump();
+
+    final saved = await controller.saveToKnowledge();
+
+    expect(saved?.summary?.oneLine, '一句话结论');
+    expect(saved?.topics, <String>['RSS']);
+    expect(saved?.entities, <String>['River']);
+  });
 }
 
 final class _TestHost extends StatelessWidget {
@@ -913,4 +1117,75 @@ Future<void> _sendControlShortcut(
   await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
   await tester.sendKeyEvent(key);
   await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+}
+
+ArticleReaderController _summaryController(
+  ArticleSummaryExperience summaries, {
+  KnowledgeRepository? knowledge,
+  IdGenerator? ids,
+}) =>
+    buildReaderController(
+      articleId: 'article-1',
+      watch: (_) => Stream<FeedArticleDetailRecord?>.value(
+        _detail(summary: 'Summary source body'),
+      ),
+      extract: (_) => Completer<ExtractionResult>().future,
+      summaries: summaries,
+      knowledge: knowledge,
+      ids: ids,
+    );
+
+Future<void> _openAndConfirmSummary(WidgetTester tester) async {
+  await tester.tap(find.byTooltip('AI 摘要'));
+  await tester.pump();
+  await tester.pump();
+  await tester.tap(find.text('生成摘要'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('确认生成'));
+  await tester.pump();
+}
+
+ArticleSummary _articleSummary() => const ArticleSummary(
+      oneLine: '一句话结论',
+      keyPoints: <String>['关键点一', '关键点二', '关键点三'],
+      whyItMatters: '它能帮助读者判断是否继续阅读。',
+      topics: <String>['RSS'],
+      entities: <String>['River'],
+      estimatedReadingMinutes: 4,
+      language: 'zh-CN',
+      model: 'test-model',
+      promptVersion: 'article-summary@1',
+    );
+
+final class _FakeSummaryExperience implements ArticleSummaryExperience {
+  _FakeSummaryExperience({
+    this.cached,
+    List<Future<ArticleSummary> Function()> results =
+        const <Future<ArticleSummary> Function()>[],
+  }) : _results = List<Future<ArticleSummary> Function()>.of(results);
+
+  final ArticleSummary? cached;
+  final List<Future<ArticleSummary> Function()> _results;
+  var summarizeCalls = 0;
+
+  @override
+  Future<ArticleSummaryInspection> inspect(Article article) async =>
+      ArticleSummaryInspection(
+        preparation: ArticleSummaryPreparation(
+          providerLabel: 'Test Provider',
+          model: 'test-model',
+          contentCharacters: article.plainText!.length,
+          isLongArticle: false,
+          maximumProviderCalls: 2,
+          estimatedInputTokens: 0,
+          estimatedOutputTokens: 3200,
+        ),
+        cachedSummary: cached,
+      );
+
+  @override
+  Future<ArticleSummary> summarize(Article article) {
+    summarizeCalls += 1;
+    return _results.removeAt(0)();
+  }
 }
