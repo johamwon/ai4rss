@@ -421,6 +421,114 @@ void main() {
       throwsA(isA<AiLongSummaryFailure>()),
     );
   });
+
+  test(
+    'long summary cache survives service recreation and remaps citations',
+    () async {
+      final article = _article(paragraphs: 2);
+      const budget = AiContextBudget(
+        mapContentCharacters: 1000,
+        maxMapPromptCharacters: 5000,
+        maxReducePromptCharacters: 8000,
+      );
+      final chunks = const ArticleSummaryChunkPlanner().plan(
+        articleId: article.id,
+        content: article.plainText!,
+        budget: budget,
+      );
+      final artifacts = _MemoryArtifacts();
+      final provider = _ScriptedProvider((request) {
+        if (request.operationId.endsWith(':reduce')) return _finalOutput();
+        final index = int.parse(request.operationId.split(':').last);
+        return _mapOutput(chunks[index], <String>['fact $index']);
+      });
+      final firstService = LongArticleSummaryService(
+        provider,
+        checkpoints: MemoryAiLongSummaryCheckpointStore(),
+        model: 'replay-model',
+        budget: budget,
+        pricing: const AiTokenPricing(
+          inputUsdPerMillion: 2,
+          outputUsdPerMillion: 8,
+        ),
+        artifacts: artifacts,
+        clock: const _FixedClock(),
+      );
+
+      final first = await firstService.summarize(article);
+      final duplicate = Article(
+        id: 'duplicate-article',
+        url: Uri.parse('https://example.test/duplicate'),
+        title: article.title,
+        source: article.source,
+        plainText: article.plainText,
+      );
+      final cacheOnlyProvider = _ScriptedProvider(
+        (_) => fail('A long-summary cache hit must not call the provider'),
+      );
+      final second = await LongArticleSummaryService(
+        cacheOnlyProvider,
+        checkpoints: MemoryAiLongSummaryCheckpointStore(),
+        model: 'replay-model',
+        budget: budget,
+        pricing: const AiTokenPricing(
+          inputUsdPerMillion: 2,
+          outputUsdPerMillion: 8,
+        ),
+        artifacts: artifacts,
+        clock: const _FixedClock(),
+      ).summarize(duplicate);
+      final stored = artifacts.values.single;
+
+      expect(first.cacheHit, isFalse);
+      expect(second.cacheHit, isTrue);
+      expect(second.usage.inputTokens, 0);
+      expect(second.usage.outputTokens, 0);
+      expect(cacheOnlyProvider.requests, isEmpty);
+      expect(stored.type, AiArtifactType.longArticleSummary);
+      expect(stored.providerCalls, chunks.length + 1);
+      expect(stored.costUsd, greaterThan(0));
+      expect(
+        second.sourcedFacts
+            .expand((fact) => fact.citations)
+            .every((citation) => citation.articleId == duplicate.id),
+        isTrue,
+      );
+    },
+  );
+
+  test('concurrent long summaries share one map-reduce request sequence',
+      () async {
+    final article = _article(paragraphs: 2);
+    const budget = AiContextBudget(
+      mapContentCharacters: 1000,
+      maxMapPromptCharacters: 5000,
+      maxReducePromptCharacters: 8000,
+    );
+    final chunks = const ArticleSummaryChunkPlanner().plan(
+      articleId: article.id,
+      content: article.plainText!,
+      budget: budget,
+    );
+    final provider = _ScriptedProvider((request) {
+      if (request.operationId.endsWith(':reduce')) return _finalOutput();
+      final index = int.parse(request.operationId.split(':').last);
+      return _mapOutput(chunks[index], <String>['fact $index']);
+    });
+    final service = LongArticleSummaryService(
+      provider,
+      checkpoints: MemoryAiLongSummaryCheckpointStore(),
+      budget: budget,
+    );
+
+    final results = await Future.wait(<Future<LongArticleSummaryResult>>[
+      service.summarize(article),
+      service.summarize(article),
+    ]);
+
+    expect(results, hasLength(2));
+    expect(provider.requests, hasLength(chunks.length + 1));
+  });
 }
 
 final class _ScriptedProvider implements AiProvider {
@@ -460,6 +568,32 @@ final class _FailingClearCheckpointStore
   @override
   Future<void> write(AiLongSummaryCheckpoint checkpoint) =>
       _delegate.write(checkpoint);
+}
+
+final class _MemoryArtifacts implements AiArtifactRepository {
+  final Map<String, AiArtifact> _values = <String, AiArtifact>{};
+
+  Iterable<AiArtifact> get values => _values.values;
+
+  @override
+  Future<void> delete(String cacheKey) async {
+    _values.remove(cacheKey);
+  }
+
+  @override
+  Future<AiArtifact?> read(String cacheKey) async => _values[cacheKey];
+
+  @override
+  Future<void> write(AiArtifact artifact) async {
+    _values[artifact.cacheKey] = artifact;
+  }
+}
+
+final class _FixedClock implements Clock {
+  const _FixedClock();
+
+  @override
+  DateTime now() => DateTime.utc(2026, 7, 30, 12);
 }
 
 Article _article({required int paragraphs}) => Article(

@@ -387,6 +387,107 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluateAiCacheReplay() async {
+    final manifest = _readJson('evals/summary_cache_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final model = item['model'] as String;
+      final language = item['language'] as String;
+      final article = Article(
+        id: id,
+        url: Uri.parse('https://replay.invalid/$id'),
+        title: 'Deterministic cache article',
+        source: ContentSource.web,
+        plainText: item['content'] as String,
+      );
+      final provider = _CacheReplayProvider(jsonEncode(_map(item['replay'])));
+      final artifacts = _ReplayArtifactRepository();
+      final requests = AiSummaryRequestCoalescer();
+      final service = SummaryService(
+        provider,
+        model: model,
+        outputLanguage: language,
+        artifacts: artifacts,
+        clock: const _ReplayClock(),
+        requests: requests,
+        inputUsdPerMillion: 2,
+        outputUsdPerMillion: 8,
+      );
+      try {
+        await Future.wait(<Future<ArticleSummary>>[
+          service.summarize(article),
+          service.summarize(article),
+        ]);
+        final cached = await SummaryService(
+          provider,
+          model: model,
+          outputLanguage: language,
+          artifacts: artifacts,
+          clock: const _ReplayClock(),
+          requests: AiSummaryRequestCoalescer(),
+          inputUsdPerMillion: 2,
+          outputUsdPerMillion: 8,
+        ).summarize(article);
+        final artifact = artifacts.values.single;
+        if (provider.requests.length != 1) {
+          failures.add(
+            EvalFailure(id, 'cache/coalescing made duplicate provider calls'),
+          );
+        }
+        if (cached.oneLine != item['expectedOneLine']) {
+          failures.add(EvalFailure(id, 'cache returned a different summary'));
+        }
+        if (artifact.providerCalls != 1 ||
+            artifact.inputTokens != 10 ||
+            artifact.outputTokens != 5 ||
+            artifact.costUsd <= 0) {
+          failures.add(EvalFailure(id, 'cache cost metadata is incomplete'));
+        }
+        final base = artifact.cacheKey;
+        final variants = <String>{
+          base,
+          summaryCacheKey(
+            contentHash: summaryContentHash('${article.plainText} changed'),
+            model: model,
+            promptVersion: artifact.promptVersion,
+            language: language,
+          ),
+          summaryCacheKey(
+            contentHash: artifact.contentHash,
+            model: '$model-next',
+            promptVersion: artifact.promptVersion,
+            language: language,
+          ),
+          summaryCacheKey(
+            contentHash: artifact.contentHash,
+            model: model,
+            promptVersion: 'article-summary@2',
+            language: language,
+          ),
+          summaryCacheKey(
+            contentHash: artifact.contentHash,
+            model: model,
+            promptVersion: artifact.promptVersion,
+            language: language == 'zh-CN' ? 'en-US' : 'zh-CN',
+          ),
+        };
+        if (variants.length != 5) {
+          failures.add(EvalFailure(id, 'cache invalidation key collided'));
+        }
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'summary cache replay failed: $error'));
+      }
+    }
+    return EvalReport(
+      name: 'ai-cache-replay',
+      total: cases.length,
+      failures: failures,
+    );
+  }
+
   EvalReport evaluateRanking() {
     final manifest = _readJson('evals/ranking_sessions.json');
     final cases = _list(manifest['cases']);
@@ -546,4 +647,51 @@ final class _LongSummaryReplayProvider implements AiProvider {
       },
     );
   }
+}
+
+final class _CacheReplayProvider implements AiProvider {
+  _CacheReplayProvider(this.output);
+
+  final String output;
+  final List<AiProviderRequest> requests = <AiProviderRequest>[];
+
+  @override
+  String get id => 'cache-replay';
+
+  @override
+  Future<AiProviderResponse> complete(AiProviderRequest request) async {
+    requests.add(request);
+    return AiProviderResponse(
+      output: output,
+      model: request.model,
+      usage: AiTokenUsage(inputTokens: 10, outputTokens: 5),
+      elapsed: Duration.zero,
+    );
+  }
+}
+
+final class _ReplayArtifactRepository implements AiArtifactRepository {
+  final Map<String, AiArtifact> _values = <String, AiArtifact>{};
+
+  Iterable<AiArtifact> get values => _values.values;
+
+  @override
+  Future<void> delete(String cacheKey) async {
+    _values.remove(cacheKey);
+  }
+
+  @override
+  Future<AiArtifact?> read(String cacheKey) async => _values[cacheKey];
+
+  @override
+  Future<void> write(AiArtifact artifact) async {
+    _values[artifact.cacheKey] = artifact;
+  }
+}
+
+final class _ReplayClock implements Clock {
+  const _ReplayClock();
+
+  @override
+  DateTime now() => DateTime.utc(2026, 7, 30, 12);
 }

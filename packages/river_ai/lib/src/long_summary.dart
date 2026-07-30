@@ -6,6 +6,7 @@ import 'package:river_domain/river_domain.dart';
 
 import 'prompt_registry.dart';
 import 'provider.dart';
+import 'summary_cache.dart';
 import 'summary_schema.dart';
 
 final class AiContextBudget {
@@ -799,6 +800,7 @@ final class LongArticleSummaryResult {
     required this.resumedChunks,
     required this.omittedFacts,
     required this.checkpointCleanupPending,
+    required this.cacheHit,
   }) : sourcedFacts = List<SourcedArticleFact>.unmodifiable(sourcedFacts);
 
   final ArticleSummary summary;
@@ -808,6 +810,7 @@ final class LongArticleSummaryResult {
   final int resumedChunks;
   final int omittedFacts;
   final bool checkpointCleanupPending;
+  final bool cacheHit;
 }
 
 enum AiLongSummaryFailureCode {
@@ -834,9 +837,13 @@ final class LongArticleSummaryService {
     this.outputLanguage = 'zh-CN',
     this.budget = const AiContextBudget(),
     this.pricing = const AiTokenPricing.zero(),
+    this.artifacts,
+    this.clock,
+    AiSummaryRequestCoalescer? requests,
     AiTokenEstimator? tokenEstimator,
     ArticleSummaryChunkPlanner? planner,
   })  : prompts = prompts ?? PromptRegistry.standard(),
+        _requests = requests ?? AiSummaryRequestCoalescer(),
         _tokenEstimator = tokenEstimator ?? const UnicodeAiTokenEstimator(),
         _planner = planner ?? const ArticleSummaryChunkPlanner() {
     if (model.trim().isEmpty || model.length > 200) {
@@ -844,6 +851,9 @@ final class LongArticleSummaryService {
     }
     if (!ArticleSummarySchema.languageTag.hasMatch(outputLanguage)) {
       throw ArgumentError.value(outputLanguage, 'outputLanguage');
+    }
+    if ((artifacts == null) != (clock == null)) {
+      throw ArgumentError('artifacts and clock must be supplied together');
     }
   }
 
@@ -854,6 +864,9 @@ final class LongArticleSummaryService {
   final String outputLanguage;
   final AiContextBudget budget;
   final AiTokenPricing pricing;
+  final AiArtifactRepository? artifacts;
+  final Clock? clock;
+  final AiSummaryRequestCoalescer _requests;
   final AiTokenEstimator _tokenEstimator;
   final ArticleSummaryChunkPlanner _planner;
 
@@ -863,7 +876,7 @@ final class LongArticleSummaryService {
         article.id.length > 240) {
       throw ArgumentError.value(article.id, 'article.id');
     }
-    final content = (article.plainText ?? '').trim();
+    final content = normalizeSummaryContent(article.plainText ?? '');
     if (content.isEmpty) {
       throw ArgumentError.value(article.id, 'article', 'Article has no text');
     }
@@ -905,9 +918,30 @@ final class LongArticleSummaryService {
     );
   }
 
-  Future<LongArticleSummaryResult> summarize(Article article) async {
+  Future<LongArticleSummaryResult> summarize(Article article) {
     final plan = preflight(article);
-    final content = article.plainText!.trim();
+    final content = normalizeSummaryContent(article.plainText!);
+    final identity = SummaryCacheIdentity(
+      contentHash: summaryContentHash(content),
+      model: model,
+      promptVersion: prompts.resolve('article-summary-reduce', 1).versionKey,
+      language: outputLanguage,
+    );
+    return _requests.run(
+      identity.cacheKey,
+      () => _summarize(article, content, plan, identity),
+    );
+  }
+
+  Future<LongArticleSummaryResult> _summarize(
+    Article article,
+    String content,
+    LongSummaryPreflight plan,
+    SummaryCacheIdentity identity,
+  ) async {
+    final cached = await _readCached(article, identity, plan);
+    if (cached != null) return cached;
+
     final fingerprint = _fingerprint(article, content);
     final saved = await checkpoints.read(article.id);
     final completed = _resumableChunks(
@@ -918,6 +952,7 @@ final class LongArticleSummaryService {
     final resumedChunks = completed.length;
     var inputTokens = completed.isEmpty ? 0 : saved!.inputTokens;
     var outputTokens = completed.isEmpty ? 0 : saved!.outputTokens;
+    var providerCalls = completed.length;
 
     for (final chunk in plan.chunks) {
       if (completed.containsKey(chunk.index)) continue;
@@ -931,6 +966,7 @@ final class LongArticleSummaryService {
           maxOutputTokens: budget.mapOutputTokens,
         ),
       );
+      providerCalls++;
       inputTokens += response.usage.inputTokens;
       outputTokens += response.usage.outputTokens;
       completed[chunk.index] = const AiChunkSummarySchema().parse(
@@ -973,6 +1009,7 @@ final class LongArticleSummaryService {
         maxOutputTokens: budget.reduceOutputTokens,
       ),
     );
+    providerCalls++;
     inputTokens += response.usage.inputTokens;
     outputTokens += response.usage.outputTokens;
 
@@ -996,6 +1033,7 @@ final class LongArticleSummaryService {
           maxOutputTokens: budget.reduceOutputTokens,
         ),
       );
+      providerCalls++;
       inputTokens += repaired.usage.inputTokens;
       outputTokens += repaired.usage.outputTokens;
       summary = _parseFinal(repaired, reducePrompt.versionKey);
@@ -1006,7 +1044,7 @@ final class LongArticleSummaryService {
     } on Object {
       checkpointCleanupPending = true;
     }
-    return LongArticleSummaryResult(
+    final result = LongArticleSummaryResult(
       summary: summary,
       sourcedFacts: reduceFacts,
       usage: AiTokenUsage(
@@ -1017,7 +1055,112 @@ final class LongArticleSummaryService {
       resumedChunks: resumedChunks,
       omittedFacts: allFacts.length - reduceFacts.length,
       checkpointCleanupPending: checkpointCleanupPending,
+      cacheHit: false,
     );
+    await _writeCached(
+      article: article,
+      identity: identity,
+      result: result,
+      inputTokens: inputTokens,
+      outputTokens: outputTokens,
+      providerCalls: providerCalls,
+    );
+    return result;
+  }
+
+  Future<LongArticleSummaryResult?> _readCached(
+    Article article,
+    SummaryCacheIdentity identity,
+    LongSummaryPreflight plan,
+  ) async {
+    final repository = artifacts;
+    if (repository == null) return null;
+    AiArtifact? artifact;
+    try {
+      artifact = await repository.read(identity.cacheKey);
+    } on FormatException {
+      await _deleteInvalidCache(identity.cacheKey);
+      return null;
+    } on ArgumentError {
+      await _deleteInvalidCache(identity.cacheKey);
+      return null;
+    } on Object {
+      return null;
+    }
+    if (artifact == null) return null;
+    if (!identity.matches(artifact, AiArtifactType.longArticleSummary)) {
+      await _deleteInvalidCache(identity.cacheKey);
+      return null;
+    }
+    try {
+      final decoded = _decodeLongCache(
+        artifact,
+        expectedArticleId: article.id,
+      );
+      return LongArticleSummaryResult(
+        summary: decoded.summary,
+        sourcedFacts: decoded.sourcedFacts,
+        usage: AiTokenUsage(inputTokens: 0, outputTokens: 0),
+        preflightEstimate: plan.estimate,
+        resumedChunks: 0,
+        omittedFacts: decoded.omittedFacts,
+        checkpointCleanupPending: false,
+        cacheHit: true,
+      );
+    } on FormatException {
+      await _deleteInvalidCache(identity.cacheKey);
+      return null;
+    } on AiSchemaFailure {
+      await _deleteInvalidCache(identity.cacheKey);
+      return null;
+    } on ArgumentError {
+      await _deleteInvalidCache(identity.cacheKey);
+      return null;
+    }
+  }
+
+  Future<void> _writeCached({
+    required Article article,
+    required SummaryCacheIdentity identity,
+    required LongArticleSummaryResult result,
+    required int inputTokens,
+    required int outputTokens,
+    required int providerCalls,
+  }) async {
+    final repository = artifacts;
+    if (repository == null) return;
+    final costUsd = inputTokens * pricing.inputUsdPerMillion / 1000000 +
+        outputTokens * pricing.outputUsdPerMillion / 1000000;
+    try {
+      await repository.write(
+        AiArtifact(
+          cacheKey: identity.cacheKey,
+          articleId: article.id,
+          type: AiArtifactType.longArticleSummary,
+          requestModel: model,
+          resolvedModel: result.summary.model,
+          promptVersion: identity.promptVersion,
+          language: outputLanguage,
+          contentHash: identity.contentHash,
+          structuredResult: _encodeLongCache(result),
+          inputTokens: inputTokens,
+          outputTokens: outputTokens,
+          providerCalls: providerCalls,
+          costUsd: costUsd,
+          createdAt: clock!.now().toUtc(),
+        ),
+      );
+    } on Object {
+      // A valid summary remains usable if local cache persistence degrades.
+    }
+  }
+
+  Future<void> _deleteInvalidCache(String cacheKey) async {
+    try {
+      await artifacts!.delete(cacheKey);
+    } on Object {
+      // A malformed value is never returned even if cleanup is deferred.
+    }
   }
 
   AiPrompt _mapPrompt(ArticleSummaryChunk chunk) =>
@@ -1204,6 +1347,123 @@ final class LongArticleSummaryService {
     }
     return <int, AiChunkSummary>{...saved.completedChunks};
   }
+}
+
+const _longCacheSchema = 'river.long-article-summary-cache.v1';
+
+String _encodeLongCache(LongArticleSummaryResult result) {
+  final summary = jsonDecode(
+    const ArticleSummaryCacheCodec().encode(result.summary),
+  );
+  return jsonEncode(<String, Object?>{
+    'schemaVersion': _longCacheSchema,
+    'summary': summary,
+    'sourcedFacts': result.sourcedFacts
+        .map((fact) => fact.toJson())
+        .toList(growable: false),
+    'omittedFacts': result.omittedFacts,
+  });
+}
+
+_LongCachePayload _decodeLongCache(
+  AiArtifact artifact, {
+  required String expectedArticleId,
+}) {
+  Object? decoded;
+  try {
+    decoded = jsonDecode(artifact.structuredResult);
+  } on FormatException {
+    throw const FormatException('Invalid long-summary cache JSON');
+  }
+  if (decoded is! Map<String, Object?> ||
+      !_hasExactKeys(decoded, const <String>{
+        'schemaVersion',
+        'summary',
+        'sourcedFacts',
+        'omittedFacts',
+      }) ||
+      decoded['schemaVersion'] != _longCacheSchema) {
+    throw const FormatException('Unsupported long-summary cache schema');
+  }
+  final rawSummary = decoded['summary'];
+  final rawFacts = decoded['sourcedFacts'];
+  final omittedFacts = decoded['omittedFacts'];
+  if (rawSummary is! Map<String, Object?> ||
+      rawFacts is! List<Object?> ||
+      rawFacts.isEmpty ||
+      rawFacts.length > 1280 ||
+      omittedFacts is! int ||
+      omittedFacts < 0) {
+    throw const FormatException('Invalid long-summary cache envelope');
+  }
+  final summary = const ArticleSummarySchema().parse(
+    jsonEncode(rawSummary),
+    model: artifact.resolvedModel,
+    promptVersion: artifact.promptVersion,
+    expectedLanguage: artifact.language,
+  );
+  final facts = <SourcedArticleFact>[];
+  for (final rawFact in rawFacts) {
+    if (rawFact is! Map<String, Object?> ||
+        !_hasExactKeys(rawFact, const <String>{'text', 'citations'})) {
+      throw const FormatException('Invalid long-summary cached fact');
+    }
+    final text = rawFact['text'];
+    final rawCitations = rawFact['citations'];
+    if (text is! String ||
+        rawCitations is! List<Object?> ||
+        rawCitations.isEmpty ||
+        rawCitations.length > 256) {
+      throw const FormatException('Invalid long-summary cached fact values');
+    }
+    final citations = <ParagraphCitation>[];
+    for (final rawCitation in rawCitations) {
+      if (rawCitation is! Map<String, Object?> ||
+          !_hasExactKeys(rawCitation, const <String>{
+            'articleId',
+            'paragraphStart',
+            'paragraphEnd',
+          })) {
+        throw const FormatException('Invalid long-summary cached citation');
+      }
+      final articleId = rawCitation['articleId'];
+      final paragraphStart = rawCitation['paragraphStart'];
+      final paragraphEnd = rawCitation['paragraphEnd'];
+      if (articleId is! String ||
+          articleId.trim().isEmpty ||
+          paragraphStart is! int ||
+          paragraphEnd is! int) {
+        throw const FormatException(
+          'Invalid long-summary cached citation values',
+        );
+      }
+      citations.add(
+        ParagraphCitation(
+          articleId: expectedArticleId,
+          paragraphStart: paragraphStart,
+          paragraphEnd: paragraphEnd,
+        ),
+      );
+    }
+    facts.add(SourcedArticleFact(text: text, citations: citations));
+  }
+  return _LongCachePayload(
+    summary: summary,
+    sourcedFacts: facts,
+    omittedFacts: omittedFacts,
+  );
+}
+
+final class _LongCachePayload {
+  _LongCachePayload({
+    required this.summary,
+    required Iterable<SourcedArticleFact> sourcedFacts,
+    required this.omittedFacts,
+  }) : sourcedFacts = List<SourcedArticleFact>.unmodifiable(sourcedFacts);
+
+  final ArticleSummary summary;
+  final List<SourcedArticleFact> sourcedFacts;
+  final int omittedFacts;
 }
 
 List<SourcedArticleFact> _mergeFacts(

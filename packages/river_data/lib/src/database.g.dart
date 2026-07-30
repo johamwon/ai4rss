@@ -2686,6 +2686,876 @@ class ArticleContentsCompanion extends UpdateCompanion<ArticleContent> {
   }
 }
 
+class $AiArtifactsTable extends AiArtifacts
+    with TableInfo<$AiArtifactsTable, AiArtifactRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AiArtifactsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _cacheKeyMeta = const VerificationMeta(
+    'cacheKey',
+  );
+  @override
+  late final GeneratedColumn<String> cacheKey = GeneratedColumn<String>(
+    'cache_key',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 71,
+      maxTextLength: 71,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _articleIdMeta = const VerificationMeta(
+    'articleId',
+  );
+  @override
+  late final GeneratedColumn<String> articleId = GeneratedColumn<String>(
+    'article_id',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 240,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _artifactTypeMeta = const VerificationMeta(
+    'artifactType',
+  );
+  @override
+  late final GeneratedColumn<String> artifactType = GeneratedColumn<String>(
+    'artifact_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _requestModelMeta = const VerificationMeta(
+    'requestModel',
+  );
+  @override
+  late final GeneratedColumn<String> requestModel = GeneratedColumn<String>(
+    'request_model',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 200,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _resolvedModelMeta = const VerificationMeta(
+    'resolvedModel',
+  );
+  @override
+  late final GeneratedColumn<String> resolvedModel = GeneratedColumn<String>(
+    'resolved_model',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 200,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _promptVersionMeta = const VerificationMeta(
+    'promptVersion',
+  );
+  @override
+  late final GeneratedColumn<String> promptVersion = GeneratedColumn<String>(
+    'prompt_version',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _languageMeta = const VerificationMeta(
+    'language',
+  );
+  @override
+  late final GeneratedColumn<String> language = GeneratedColumn<String>(
+    'language',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentHashMeta = const VerificationMeta(
+    'contentHash',
+  );
+  @override
+  late final GeneratedColumn<String> contentHash = GeneratedColumn<String>(
+    'content_hash',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 64,
+      maxTextLength: 64,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _structuredResultMeta = const VerificationMeta(
+    'structuredResult',
+  );
+  @override
+  late final GeneratedColumn<String> structuredResult = GeneratedColumn<String>(
+    'structured_result',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _inputTokensMeta = const VerificationMeta(
+    'inputTokens',
+  );
+  @override
+  late final GeneratedColumn<int> inputTokens = GeneratedColumn<int>(
+    'input_tokens',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _outputTokensMeta = const VerificationMeta(
+    'outputTokens',
+  );
+  @override
+  late final GeneratedColumn<int> outputTokens = GeneratedColumn<int>(
+    'output_tokens',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _providerCallsMeta = const VerificationMeta(
+    'providerCalls',
+  );
+  @override
+  late final GeneratedColumn<int> providerCalls = GeneratedColumn<int>(
+    'provider_calls',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _costUsdMeta = const VerificationMeta(
+    'costUsd',
+  );
+  @override
+  late final GeneratedColumn<double> costUsd = GeneratedColumn<double>(
+    'cost_usd',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    cacheKey,
+    articleId,
+    artifactType,
+    requestModel,
+    resolvedModel,
+    promptVersion,
+    language,
+    contentHash,
+    structuredResult,
+    inputTokens,
+    outputTokens,
+    providerCalls,
+    costUsd,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ai_artifacts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AiArtifactRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('cache_key')) {
+      context.handle(
+        _cacheKeyMeta,
+        cacheKey.isAcceptableOrUnknown(data['cache_key']!, _cacheKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cacheKeyMeta);
+    }
+    if (data.containsKey('article_id')) {
+      context.handle(
+        _articleIdMeta,
+        articleId.isAcceptableOrUnknown(data['article_id']!, _articleIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_articleIdMeta);
+    }
+    if (data.containsKey('artifact_type')) {
+      context.handle(
+        _artifactTypeMeta,
+        artifactType.isAcceptableOrUnknown(
+          data['artifact_type']!,
+          _artifactTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_artifactTypeMeta);
+    }
+    if (data.containsKey('request_model')) {
+      context.handle(
+        _requestModelMeta,
+        requestModel.isAcceptableOrUnknown(
+          data['request_model']!,
+          _requestModelMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_requestModelMeta);
+    }
+    if (data.containsKey('resolved_model')) {
+      context.handle(
+        _resolvedModelMeta,
+        resolvedModel.isAcceptableOrUnknown(
+          data['resolved_model']!,
+          _resolvedModelMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_resolvedModelMeta);
+    }
+    if (data.containsKey('prompt_version')) {
+      context.handle(
+        _promptVersionMeta,
+        promptVersion.isAcceptableOrUnknown(
+          data['prompt_version']!,
+          _promptVersionMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_promptVersionMeta);
+    }
+    if (data.containsKey('language')) {
+      context.handle(
+        _languageMeta,
+        language.isAcceptableOrUnknown(data['language']!, _languageMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_languageMeta);
+    }
+    if (data.containsKey('content_hash')) {
+      context.handle(
+        _contentHashMeta,
+        contentHash.isAcceptableOrUnknown(
+          data['content_hash']!,
+          _contentHashMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_contentHashMeta);
+    }
+    if (data.containsKey('structured_result')) {
+      context.handle(
+        _structuredResultMeta,
+        structuredResult.isAcceptableOrUnknown(
+          data['structured_result']!,
+          _structuredResultMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_structuredResultMeta);
+    }
+    if (data.containsKey('input_tokens')) {
+      context.handle(
+        _inputTokensMeta,
+        inputTokens.isAcceptableOrUnknown(
+          data['input_tokens']!,
+          _inputTokensMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_inputTokensMeta);
+    }
+    if (data.containsKey('output_tokens')) {
+      context.handle(
+        _outputTokensMeta,
+        outputTokens.isAcceptableOrUnknown(
+          data['output_tokens']!,
+          _outputTokensMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_outputTokensMeta);
+    }
+    if (data.containsKey('provider_calls')) {
+      context.handle(
+        _providerCallsMeta,
+        providerCalls.isAcceptableOrUnknown(
+          data['provider_calls']!,
+          _providerCallsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_providerCallsMeta);
+    }
+    if (data.containsKey('cost_usd')) {
+      context.handle(
+        _costUsdMeta,
+        costUsd.isAcceptableOrUnknown(data['cost_usd']!, _costUsdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_costUsdMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {cacheKey};
+  @override
+  AiArtifactRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AiArtifactRow(
+      cacheKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cache_key'],
+      )!,
+      articleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}article_id'],
+      )!,
+      artifactType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}artifact_type'],
+      )!,
+      requestModel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}request_model'],
+      )!,
+      resolvedModel: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}resolved_model'],
+      )!,
+      promptVersion: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}prompt_version'],
+      )!,
+      language: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}language'],
+      )!,
+      contentHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}content_hash'],
+      )!,
+      structuredResult: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}structured_result'],
+      )!,
+      inputTokens: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}input_tokens'],
+      )!,
+      outputTokens: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}output_tokens'],
+      )!,
+      providerCalls: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}provider_calls'],
+      )!,
+      costUsd: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}cost_usd'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AiArtifactsTable createAlias(String alias) {
+    return $AiArtifactsTable(attachedDatabase, alias);
+  }
+}
+
+class AiArtifactRow extends DataClass implements Insertable<AiArtifactRow> {
+  final String cacheKey;
+  final String articleId;
+  final String artifactType;
+  final String requestModel;
+  final String resolvedModel;
+  final String promptVersion;
+  final String language;
+  final String contentHash;
+  final String structuredResult;
+  final int inputTokens;
+  final int outputTokens;
+  final int providerCalls;
+  final double costUsd;
+  final DateTime createdAt;
+  const AiArtifactRow({
+    required this.cacheKey,
+    required this.articleId,
+    required this.artifactType,
+    required this.requestModel,
+    required this.resolvedModel,
+    required this.promptVersion,
+    required this.language,
+    required this.contentHash,
+    required this.structuredResult,
+    required this.inputTokens,
+    required this.outputTokens,
+    required this.providerCalls,
+    required this.costUsd,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['cache_key'] = Variable<String>(cacheKey);
+    map['article_id'] = Variable<String>(articleId);
+    map['artifact_type'] = Variable<String>(artifactType);
+    map['request_model'] = Variable<String>(requestModel);
+    map['resolved_model'] = Variable<String>(resolvedModel);
+    map['prompt_version'] = Variable<String>(promptVersion);
+    map['language'] = Variable<String>(language);
+    map['content_hash'] = Variable<String>(contentHash);
+    map['structured_result'] = Variable<String>(structuredResult);
+    map['input_tokens'] = Variable<int>(inputTokens);
+    map['output_tokens'] = Variable<int>(outputTokens);
+    map['provider_calls'] = Variable<int>(providerCalls);
+    map['cost_usd'] = Variable<double>(costUsd);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  AiArtifactsCompanion toCompanion(bool nullToAbsent) {
+    return AiArtifactsCompanion(
+      cacheKey: Value(cacheKey),
+      articleId: Value(articleId),
+      artifactType: Value(artifactType),
+      requestModel: Value(requestModel),
+      resolvedModel: Value(resolvedModel),
+      promptVersion: Value(promptVersion),
+      language: Value(language),
+      contentHash: Value(contentHash),
+      structuredResult: Value(structuredResult),
+      inputTokens: Value(inputTokens),
+      outputTokens: Value(outputTokens),
+      providerCalls: Value(providerCalls),
+      costUsd: Value(costUsd),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory AiArtifactRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AiArtifactRow(
+      cacheKey: serializer.fromJson<String>(json['cacheKey']),
+      articleId: serializer.fromJson<String>(json['articleId']),
+      artifactType: serializer.fromJson<String>(json['artifactType']),
+      requestModel: serializer.fromJson<String>(json['requestModel']),
+      resolvedModel: serializer.fromJson<String>(json['resolvedModel']),
+      promptVersion: serializer.fromJson<String>(json['promptVersion']),
+      language: serializer.fromJson<String>(json['language']),
+      contentHash: serializer.fromJson<String>(json['contentHash']),
+      structuredResult: serializer.fromJson<String>(json['structuredResult']),
+      inputTokens: serializer.fromJson<int>(json['inputTokens']),
+      outputTokens: serializer.fromJson<int>(json['outputTokens']),
+      providerCalls: serializer.fromJson<int>(json['providerCalls']),
+      costUsd: serializer.fromJson<double>(json['costUsd']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'cacheKey': serializer.toJson<String>(cacheKey),
+      'articleId': serializer.toJson<String>(articleId),
+      'artifactType': serializer.toJson<String>(artifactType),
+      'requestModel': serializer.toJson<String>(requestModel),
+      'resolvedModel': serializer.toJson<String>(resolvedModel),
+      'promptVersion': serializer.toJson<String>(promptVersion),
+      'language': serializer.toJson<String>(language),
+      'contentHash': serializer.toJson<String>(contentHash),
+      'structuredResult': serializer.toJson<String>(structuredResult),
+      'inputTokens': serializer.toJson<int>(inputTokens),
+      'outputTokens': serializer.toJson<int>(outputTokens),
+      'providerCalls': serializer.toJson<int>(providerCalls),
+      'costUsd': serializer.toJson<double>(costUsd),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  AiArtifactRow copyWith({
+    String? cacheKey,
+    String? articleId,
+    String? artifactType,
+    String? requestModel,
+    String? resolvedModel,
+    String? promptVersion,
+    String? language,
+    String? contentHash,
+    String? structuredResult,
+    int? inputTokens,
+    int? outputTokens,
+    int? providerCalls,
+    double? costUsd,
+    DateTime? createdAt,
+  }) => AiArtifactRow(
+    cacheKey: cacheKey ?? this.cacheKey,
+    articleId: articleId ?? this.articleId,
+    artifactType: artifactType ?? this.artifactType,
+    requestModel: requestModel ?? this.requestModel,
+    resolvedModel: resolvedModel ?? this.resolvedModel,
+    promptVersion: promptVersion ?? this.promptVersion,
+    language: language ?? this.language,
+    contentHash: contentHash ?? this.contentHash,
+    structuredResult: structuredResult ?? this.structuredResult,
+    inputTokens: inputTokens ?? this.inputTokens,
+    outputTokens: outputTokens ?? this.outputTokens,
+    providerCalls: providerCalls ?? this.providerCalls,
+    costUsd: costUsd ?? this.costUsd,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  AiArtifactRow copyWithCompanion(AiArtifactsCompanion data) {
+    return AiArtifactRow(
+      cacheKey: data.cacheKey.present ? data.cacheKey.value : this.cacheKey,
+      articleId: data.articleId.present ? data.articleId.value : this.articleId,
+      artifactType: data.artifactType.present
+          ? data.artifactType.value
+          : this.artifactType,
+      requestModel: data.requestModel.present
+          ? data.requestModel.value
+          : this.requestModel,
+      resolvedModel: data.resolvedModel.present
+          ? data.resolvedModel.value
+          : this.resolvedModel,
+      promptVersion: data.promptVersion.present
+          ? data.promptVersion.value
+          : this.promptVersion,
+      language: data.language.present ? data.language.value : this.language,
+      contentHash: data.contentHash.present
+          ? data.contentHash.value
+          : this.contentHash,
+      structuredResult: data.structuredResult.present
+          ? data.structuredResult.value
+          : this.structuredResult,
+      inputTokens: data.inputTokens.present
+          ? data.inputTokens.value
+          : this.inputTokens,
+      outputTokens: data.outputTokens.present
+          ? data.outputTokens.value
+          : this.outputTokens,
+      providerCalls: data.providerCalls.present
+          ? data.providerCalls.value
+          : this.providerCalls,
+      costUsd: data.costUsd.present ? data.costUsd.value : this.costUsd,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiArtifactRow(')
+          ..write('cacheKey: $cacheKey, ')
+          ..write('articleId: $articleId, ')
+          ..write('artifactType: $artifactType, ')
+          ..write('requestModel: $requestModel, ')
+          ..write('resolvedModel: $resolvedModel, ')
+          ..write('promptVersion: $promptVersion, ')
+          ..write('language: $language, ')
+          ..write('contentHash: $contentHash, ')
+          ..write('structuredResult: $structuredResult, ')
+          ..write('inputTokens: $inputTokens, ')
+          ..write('outputTokens: $outputTokens, ')
+          ..write('providerCalls: $providerCalls, ')
+          ..write('costUsd: $costUsd, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    cacheKey,
+    articleId,
+    artifactType,
+    requestModel,
+    resolvedModel,
+    promptVersion,
+    language,
+    contentHash,
+    structuredResult,
+    inputTokens,
+    outputTokens,
+    providerCalls,
+    costUsd,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AiArtifactRow &&
+          other.cacheKey == this.cacheKey &&
+          other.articleId == this.articleId &&
+          other.artifactType == this.artifactType &&
+          other.requestModel == this.requestModel &&
+          other.resolvedModel == this.resolvedModel &&
+          other.promptVersion == this.promptVersion &&
+          other.language == this.language &&
+          other.contentHash == this.contentHash &&
+          other.structuredResult == this.structuredResult &&
+          other.inputTokens == this.inputTokens &&
+          other.outputTokens == this.outputTokens &&
+          other.providerCalls == this.providerCalls &&
+          other.costUsd == this.costUsd &&
+          other.createdAt == this.createdAt);
+}
+
+class AiArtifactsCompanion extends UpdateCompanion<AiArtifactRow> {
+  final Value<String> cacheKey;
+  final Value<String> articleId;
+  final Value<String> artifactType;
+  final Value<String> requestModel;
+  final Value<String> resolvedModel;
+  final Value<String> promptVersion;
+  final Value<String> language;
+  final Value<String> contentHash;
+  final Value<String> structuredResult;
+  final Value<int> inputTokens;
+  final Value<int> outputTokens;
+  final Value<int> providerCalls;
+  final Value<double> costUsd;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const AiArtifactsCompanion({
+    this.cacheKey = const Value.absent(),
+    this.articleId = const Value.absent(),
+    this.artifactType = const Value.absent(),
+    this.requestModel = const Value.absent(),
+    this.resolvedModel = const Value.absent(),
+    this.promptVersion = const Value.absent(),
+    this.language = const Value.absent(),
+    this.contentHash = const Value.absent(),
+    this.structuredResult = const Value.absent(),
+    this.inputTokens = const Value.absent(),
+    this.outputTokens = const Value.absent(),
+    this.providerCalls = const Value.absent(),
+    this.costUsd = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AiArtifactsCompanion.insert({
+    required String cacheKey,
+    required String articleId,
+    required String artifactType,
+    required String requestModel,
+    required String resolvedModel,
+    required String promptVersion,
+    required String language,
+    required String contentHash,
+    required String structuredResult,
+    required int inputTokens,
+    required int outputTokens,
+    required int providerCalls,
+    required double costUsd,
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : cacheKey = Value(cacheKey),
+       articleId = Value(articleId),
+       artifactType = Value(artifactType),
+       requestModel = Value(requestModel),
+       resolvedModel = Value(resolvedModel),
+       promptVersion = Value(promptVersion),
+       language = Value(language),
+       contentHash = Value(contentHash),
+       structuredResult = Value(structuredResult),
+       inputTokens = Value(inputTokens),
+       outputTokens = Value(outputTokens),
+       providerCalls = Value(providerCalls),
+       costUsd = Value(costUsd),
+       createdAt = Value(createdAt);
+  static Insertable<AiArtifactRow> custom({
+    Expression<String>? cacheKey,
+    Expression<String>? articleId,
+    Expression<String>? artifactType,
+    Expression<String>? requestModel,
+    Expression<String>? resolvedModel,
+    Expression<String>? promptVersion,
+    Expression<String>? language,
+    Expression<String>? contentHash,
+    Expression<String>? structuredResult,
+    Expression<int>? inputTokens,
+    Expression<int>? outputTokens,
+    Expression<int>? providerCalls,
+    Expression<double>? costUsd,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (cacheKey != null) 'cache_key': cacheKey,
+      if (articleId != null) 'article_id': articleId,
+      if (artifactType != null) 'artifact_type': artifactType,
+      if (requestModel != null) 'request_model': requestModel,
+      if (resolvedModel != null) 'resolved_model': resolvedModel,
+      if (promptVersion != null) 'prompt_version': promptVersion,
+      if (language != null) 'language': language,
+      if (contentHash != null) 'content_hash': contentHash,
+      if (structuredResult != null) 'structured_result': structuredResult,
+      if (inputTokens != null) 'input_tokens': inputTokens,
+      if (outputTokens != null) 'output_tokens': outputTokens,
+      if (providerCalls != null) 'provider_calls': providerCalls,
+      if (costUsd != null) 'cost_usd': costUsd,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AiArtifactsCompanion copyWith({
+    Value<String>? cacheKey,
+    Value<String>? articleId,
+    Value<String>? artifactType,
+    Value<String>? requestModel,
+    Value<String>? resolvedModel,
+    Value<String>? promptVersion,
+    Value<String>? language,
+    Value<String>? contentHash,
+    Value<String>? structuredResult,
+    Value<int>? inputTokens,
+    Value<int>? outputTokens,
+    Value<int>? providerCalls,
+    Value<double>? costUsd,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return AiArtifactsCompanion(
+      cacheKey: cacheKey ?? this.cacheKey,
+      articleId: articleId ?? this.articleId,
+      artifactType: artifactType ?? this.artifactType,
+      requestModel: requestModel ?? this.requestModel,
+      resolvedModel: resolvedModel ?? this.resolvedModel,
+      promptVersion: promptVersion ?? this.promptVersion,
+      language: language ?? this.language,
+      contentHash: contentHash ?? this.contentHash,
+      structuredResult: structuredResult ?? this.structuredResult,
+      inputTokens: inputTokens ?? this.inputTokens,
+      outputTokens: outputTokens ?? this.outputTokens,
+      providerCalls: providerCalls ?? this.providerCalls,
+      costUsd: costUsd ?? this.costUsd,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (cacheKey.present) {
+      map['cache_key'] = Variable<String>(cacheKey.value);
+    }
+    if (articleId.present) {
+      map['article_id'] = Variable<String>(articleId.value);
+    }
+    if (artifactType.present) {
+      map['artifact_type'] = Variable<String>(artifactType.value);
+    }
+    if (requestModel.present) {
+      map['request_model'] = Variable<String>(requestModel.value);
+    }
+    if (resolvedModel.present) {
+      map['resolved_model'] = Variable<String>(resolvedModel.value);
+    }
+    if (promptVersion.present) {
+      map['prompt_version'] = Variable<String>(promptVersion.value);
+    }
+    if (language.present) {
+      map['language'] = Variable<String>(language.value);
+    }
+    if (contentHash.present) {
+      map['content_hash'] = Variable<String>(contentHash.value);
+    }
+    if (structuredResult.present) {
+      map['structured_result'] = Variable<String>(structuredResult.value);
+    }
+    if (inputTokens.present) {
+      map['input_tokens'] = Variable<int>(inputTokens.value);
+    }
+    if (outputTokens.present) {
+      map['output_tokens'] = Variable<int>(outputTokens.value);
+    }
+    if (providerCalls.present) {
+      map['provider_calls'] = Variable<int>(providerCalls.value);
+    }
+    if (costUsd.present) {
+      map['cost_usd'] = Variable<double>(costUsd.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AiArtifactsCompanion(')
+          ..write('cacheKey: $cacheKey, ')
+          ..write('articleId: $articleId, ')
+          ..write('artifactType: $artifactType, ')
+          ..write('requestModel: $requestModel, ')
+          ..write('resolvedModel: $resolvedModel, ')
+          ..write('promptVersion: $promptVersion, ')
+          ..write('language: $language, ')
+          ..write('contentHash: $contentHash, ')
+          ..write('structuredResult: $structuredResult, ')
+          ..write('inputTokens: $inputTokens, ')
+          ..write('outputTokens: $outputTokens, ')
+          ..write('providerCalls: $providerCalls, ')
+          ..write('costUsd: $costUsd, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ReadingEventsTable extends ReadingEvents
     with TableInfo<$ReadingEventsTable, ReadingEvent> {
   @override
@@ -13955,6 +14825,7 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
   late final $ArticleContentsTable articleContents = $ArticleContentsTable(
     this,
   );
+  late final $AiArtifactsTable aiArtifacts = $AiArtifactsTable(this);
   late final $ReadingEventsTable readingEvents = $ReadingEventsTable(this);
   late final $ReaderSettingsRowsTable readerSettingsRows =
       $ReaderSettingsRowsTable(this);
@@ -13993,6 +14864,7 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
     feedSubscriptions,
     articles,
     articleContents,
+    aiArtifacts,
     readingEvents,
     readerSettingsRows,
     knowledgeItems,
@@ -16308,6 +17180,395 @@ typedef $$ArticleContentsTableProcessedTableManager =
       (ArticleContent, $$ArticleContentsTableReferences),
       ArticleContent,
       PrefetchHooks Function({bool articleId})
+    >;
+typedef $$AiArtifactsTableCreateCompanionBuilder =
+    AiArtifactsCompanion Function({
+      required String cacheKey,
+      required String articleId,
+      required String artifactType,
+      required String requestModel,
+      required String resolvedModel,
+      required String promptVersion,
+      required String language,
+      required String contentHash,
+      required String structuredResult,
+      required int inputTokens,
+      required int outputTokens,
+      required int providerCalls,
+      required double costUsd,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$AiArtifactsTableUpdateCompanionBuilder =
+    AiArtifactsCompanion Function({
+      Value<String> cacheKey,
+      Value<String> articleId,
+      Value<String> artifactType,
+      Value<String> requestModel,
+      Value<String> resolvedModel,
+      Value<String> promptVersion,
+      Value<String> language,
+      Value<String> contentHash,
+      Value<String> structuredResult,
+      Value<int> inputTokens,
+      Value<int> outputTokens,
+      Value<int> providerCalls,
+      Value<double> costUsd,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$AiArtifactsTableFilterComposer
+    extends Composer<_$RiverDatabase, $AiArtifactsTable> {
+  $$AiArtifactsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get cacheKey => $composableBuilder(
+    column: $table.cacheKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get articleId => $composableBuilder(
+    column: $table.articleId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get artifactType => $composableBuilder(
+    column: $table.artifactType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get requestModel => $composableBuilder(
+    column: $table.requestModel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get resolvedModel => $composableBuilder(
+    column: $table.resolvedModel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get promptVersion => $composableBuilder(
+    column: $table.promptVersion,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get language => $composableBuilder(
+    column: $table.language,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get contentHash => $composableBuilder(
+    column: $table.contentHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get structuredResult => $composableBuilder(
+    column: $table.structuredResult,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get inputTokens => $composableBuilder(
+    column: $table.inputTokens,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get outputTokens => $composableBuilder(
+    column: $table.outputTokens,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get providerCalls => $composableBuilder(
+    column: $table.providerCalls,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get costUsd => $composableBuilder(
+    column: $table.costUsd,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AiArtifactsTableOrderingComposer
+    extends Composer<_$RiverDatabase, $AiArtifactsTable> {
+  $$AiArtifactsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get cacheKey => $composableBuilder(
+    column: $table.cacheKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get articleId => $composableBuilder(
+    column: $table.articleId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get artifactType => $composableBuilder(
+    column: $table.artifactType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get requestModel => $composableBuilder(
+    column: $table.requestModel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get resolvedModel => $composableBuilder(
+    column: $table.resolvedModel,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get promptVersion => $composableBuilder(
+    column: $table.promptVersion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get language => $composableBuilder(
+    column: $table.language,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get contentHash => $composableBuilder(
+    column: $table.contentHash,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get structuredResult => $composableBuilder(
+    column: $table.structuredResult,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get inputTokens => $composableBuilder(
+    column: $table.inputTokens,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get outputTokens => $composableBuilder(
+    column: $table.outputTokens,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get providerCalls => $composableBuilder(
+    column: $table.providerCalls,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get costUsd => $composableBuilder(
+    column: $table.costUsd,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AiArtifactsTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $AiArtifactsTable> {
+  $$AiArtifactsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get cacheKey =>
+      $composableBuilder(column: $table.cacheKey, builder: (column) => column);
+
+  GeneratedColumn<String> get articleId =>
+      $composableBuilder(column: $table.articleId, builder: (column) => column);
+
+  GeneratedColumn<String> get artifactType => $composableBuilder(
+    column: $table.artifactType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get requestModel => $composableBuilder(
+    column: $table.requestModel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get resolvedModel => $composableBuilder(
+    column: $table.resolvedModel,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get promptVersion => $composableBuilder(
+    column: $table.promptVersion,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get language =>
+      $composableBuilder(column: $table.language, builder: (column) => column);
+
+  GeneratedColumn<String> get contentHash => $composableBuilder(
+    column: $table.contentHash,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get structuredResult => $composableBuilder(
+    column: $table.structuredResult,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get inputTokens => $composableBuilder(
+    column: $table.inputTokens,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get outputTokens => $composableBuilder(
+    column: $table.outputTokens,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get providerCalls => $composableBuilder(
+    column: $table.providerCalls,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get costUsd =>
+      $composableBuilder(column: $table.costUsd, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$AiArtifactsTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $AiArtifactsTable,
+          AiArtifactRow,
+          $$AiArtifactsTableFilterComposer,
+          $$AiArtifactsTableOrderingComposer,
+          $$AiArtifactsTableAnnotationComposer,
+          $$AiArtifactsTableCreateCompanionBuilder,
+          $$AiArtifactsTableUpdateCompanionBuilder,
+          (
+            AiArtifactRow,
+            BaseReferences<_$RiverDatabase, $AiArtifactsTable, AiArtifactRow>,
+          ),
+          AiArtifactRow,
+          PrefetchHooks Function()
+        > {
+  $$AiArtifactsTableTableManager(_$RiverDatabase db, $AiArtifactsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AiArtifactsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AiArtifactsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AiArtifactsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> cacheKey = const Value.absent(),
+                Value<String> articleId = const Value.absent(),
+                Value<String> artifactType = const Value.absent(),
+                Value<String> requestModel = const Value.absent(),
+                Value<String> resolvedModel = const Value.absent(),
+                Value<String> promptVersion = const Value.absent(),
+                Value<String> language = const Value.absent(),
+                Value<String> contentHash = const Value.absent(),
+                Value<String> structuredResult = const Value.absent(),
+                Value<int> inputTokens = const Value.absent(),
+                Value<int> outputTokens = const Value.absent(),
+                Value<int> providerCalls = const Value.absent(),
+                Value<double> costUsd = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AiArtifactsCompanion(
+                cacheKey: cacheKey,
+                articleId: articleId,
+                artifactType: artifactType,
+                requestModel: requestModel,
+                resolvedModel: resolvedModel,
+                promptVersion: promptVersion,
+                language: language,
+                contentHash: contentHash,
+                structuredResult: structuredResult,
+                inputTokens: inputTokens,
+                outputTokens: outputTokens,
+                providerCalls: providerCalls,
+                costUsd: costUsd,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String cacheKey,
+                required String articleId,
+                required String artifactType,
+                required String requestModel,
+                required String resolvedModel,
+                required String promptVersion,
+                required String language,
+                required String contentHash,
+                required String structuredResult,
+                required int inputTokens,
+                required int outputTokens,
+                required int providerCalls,
+                required double costUsd,
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AiArtifactsCompanion.insert(
+                cacheKey: cacheKey,
+                articleId: articleId,
+                artifactType: artifactType,
+                requestModel: requestModel,
+                resolvedModel: resolvedModel,
+                promptVersion: promptVersion,
+                language: language,
+                contentHash: contentHash,
+                structuredResult: structuredResult,
+                inputTokens: inputTokens,
+                outputTokens: outputTokens,
+                providerCalls: providerCalls,
+                costUsd: costUsd,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AiArtifactsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $AiArtifactsTable,
+      AiArtifactRow,
+      $$AiArtifactsTableFilterComposer,
+      $$AiArtifactsTableOrderingComposer,
+      $$AiArtifactsTableAnnotationComposer,
+      $$AiArtifactsTableCreateCompanionBuilder,
+      $$AiArtifactsTableUpdateCompanionBuilder,
+      (
+        AiArtifactRow,
+        BaseReferences<_$RiverDatabase, $AiArtifactsTable, AiArtifactRow>,
+      ),
+      AiArtifactRow,
+      PrefetchHooks Function()
     >;
 typedef $$ReadingEventsTableCreateCompanionBuilder =
     ReadingEventsCompanion Function({
@@ -22886,6 +24147,8 @@ class $RiverDatabaseManager {
       $$ArticlesTableTableManager(_db, _db.articles);
   $$ArticleContentsTableTableManager get articleContents =>
       $$ArticleContentsTableTableManager(_db, _db.articleContents);
+  $$AiArtifactsTableTableManager get aiArtifacts =>
+      $$AiArtifactsTableTableManager(_db, _db.aiArtifacts);
   $$ReadingEventsTableTableManager get readingEvents =>
       $$ReadingEventsTableTableManager(_db, _db.readingEvents);
   $$ReaderSettingsRowsTableTableManager get readerSettingsRows =>

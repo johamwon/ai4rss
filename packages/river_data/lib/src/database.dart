@@ -11,6 +11,7 @@ part 'database.g.dart';
     FeedSubscriptions,
     Articles,
     ArticleContents,
+    AiArtifacts,
     ReadingEvents,
     ReaderSettingsRows,
     KnowledgeItems,
@@ -40,7 +41,7 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -48,6 +49,7 @@ final class RiverDatabase extends _$RiverDatabase {
       await migrator.createAll();
       await _createArticleSearchInfrastructure();
       await _createKnowledgeSourceIndex();
+      await _createAiArtifactIndex();
       await rebuildArticleSearchIndex();
     },
     onUpgrade: (Migrator migrator, int from, int to) async {
@@ -245,6 +247,12 @@ final class RiverDatabase extends _$RiverDatabase {
           await migrator.createTable(knowledgeExternalMappings);
         }
       }
+      if (from < 14) {
+        if (!await _hasTable('ai_artifacts')) {
+          await migrator.createTable(aiArtifacts);
+        }
+        await _createAiArtifactIndex();
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -264,6 +272,11 @@ final class RiverDatabase extends _$RiverDatabase {
     ).getSingleOrNull();
     return row != null;
   }
+
+  Future<void> _createAiArtifactIndex() => customStatement(
+    'CREATE INDEX IF NOT EXISTS ai_artifacts_article_created_idx '
+    'ON ai_artifacts(article_id, created_at)',
+  );
 
   Future<void> _addAudioColumnIfMissing(
     Migrator migrator,
