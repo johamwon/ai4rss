@@ -210,6 +210,91 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluateAiProviderReplay() async {
+    final manifest = _readJson('evals/openai_compatible_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    final catalog = AiProviderPresetCatalog.standard();
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final preset = catalog.resolve(item['presetId'] as String);
+      final configuration = preset.configure(
+        model: item['model'] as String,
+        apiKey: OpaqueAiApiKey('replay-only-key'),
+      );
+      final transport = _ReplayAiHttpTransport(
+        AiHttpResponse(
+          statusCode: 200,
+          body: jsonEncode(_map(item['response'])),
+        ),
+      );
+      final provider = OpenAiCompatibleProvider(
+        configuration: configuration,
+        transport: transport,
+        clock: const _ZeroAiClock(),
+      );
+      final prompt = articleSummaryPromptV1.render(
+        <String, String>{
+          'articleId': id,
+          'title': 'Replay title',
+          'content': 'Replay content is deterministic.',
+          'language': item['language'] as String,
+        },
+      );
+      try {
+        final response = await provider.complete(
+          AiProviderRequest(
+            operationId: id,
+            model: configuration.model,
+            prompt: prompt,
+            responseSchema: ArticleSummarySchema.jsonSchema,
+          ),
+        );
+        const ArticleSummarySchema().parse(
+          response.output,
+          model: response.model,
+          promptVersion: prompt.versionKey,
+          expectedLanguage: item['language'] as String,
+        );
+        final sent = transport.request;
+        if (sent == null) {
+          failures.add(EvalFailure(id, 'provider sent no request'));
+          continue;
+        }
+        if (sent.uri != configuration.chatCompletionsUri) {
+          failures.add(EvalFailure(id, 'unexpected compatibility endpoint'));
+        }
+        if (sent.toString().contains('replay-only-key')) {
+          failures.add(EvalFailure(id, 'request diagnostics leaked key'));
+        }
+        final body = _map(jsonDecode(sent.body));
+        final expectedMode = item['expectedOutputMode'] as String;
+        final actualMode = switch (body['response_format']) {
+          null => 'promptOnly',
+          final Map value =>
+            _map(value)['type'] == 'json_schema' ? 'jsonSchema' : 'jsonObject',
+          _ => 'invalid',
+        };
+        if (actualMode != expectedMode) {
+          failures.add(
+            EvalFailure(
+              id,
+              'expected output mode $expectedMode, got $actualMode',
+            ),
+          );
+        }
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'provider replay failed: $error'));
+      }
+    }
+    return EvalReport(
+      name: 'ai-provider-replay',
+      total: cases.length,
+      failures: failures,
+    );
+  }
+
   EvalReport evaluateRanking() {
     final manifest = _readJson('evals/ranking_sessions.json');
     final cases = _list(manifest['cases']);
@@ -290,3 +375,23 @@ List<Map<String, Object?>> _list(Object? value) =>
 List<String> _strings(Object? value) => (value as List).cast<String>();
 
 ReadingEventType _event(String name) => ReadingEventType.values.byName(name);
+
+final class _ReplayAiHttpTransport implements AiHttpTransport {
+  _ReplayAiHttpTransport(this.response);
+
+  final AiHttpResponse response;
+  AiHttpRequest? request;
+
+  @override
+  Future<AiHttpResponse> send(AiHttpRequest request) async {
+    this.request = request;
+    return response;
+  }
+}
+
+final class _ZeroAiClock implements AiMonotonicClock {
+  const _ZeroAiClock();
+
+  @override
+  Duration elapsed() => Duration.zero;
+}

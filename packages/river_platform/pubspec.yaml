@@ -24,6 +24,8 @@ dependencies:
   just_audio: 0.10.6
   just_audio_windows: 0.2.3
   path_provider: 2.1.6
+  river_ai:
+    path: ../river_ai
   river_domain:
     path: ../river_domain
   river_feed:

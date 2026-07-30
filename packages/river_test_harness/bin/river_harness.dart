@@ -16,6 +16,7 @@ Future<void> main(List<String> arguments) async {
         ..add(evals.evaluateFeeds())
         ..add(await evals.evaluateExtraction())
         ..add(evals.evaluateAiReplay())
+        ..add(await evals.evaluateAiProviderReplay())
         ..add(evals.evaluateRanking());
       break;
     case 'fixture':
@@ -28,7 +29,9 @@ Future<void> main(List<String> arguments) async {
       reports.add(await evals.evaluateExtraction());
       break;
     case 'ai':
-      reports.add(evals.evaluateAiReplay());
+      reports
+        ..add(evals.evaluateAiReplay())
+        ..add(await evals.evaluateAiProviderReplay());
       break;
     case 'rank':
       reports.add(evals.evaluateRanking());
