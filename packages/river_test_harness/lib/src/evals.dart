@@ -612,34 +612,120 @@ final class HarnessEvals {
     final manifest = _readJson('evals/ranking_sessions.json');
     final cases = _list(manifest['cases']);
     final failures = <EvalFailure>[];
+    final now = DateTime.utc(2026, 7, 30, 12);
 
     for (final item in cases) {
       final id = item['id'] as String;
-      final positive = _event(item['positive'] as String);
-      final negative = _event(item['negative'] as String);
-      final at = DateTime.utc(2026, 7, 14);
-      final positiveWeight = readingSignalWeight(
-        ReadingEvent(
-          eventId: '$id-positive',
-          articleId: id,
-          type: positive,
-          occurredAt: at,
-          completionRatio: positive == ReadingEventType.completed ? 1 : 0,
-        ),
-      );
-      final negativeWeight = readingSignalWeight(
-        ReadingEvent(
-          eventId: '$id-negative',
-          articleId: id,
-          type: negative,
-          occurredAt: at,
-          completionRatio: negative == ReadingEventType.completed ? 1 : 0,
-        ),
-      );
-      if (negativeWeight >= positiveWeight) {
-        failures.add(
-          EvalFailure(id, '$negative must score below $positive'),
-        );
+      try {
+        switch (item['kind']) {
+          case 'weight-order':
+            final stronger = _event(item['stronger'] as String);
+            final weaker = _event(item['weaker'] as String);
+            final strongerWeight = readingSignalWeight(
+              _rankingEvent('$id-stronger', id, stronger, now),
+            );
+            final weakerWeight = readingSignalWeight(
+              _rankingEvent('$id-weaker', id, weaker, now),
+            );
+            final absolute = item['absolute'] == true;
+            final strongerValue =
+                absolute ? strongerWeight.abs() : strongerWeight;
+            final weakerValue = absolute ? weakerWeight.abs() : weakerWeight;
+            if (strongerValue <= weakerValue) {
+              failures.add(
+                EvalFailure(id, '$stronger must dominate $weaker'),
+              );
+            }
+          case 'half-life':
+            final actual = decayWeight(
+              weight: (item['weight'] as num).toDouble(),
+              occurredAt: now.subtract(
+                Duration(days: item['ageDays'] as int),
+              ),
+              now: now,
+            );
+            final expected = (item['expected'] as num).toDouble();
+            if ((actual - expected).abs() > 1e-12) {
+              failures.add(
+                EvalFailure(id, 'expected $expected, got $actual'),
+              );
+            }
+          case 'click-cap':
+            final clickCount = item['clickCount'] as int;
+            final profile = const LocalPreferenceProfileModel().build(
+              now: now,
+              evidence: <PreferenceEvidence>[
+                for (var index = 0; index < clickCount; index += 1)
+                  PreferenceEvidence(
+                    event: ReadingEvent(
+                      eventId: '$id-$index',
+                      articleId: id,
+                      type: ReadingEventType.open,
+                      occurredAt: now,
+                    ),
+                    sourceId: 'source-clicked',
+                  ),
+              ],
+            );
+            final actual = profile.sourceScore('source-clicked');
+            final expected = (item['expected'] as num).toDouble();
+            if ((actual - expected).abs() > 1e-12) {
+              failures.add(
+                EvalFailure(id, 'click cap expected $expected, got $actual'),
+              );
+            }
+          case 'profile':
+            final evidence = _list(item['evidence']).map(
+              (entry) {
+                final type = _event(entry['type'] as String);
+                return PreferenceEvidence(
+                  event: ReadingEvent(
+                    eventId: entry['eventId'] as String,
+                    articleId: entry['articleId'] as String,
+                    type: type,
+                    occurredAt: now,
+                    activeSeconds: (entry['activeSeconds'] as int?) ?? 0,
+                    completionRatio:
+                        (entry['completionRatio'] as num?)?.toDouble() ?? 0,
+                  ),
+                  sourceId: entry['sourceId'] as String,
+                  topics: _strings(entry['topics']),
+                );
+              },
+            ).toList(growable: false);
+            final profile = const LocalPreferenceProfileModel().build(
+              now: now,
+              evidence: evidence,
+            );
+            final expectedVersion = item['expectedModelVersion'] as int;
+            if (profile.modelVersion != expectedVersion) {
+              failures.add(
+                EvalFailure(
+                  id,
+                  'model version expected $expectedVersion, '
+                  'got ${profile.modelVersion}',
+                ),
+              );
+            }
+            _compareRankingScores(
+              id: id,
+              dimension: 'source',
+              expected: item['expectedSources'],
+              actual: profile.sourceScore,
+              failures: failures,
+            );
+            _compareRankingScores(
+              id: id,
+              dimension: 'topic',
+              expected: item['expectedTopics'],
+              actual: profile.topicScore,
+              failures: failures,
+            );
+          default:
+            failures.add(EvalFailure(id, 'unknown ranking replay kind'));
+        }
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'ranking replay failed: $error'));
       }
     }
     return EvalReport(name: 'ranking', total: cases.length, failures: failures);
@@ -710,6 +796,43 @@ bool _containsAny(String normalizedHaystack, Iterable<String> needles) =>
 String _percentage(double value) => '${(value * 100).toStringAsFixed(1)}%';
 
 ReadingEventType _event(String name) => ReadingEventType.values.byName(name);
+
+ReadingEvent _rankingEvent(
+  String eventId,
+  String articleId,
+  ReadingEventType type,
+  DateTime occurredAt,
+) =>
+    ReadingEvent(
+      eventId: eventId,
+      articleId: articleId,
+      type: type,
+      occurredAt: occurredAt,
+      activeSeconds: type == ReadingEventType.activeRead ? 120 : 0,
+      completionRatio: type == ReadingEventType.completed ? 1 : 0,
+    );
+
+void _compareRankingScores({
+  required String id,
+  required String dimension,
+  required Object? expected,
+  required double Function(String key) actual,
+  required List<EvalFailure> failures,
+}) {
+  final expectedScores = expected as Map<String, Object?>;
+  for (final entry in expectedScores.entries) {
+    final expectedScore = (entry.value as num).toDouble();
+    final actualScore = actual(entry.key);
+    if ((actualScore - expectedScore).abs() > 1e-12) {
+      failures.add(
+        EvalFailure(
+          id,
+          '$dimension ${entry.key} expected $expectedScore, got $actualScore',
+        ),
+      );
+    }
+  }
+}
 
 final class _ReplayAiHttpTransport implements AiHttpTransport {
   _ReplayAiHttpTransport(this.response);
