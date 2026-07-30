@@ -1,0 +1,25 @@
+{
+  "cases": [
+    {
+      "id": "summary-cache-001",
+      "model": "replay-model",
+      "language": "zh-CN",
+      "content": "River 的摘要缓存只复用已经通过结构校验的结果，同一请求不得重复调用模型。",
+      "expectedOneLine": "River 只缓存通过校验的摘要，并合并相同请求。",
+      "replay": {
+        "schemaVersion": "river.article-summary.v1",
+        "oneLine": "River 只缓存通过校验的摘要，并合并相同请求。",
+        "keyPoints": [
+          "正文哈希参与缓存键。",
+          "模型、Prompt 版本和语言都会触发失效。",
+          "相同并发请求只调用一次模型。"
+        ],
+        "whyItMatters": "缓存命中与并发合并可以避免重复计费。",
+        "topics": ["AI", "缓存"],
+        "entities": ["River"],
+        "estimatedReadingMinutes": 1,
+        "language": "zh-CN"
+      }
+    }
+  ]
+}

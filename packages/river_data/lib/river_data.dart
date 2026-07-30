@@ -1,5 +1,6 @@
 library;
 
+export 'src/ai_artifact_repository.dart';
 export 'src/article_annotation_repository.dart';
 export 'src/audio_playback_repository.dart';
 export 'src/audio_queue_repository.dart';

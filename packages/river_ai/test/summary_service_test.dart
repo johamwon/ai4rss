@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:river_ai/river_ai.dart';
@@ -110,6 +111,170 @@ void main() {
     );
     expect(provider.requests, hasLength(2));
   });
+
+  test('validated summary is persisted and a cache hit spends no quota',
+      () async {
+    final provider = _QueueProvider(<String>[_validSummary()]);
+    final artifacts = _MemoryArtifacts();
+    final service = SummaryService(
+      provider,
+      model: 'replay-v1',
+      artifacts: artifacts,
+      clock: const _FixedClock(),
+      inputUsdPerMillion: 2,
+      outputUsdPerMillion: 8,
+    );
+
+    final first = await service.summarize(_article());
+    final second = await service.summarize(_article());
+    final stored = artifacts.values.single;
+
+    expect(second.oneLine, first.oneLine);
+    expect(provider.requests, hasLength(1));
+    expect(stored.type, AiArtifactType.articleSummary);
+    expect(stored.requestModel, 'replay-v1');
+    expect(stored.inputTokens, 100);
+    expect(stored.outputTokens, 80);
+    expect(stored.providerCalls, 1);
+    expect(stored.costUsd, closeTo(0.00084, 0.0000001));
+    expect(stored.toString(), isNot(contains(first.oneLine)));
+  });
+
+  test('concurrent identical requests share one provider call', () async {
+    final release = Completer<void>();
+    final provider = _BlockingProvider(release.future);
+    final service = SummaryService(provider, model: 'replay-v1');
+
+    final first = service.summarize(_article());
+    final second = service.summarize(_article());
+    await Future<void>.delayed(Duration.zero);
+
+    expect(provider.requests, hasLength(1));
+    release.complete();
+    final summaries = await Future.wait(<Future<ArticleSummary>>[
+      first,
+      second,
+    ]);
+
+    expect(summaries.map((summary) => summary.oneLine).toSet(), hasLength(1));
+    expect(provider.requests, hasLength(1));
+  });
+
+  test('cache identity changes for every required invalidation dimension', () {
+    final contentHash = summaryContentHash('body');
+    final base = summaryCacheKey(
+      contentHash: contentHash,
+      model: 'model-a',
+      promptVersion: 'article-summary@1',
+      language: 'zh-CN',
+    );
+    final variants = <String>{
+      base,
+      summaryCacheKey(
+        contentHash: summaryContentHash('changed body'),
+        model: 'model-a',
+        promptVersion: 'article-summary@1',
+        language: 'zh-CN',
+      ),
+      summaryCacheKey(
+        contentHash: contentHash,
+        model: 'model-b',
+        promptVersion: 'article-summary@1',
+        language: 'zh-CN',
+      ),
+      summaryCacheKey(
+        contentHash: contentHash,
+        model: 'model-a',
+        promptVersion: 'article-summary@2',
+        language: 'zh-CN',
+      ),
+      summaryCacheKey(
+        contentHash: contentHash,
+        model: 'model-a',
+        promptVersion: 'article-summary@1',
+        language: 'en-US',
+      ),
+    };
+
+    expect(variants, hasLength(5));
+    expect(variants.every((key) => key.startsWith('sha256:')), isTrue);
+  });
+
+  test('malformed cached output is evicted and never returned', () async {
+    final artifacts = _MemoryArtifacts();
+    final identity = SummaryCacheIdentity(
+      contentHash: summaryContentHash(_article().plainText!),
+      model: 'replay-v1',
+      promptVersion: 'article-summary@1',
+      language: 'zh-CN',
+    );
+    await artifacts.write(
+      AiArtifact(
+        cacheKey: identity.cacheKey,
+        articleId: 'article-1',
+        type: AiArtifactType.articleSummary,
+        requestModel: 'replay-v1',
+        resolvedModel: 'replay-v1',
+        promptVersion: 'article-summary@1',
+        language: 'zh-CN',
+        contentHash: identity.contentHash,
+        structuredResult: '{}',
+        inputTokens: 1,
+        outputTokens: 1,
+        providerCalls: 1,
+        costUsd: 0,
+        createdAt: const _FixedClock().now(),
+      ),
+    );
+    final provider = _QueueProvider(<String>[_validSummary()]);
+    final service = SummaryService(
+      provider,
+      model: 'replay-v1',
+      artifacts: artifacts,
+      clock: const _FixedClock(),
+    );
+
+    final summary = await service.summarize(_article());
+
+    expect(summary.oneLine, isNotEmpty);
+    expect(provider.requests, hasLength(1));
+    expect(
+      const ArticleSummaryCacheCodec().decode(artifacts.values.single).oneLine,
+      summary.oneLine,
+    );
+  });
+
+  test('invalid provider output is never persisted', () async {
+    final artifacts = _MemoryArtifacts();
+    final service = SummaryService(
+      _QueueProvider(const <String>['{}', '{}']),
+      artifacts: artifacts,
+      clock: const _FixedClock(),
+    );
+
+    await expectLater(
+      service.summarize(_article()),
+      throwsA(isA<AiSchemaFailure>()),
+    );
+
+    expect(artifacts.values, isEmpty);
+  });
+
+  test('cache read failure does not discard a valid provider result', () async {
+    final artifacts = _FailingReadArtifacts();
+    final provider = _QueueProvider(<String>[_validSummary()]);
+    final service = SummaryService(
+      provider,
+      artifacts: artifacts,
+      clock: const _FixedClock(),
+    );
+
+    final summary = await service.summarize(_article());
+
+    expect(summary.oneLine, isNotEmpty);
+    expect(provider.requests, hasLength(1));
+    expect(artifacts.written, isNotNull);
+  });
 }
 
 Article _article() => Article(
@@ -136,3 +301,67 @@ String _validSummary() => jsonEncode(
         'language': 'zh-CN',
       },
     );
+
+final class _BlockingProvider implements AiProvider {
+  _BlockingProvider(this.release);
+
+  final Future<void> release;
+  final List<AiProviderRequest> requests = <AiProviderRequest>[];
+
+  @override
+  String get id => 'blocking';
+
+  @override
+  Future<AiProviderResponse> complete(AiProviderRequest request) async {
+    requests.add(request);
+    await release;
+    return AiProviderResponse(
+      output: _validSummary(),
+      model: request.model,
+      usage: AiTokenUsage(inputTokens: 100, outputTokens: 80),
+      elapsed: const Duration(milliseconds: 20),
+    );
+  }
+}
+
+final class _MemoryArtifacts implements AiArtifactRepository {
+  final Map<String, AiArtifact> _values = <String, AiArtifact>{};
+
+  Iterable<AiArtifact> get values => _values.values;
+
+  @override
+  Future<void> delete(String cacheKey) async {
+    _values.remove(cacheKey);
+  }
+
+  @override
+  Future<AiArtifact?> read(String cacheKey) async => _values[cacheKey];
+
+  @override
+  Future<void> write(AiArtifact artifact) async {
+    _values[artifact.cacheKey] = artifact;
+  }
+}
+
+final class _FixedClock implements Clock {
+  const _FixedClock();
+
+  @override
+  DateTime now() => DateTime.utc(2026, 7, 30, 12);
+}
+
+final class _FailingReadArtifacts implements AiArtifactRepository {
+  AiArtifact? written;
+
+  @override
+  Future<void> delete(String cacheKey) async {}
+
+  @override
+  Future<AiArtifact?> read(String cacheKey) =>
+      throw StateError('simulated cache outage');
+
+  @override
+  Future<void> write(AiArtifact artifact) async {
+    written = artifact;
+  }
+}

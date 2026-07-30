@@ -79,6 +79,27 @@ class ArticleContents extends Table {
   Set<Column<Object>> get primaryKey => <Column<Object>>{articleId};
 }
 
+@DataClassName('AiArtifactRow')
+class AiArtifacts extends Table {
+  TextColumn get cacheKey => text().withLength(min: 71, max: 71)();
+  TextColumn get articleId => text().withLength(min: 1, max: 240)();
+  TextColumn get artifactType => text()();
+  TextColumn get requestModel => text().withLength(min: 1, max: 200)();
+  TextColumn get resolvedModel => text().withLength(min: 1, max: 200)();
+  TextColumn get promptVersion => text()();
+  TextColumn get language => text()();
+  TextColumn get contentHash => text().withLength(min: 64, max: 64)();
+  TextColumn get structuredResult => text()();
+  IntColumn get inputTokens => integer()();
+  IntColumn get outputTokens => integer()();
+  IntColumn get providerCalls => integer()();
+  RealColumn get costUsd => real()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{cacheKey};
+}
+
 class ReadingEvents extends Table {
   TextColumn get id => text()();
   TextColumn get articleId =>
