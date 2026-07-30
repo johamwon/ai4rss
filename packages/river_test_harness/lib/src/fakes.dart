@@ -94,6 +94,41 @@ final class ReplayAiProvider implements AiProvider {
   }
 }
 
+final class FakeAiHttpTransport implements AiHttpTransport {
+  final Map<Uri, AiHttpResponse> _responses = <Uri, AiHttpResponse>{};
+  final List<AiHttpRequest> requests = <AiHttpRequest>[];
+
+  void register(Uri uri, AiHttpResponse response) {
+    _responses[uri] = response;
+  }
+
+  @override
+  Future<AiHttpResponse> send(AiHttpRequest request) async {
+    requests.add(request);
+    final response = _responses[request.uri];
+    if (response == null) {
+      throw StateError(
+        'No fake AI HTTP response registered for ${request.uri}',
+      );
+    }
+    return response;
+  }
+}
+
+final class FakeAiMonotonicClock implements AiMonotonicClock {
+  Duration _elapsed = Duration.zero;
+
+  void advance(Duration duration) {
+    if (duration.isNegative) {
+      throw ArgumentError.value(duration, 'duration');
+    }
+    _elapsed += duration;
+  }
+
+  @override
+  Duration elapsed() => _elapsed;
+}
+
 final class FakeKnowledgeConnector implements KnowledgeConnector {
   FakeKnowledgeConnector({this.id = 'fake-knowledge'});
 

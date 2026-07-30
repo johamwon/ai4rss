@@ -1,0 +1,124 @@
+{
+  "cases": [
+    {
+      "id": "provider-openai-001",
+      "presetId": "openai",
+      "model": "replay-model",
+      "language": "zh-CN",
+      "expectedOutputMode": "jsonSchema",
+      "response": {
+        "id": "replay-openai",
+        "model": "replay-model",
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "message": {
+              "content": "{\"schemaVersion\":\"river.article-summary.v1\",\"oneLine\":\"River 提供可替换的 AI 接口。\",\"keyPoints\":[\"BYOK 密钥留在设备安全仓库。\",\"Provider 使用兼容协议。\",\"结果继续由本地 Schema 校验。\"],\"whyItMatters\":\"用户可控制供应商、隐私与成本。\",\"topics\":[\"BYOK\",\"AI\"],\"entities\":[\"River\"],\"estimatedReadingMinutes\":1,\"language\":\"zh-CN\"}"
+            }
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 80,
+          "completion_tokens": 40,
+          "total_tokens": 120
+        }
+      }
+    },
+    {
+      "id": "provider-anthropic-001",
+      "presetId": "anthropic",
+      "model": "replay-model",
+      "language": "zh-CN",
+      "expectedOutputMode": "promptOnly",
+      "response": {
+        "id": "replay-anthropic",
+        "model": "replay-model",
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "message": {
+              "content": "{\"schemaVersion\":\"river.article-summary.v1\",\"oneLine\":\"River 提供可替换的 AI 接口。\",\"keyPoints\":[\"BYOK 密钥留在设备安全仓库。\",\"Provider 使用兼容协议。\",\"结果继续由本地 Schema 校验。\"],\"whyItMatters\":\"用户可控制供应商、隐私与成本。\",\"topics\":[\"BYOK\",\"AI\"],\"entities\":[\"River\"],\"estimatedReadingMinutes\":1,\"language\":\"zh-CN\"}"
+            }
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 80,
+          "completion_tokens": 40,
+          "total_tokens": 120
+        }
+      }
+    },
+    {
+      "id": "provider-gemini-001",
+      "presetId": "gemini",
+      "model": "replay-model",
+      "language": "zh-CN",
+      "expectedOutputMode": "jsonSchema",
+      "response": {
+        "id": "replay-gemini",
+        "model": "replay-model",
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "message": {
+              "content": "{\"schemaVersion\":\"river.article-summary.v1\",\"oneLine\":\"River 提供可替换的 AI 接口。\",\"keyPoints\":[\"BYOK 密钥留在设备安全仓库。\",\"Provider 使用兼容协议。\",\"结果继续由本地 Schema 校验。\"],\"whyItMatters\":\"用户可控制供应商、隐私与成本。\",\"topics\":[\"BYOK\",\"AI\"],\"entities\":[\"River\"],\"estimatedReadingMinutes\":1,\"language\":\"zh-CN\"}"
+            }
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 80,
+          "completion_tokens": 40,
+          "total_tokens": 120
+        }
+      }
+    },
+    {
+      "id": "provider-deepseek-001",
+      "presetId": "deepseek",
+      "model": "replay-model",
+      "language": "zh-CN",
+      "expectedOutputMode": "jsonObject",
+      "response": {
+        "id": "replay-deepseek",
+        "model": "replay-model",
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "message": {
+              "content": "{\"schemaVersion\":\"river.article-summary.v1\",\"oneLine\":\"River 提供可替换的 AI 接口。\",\"keyPoints\":[\"BYOK 密钥留在设备安全仓库。\",\"Provider 使用兼容协议。\",\"结果继续由本地 Schema 校验。\"],\"whyItMatters\":\"用户可控制供应商、隐私与成本。\",\"topics\":[\"BYOK\",\"AI\"],\"entities\":[\"River\"],\"estimatedReadingMinutes\":1,\"language\":\"zh-CN\"}"
+            }
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 80,
+          "completion_tokens": 40,
+          "total_tokens": 120
+        }
+      }
+    },
+    {
+      "id": "provider-qwen-001",
+      "presetId": "qwen",
+      "model": "replay-model",
+      "language": "zh-CN",
+      "expectedOutputMode": "jsonObject",
+      "response": {
+        "id": "replay-qwen",
+        "model": "replay-model",
+        "choices": [
+          {
+            "finish_reason": "stop",
+            "message": {
+              "content": "{\"schemaVersion\":\"river.article-summary.v1\",\"oneLine\":\"River 提供可替换的 AI 接口。\",\"keyPoints\":[\"BYOK 密钥留在设备安全仓库。\",\"Provider 使用兼容协议。\",\"结果继续由本地 Schema 校验。\"],\"whyItMatters\":\"用户可控制供应商、隐私与成本。\",\"topics\":[\"BYOK\",\"AI\"],\"entities\":[\"River\"],\"estimatedReadingMinutes\":1,\"language\":\"zh-CN\"}"
+            }
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 80,
+          "completion_tokens": 40,
+          "total_tokens": 120
+        }
+      }
+    }
+  ]
+}
