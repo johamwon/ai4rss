@@ -5,11 +5,11 @@ import 'package:river_test_harness/river_test_harness.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('production ranking replay covers weights decay cap and profile', () {
+  test('production ranking replay covers profiles and candidate ordering', () {
     final report = HarnessEvals(_workspaceRoot()).evaluateRanking();
 
     expect(report.isSuccess, isTrue);
-    expect(report.total, 5);
+    expect(report.total, 6);
   });
 
   test('ranking replay rejects a mismatched model version', () {
