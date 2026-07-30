@@ -2,13 +2,75 @@
   "cases": [
     {
       "id": "negative-feedback-dominates-click",
-      "positive": "open",
-      "negative": "notInterested"
+      "kind": "weight-order",
+      "stronger": "notInterested",
+      "weaker": "open",
+      "absolute": true
     },
     {
       "id": "completion-dominates-impression",
-      "positive": "completed",
-      "negative": "impression"
+      "kind": "weight-order",
+      "stronger": "completed",
+      "weaker": "impression",
+      "absolute": false
+    },
+    {
+      "id": "thirty-day-half-life",
+      "kind": "half-life",
+      "weight": 2.0,
+      "ageDays": 30,
+      "expected": 1.0
+    },
+    {
+      "id": "repeated-article-click-cap",
+      "kind": "click-cap",
+      "clickCount": 100,
+      "expected": 0.2
+    },
+    {
+      "id": "source-topic-profile-replay",
+      "kind": "profile",
+      "expectedModelVersion": 1,
+      "evidence": [
+        {
+          "eventId": "open-tech",
+          "articleId": "article-tech",
+          "type": "open",
+          "sourceId": "source-tech",
+          "topics": ["flutter", "dart"]
+        },
+        {
+          "eventId": "active-tech",
+          "articleId": "article-tech",
+          "type": "activeRead",
+          "activeSeconds": 120,
+          "sourceId": "source-tech",
+          "topics": ["flutter", "dart"]
+        },
+        {
+          "eventId": "star-tech",
+          "articleId": "article-starred",
+          "type": "starred",
+          "sourceId": "source-tech",
+          "topics": ["flutter"]
+        },
+        {
+          "eventId": "negative-noise",
+          "articleId": "article-noise",
+          "type": "notInterested",
+          "sourceId": "source-noise",
+          "topics": ["gossip"]
+        }
+      ],
+      "expectedSources": {
+        "source-tech": 3.7,
+        "source-noise": -4.0
+      },
+      "expectedTopics": {
+        "flutter": 3.1,
+        "dart": 0.6,
+        "gossip": -4.0
+      }
     }
   ]
 }
