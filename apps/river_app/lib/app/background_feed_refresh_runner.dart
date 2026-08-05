@@ -11,20 +11,33 @@ final class BackgroundFeedRefreshRunner {
     required this.resumePending,
     required this.loadSubscriptions,
     required this.start,
+    this.afterRefresh,
   });
 
   final Future<FeedRefreshBatchState> Function() resumePending;
   final LoadSubscriptions loadSubscriptions;
   final RunFeedRefresh start;
+  final Future<void> Function()? afterRefresh;
 
   Future<bool> run() async {
     final resumed = await resumePending();
     if (resumed.total > 0) {
+      await _runAfterRefresh();
       return _succeeded(resumed);
     }
 
     final subscriptions = await loadSubscriptions();
-    return _succeeded(await start(subscriptions));
+    final result = await start(subscriptions);
+    await _runAfterRefresh();
+    return _succeeded(result);
+  }
+
+  Future<void> _runAfterRefresh() async {
+    try {
+      await afterRefresh?.call();
+    } on Object {
+      // Feed refresh success is independent from best-effort AI automation.
+    }
   }
 
   bool _succeeded(FeedRefreshBatchState state) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:river_app/preferences/automatic_summaries.dart';
 import 'package:river_app/preferences/personalized_articles.dart';
 import 'package:river_app/preferences/reading_behavior_privacy_page.dart';
 import 'package:river_data/river_data.dart';
@@ -148,6 +149,40 @@ void main() {
     await tester.pumpAndSettle();
     expect(personalization.cleared, isTrue);
   });
+
+  testWidgets('automatic summary policy discloses AI use and updates limits',
+      (tester) async {
+    final automatic = _FakeAutomaticSummaryExperience();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ReadingBehaviorPrivacyPage(
+          repository: repository,
+          clock: _FixedClock(),
+          automaticSummaries: automatic,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('自动摘要'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('失败和缓存命中不占用每日额度'), findsOneWidget);
+    expect(find.bySemanticsLabel('自动摘要'), findsWidgets);
+
+    await tester.tap(find.text('自动生成高匹配文章摘要'));
+    await tester.pumpAndSettle();
+    expect(find.text('启用自动摘要？'), findsOneWidget);
+    expect(find.textContaining('发送到你配置的 AI 服务'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, '启用'));
+    await tester.pumpAndSettle();
+    expect(automatic.settings.enabled, isTrue);
+
+    await tester.tap(find.text('3 篇'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('5 篇').last);
+    await tester.pumpAndSettle();
+    expect(automatic.settings.dailyLimit, 5);
+  });
 }
 
 final class _FakePreferenceProfileExperience
@@ -198,4 +233,25 @@ final class _FakePreferenceProfileExperience
 
   @override
   Future<void> setTopicBlocked(String topic, bool blocked) async {}
+}
+
+final class _FakeAutomaticSummaryExperience
+    implements AutomaticSummaryExperience {
+  AutomaticSummarySettings settings = const AutomaticSummarySettings();
+
+  @override
+  Future<AutomaticSummaryDashboard> loadDashboard() async =>
+      AutomaticSummaryDashboard(
+        settings: settings,
+        usage: const AutomaticSummaryUsageSnapshot(
+          dayKey: '2026-08-05',
+          reserved: 0,
+          completed: 1,
+        ),
+      );
+
+  @override
+  Future<void> updateSettings(AutomaticSummarySettings value) async {
+    settings = value;
+  }
 }

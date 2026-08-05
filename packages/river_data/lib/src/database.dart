@@ -21,6 +21,8 @@ part 'database.g.dart';
     AudioItems,
     AudioQueueEntries,
     BackgroundJobs,
+    AutomaticSummarySettingsRows,
+    AutomaticSummaryUsageRows,
     SyncTombstones,
     SyncReplicaEntries,
     SyncOutboxRows,
@@ -42,7 +44,7 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 16;
+  int get schemaVersion => 17;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -51,6 +53,7 @@ final class RiverDatabase extends _$RiverDatabase {
       await _createArticleSearchInfrastructure();
       await _createKnowledgeSourceIndex();
       await _createAiArtifactIndex();
+      await _createAutomaticSummaryUsageIndex();
       await rebuildArticleSearchIndex();
     },
     onUpgrade: (Migrator migrator, int from, int to) async {
@@ -279,6 +282,15 @@ final class RiverDatabase extends _$RiverDatabase {
           readingBehaviorSettingsRows.blockedTopicsJson,
         );
       }
+      if (from < 17) {
+        if (!await _hasTable('automatic_summary_settings_rows')) {
+          await migrator.createTable(automaticSummarySettingsRows);
+        }
+        if (!await _hasTable('automatic_summary_usage_rows')) {
+          await migrator.createTable(automaticSummaryUsageRows);
+        }
+        await _createAutomaticSummaryUsageIndex();
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -303,6 +315,11 @@ final class RiverDatabase extends _$RiverDatabase {
   Future<void> _createAiArtifactIndex() => customStatement(
     'CREATE INDEX IF NOT EXISTS ai_artifacts_article_created_idx '
     'ON ai_artifacts(article_id, created_at)',
+  );
+
+  Future<void> _createAutomaticSummaryUsageIndex() => customStatement(
+    'CREATE INDEX IF NOT EXISTS automatic_summary_usage_day_idx '
+    'ON automatic_summary_usage_rows(day_key, status)',
   );
 
   Future<void> _addAudioColumnIfMissing(

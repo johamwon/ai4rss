@@ -13,6 +13,7 @@ import 'package:river_platform/river_platform.dart';
 import 'package:river_sync/river_sync.dart';
 
 import '../knowledge/notion_workspace.dart';
+import '../preferences/automatic_summaries.dart';
 import '../preferences/personalized_articles.dart';
 import 'article_summary.dart';
 
@@ -35,6 +36,7 @@ final class AppDependencies {
     AudioSegmentPrefetcher? audioSegmentPrefetcher,
     PodcastTransferBackend? podcastTransfer,
     NetworkMonitor? network,
+    AutomaticSummaryNetworkMonitor? automaticSummaryNetwork,
     OpmlFileGateway? opmlFiles,
     KnowledgeMarkdownFileGateway? knowledgeFiles,
     KnowledgeImageFetcher? knowledgeImages,
@@ -55,6 +57,8 @@ final class AppDependencies {
         audioSystemSession =
             audioSystemSession ?? const UnavailableAudioSystemSession(),
         network = network ?? const UnknownNetworkMonitor(),
+        automaticSummaryNetwork = automaticSummaryNetwork ??
+            const UnknownAutomaticSummaryNetworkMonitor(),
         podcastTransfer =
             podcastTransfer ?? const UnavailablePodcastTransferBackend(),
         externalUri = externalUri ?? const UnavailableExternalUriGateway(),
@@ -133,6 +137,28 @@ final class AppDependencies {
       behavior: readingBehavior,
       clock: clock,
     );
+    this.articleSummaries = articleSummaries ??
+        ByokArticleSummaryExperience(
+          configurations: aiConfigurations ??
+              PlatformSecureAiByokConfigurationVault.standard(),
+          artifacts: DriftAiArtifactRepository(database),
+          checkpoints:
+              aiSummaryCheckpoints ?? PlatformAiLongSummaryCheckpointStore(),
+          network: this.network,
+          clock: clock,
+          transport: this.aiTransport,
+        );
+    automaticSummaryRepository = DriftAutomaticSummaryRepository(database);
+    automaticSummaries = DurableAutomaticSummaryManager(
+      jobs: jobs,
+      repository: automaticSummaryRepository,
+      loadArticle: (articleId) => feeds.watchArticle(articleId).first,
+      summaries: this.articleSummaries,
+      network: this.automaticSummaryNetwork,
+      clock: clock,
+      ids: ids,
+      extractor: fullTextExtractor,
+    );
     annotations = DriftArticleAnnotationRepository(database);
     audioQueueRepository = DriftAudioQueueRepository(database);
     audioQueue = PersistentAudioQueue(
@@ -152,17 +178,6 @@ final class AppDependencies {
       playback: audioController,
       resolve: _resolveQueuedAudio,
     );
-    this.articleSummaries = articleSummaries ??
-        ByokArticleSummaryExperience(
-          configurations: aiConfigurations ??
-              PlatformSecureAiByokConfigurationVault.standard(),
-          artifacts: DriftAiArtifactRepository(database),
-          checkpoints:
-              aiSummaryCheckpoints ?? PlatformAiLongSummaryCheckpointStore(),
-          network: this.network,
-          clock: clock,
-          transport: this.aiTransport,
-        );
   }
 
   static Future<AppDependencies> production({
@@ -238,6 +253,7 @@ final class AppDependencies {
       audioSystemSession: audioSystemSession,
       externalUri: externalUri,
       network: ConnectivityNetworkMonitor(),
+      automaticSummaryNetwork: ConnectivityAutomaticSummaryNetworkMonitor(),
       podcastTransfer: IoPodcastTransferBackend(),
       http: http,
       database: database,
@@ -258,6 +274,7 @@ final class AppDependencies {
   final AudioSystemSession audioSystemSession;
   final ExternalUriGateway externalUri;
   final NetworkMonitor network;
+  final AutomaticSummaryNetworkMonitor automaticSummaryNetwork;
   final PodcastTransferBackend podcastTransfer;
   final HttpPort http;
   final AiHttpTransport aiTransport;
@@ -285,6 +302,8 @@ final class AppDependencies {
   late final DriftReaderSettingsRepository readerSettings;
   late final ReadingBehaviorRepository readingBehavior;
   late final LocalPersonalizedArticleExperience personalizedArticles;
+  late final DriftAutomaticSummaryRepository automaticSummaryRepository;
+  late final DurableAutomaticSummaryManager automaticSummaries;
   late final DriftArticleAnnotationRepository annotations;
   late final DriftAudioQueueRepository audioQueueRepository;
   late final PersistentAudioQueue audioQueue;
@@ -298,6 +317,7 @@ final class AppDependencies {
     await notionWorkspace?.close();
     await audioQueuePlayer.dispose();
     await audioController.dispose();
+    await automaticSummaries.close();
     await audioSystemSession.dispose();
     await audio.dispose();
     await podcastDownloads.close();
