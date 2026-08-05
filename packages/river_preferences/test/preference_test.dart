@@ -220,6 +220,39 @@ void main() {
       throwsFormatException,
     );
   });
+
+  test('explicit controls adjust a rebuilt profile without mutating evidence',
+      () {
+    final now = DateTime.utc(2026, 8, 3);
+    final original = const LocalPreferenceProfileModel().build(
+      evidence: <PreferenceEvidence>[
+        PreferenceEvidence(
+          event: ReadingEvent(
+            eventId: 'event-1',
+            articleId: 'article-1',
+            type: ReadingEventType.open,
+            occurredAt: now,
+          ),
+          sourceId: 'feed-1',
+          topics: const <String>['flutter'],
+        ),
+      ],
+      now: now,
+    );
+    final controlled = applyReadingPreferenceControls(
+      profile: original,
+      controls: const ReadingPreferenceControls(
+        sourceScoreAdjustments: <String, double>{'feed-1': 2},
+        topicScoreAdjustments: <String, double>{'flutter': -2},
+      ),
+    );
+
+    expect(original.sourceScore('feed-1'), closeTo(0.2, 1e-12));
+    expect(controlled.sourceScore('feed-1'), closeTo(2.2, 1e-12));
+    expect(controlled.topicScore('flutter'), closeTo(-1.8, 1e-12));
+    expect(controlled.evidenceCount, original.evidenceCount);
+    expect(controlled.modelId, original.modelId);
+  });
 }
 
 ReadingEvent _event(

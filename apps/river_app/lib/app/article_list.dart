@@ -1,23 +1,68 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
+import 'package:river_preferences/river_preferences.dart';
+
+import '../preferences/personalized_articles.dart';
 
 typedef ArticleListLoader = Stream<List<FeedArticleRecord>> Function(
   FeedArticleQuery query,
 );
 
+typedef PersonalizedArticleListLoader = Stream<PersonalizedArticleListSnapshot>
+    Function(FeedArticleQuery query);
+
 final class ArticleListController extends ChangeNotifier {
   ArticleListController({
     required ArticleListLoader load,
+    PersonalizedArticleListLoader? loadPersonalized,
+    Stream<ReadingBehaviorSettings>? behaviorSettings,
+    bool personalizationEnabled = false,
     FeedArticleQuery initialQuery = const FeedArticleQuery(),
   })  : _load = load,
-        _query = initialQuery;
+        _loadPersonalized = loadPersonalized,
+        _personalizationEnabled = personalizationEnabled,
+        _query = initialQuery {
+    if (behaviorSettings != null) bindBehaviorSettings(behaviorSettings);
+  }
 
   final ArticleListLoader _load;
+  final PersonalizedArticleListLoader? _loadPersonalized;
   FeedArticleQuery _query;
+  bool _personalizationEnabled;
+  StreamSubscription<ReadingBehaviorSettings>? _settingsSubscription;
 
   FeedArticleQuery get query => _query;
 
+  bool get personalizationEnabled => _personalizationEnabled;
+
   Stream<List<FeedArticleRecord>> get articles => _load(_query);
+
+  Stream<PersonalizedArticleListSnapshot> get snapshots {
+    final personalized = _loadPersonalized;
+    if (_query.sort == FeedArticleSort.smart &&
+        _personalizationEnabled &&
+        personalized != null) {
+      return personalized(_query);
+    }
+    return _load(_query).map(
+      PersonalizedArticleListSnapshot.chronological,
+    );
+  }
+
+  void bindBehaviorSettings(Stream<ReadingBehaviorSettings> settings) {
+    unawaited(_settingsSubscription?.cancel());
+    _settingsSubscription = settings.listen((value) {
+      final enabled = value.captureEnabled;
+      _personalizationEnabled = enabled;
+      if (!enabled && _query.sort == FeedArticleSort.smart) {
+        _query = _query.copyWith(sort: FeedArticleSort.newest);
+      }
+      notifyListeners();
+    });
+  }
 
   void show(FeedArticleView view) {
     assert(view != FeedArticleView.folder, 'Use showFolder for folder views.');
@@ -42,7 +87,14 @@ final class ArticleListController extends ChangeNotifier {
   }
 
   void sortBy(FeedArticleSort sort) {
+    if (sort == FeedArticleSort.smart && !_personalizationEnabled) return;
     _replace(_query.copyWith(sort: sort));
+  }
+
+  @override
+  void dispose() {
+    unawaited(_settingsSubscription?.cancel());
+    super.dispose();
   }
 
   void _replace(FeedArticleQuery value) {
@@ -86,12 +138,12 @@ final class _ArticleListPaneState extends State<ArticleListPane> {
             ),
             const Divider(height: 1),
             Expanded(
-              child: StreamBuilder<List<FeedArticleRecord>>(
+              child: StreamBuilder<PersonalizedArticleListSnapshot>(
                 key: ValueKey<String>(
                   '${query.view.name}:${query.folderId}:'
                   '${query.sort.name}:$_retryGeneration',
                 ),
-                stream: widget.controller.articles,
+                stream: widget.controller.snapshots,
                 builder: (context, snapshot) {
                   if (snapshot.hasError) {
                     return _ArticleListError(
@@ -102,7 +154,9 @@ final class _ArticleListPaneState extends State<ArticleListPane> {
                       !snapshot.hasData) {
                     return const _ArticleListLoading();
                   }
-                  final articles = snapshot.data ?? const <FeedArticleRecord>[];
+                  final list = snapshot.data;
+                  final articles =
+                      list?.articles ?? const <FeedArticleRecord>[];
                   if (articles.isEmpty) {
                     return _ArticleListEmpty(query: query);
                   }
@@ -116,6 +170,7 @@ final class _ArticleListPaneState extends State<ArticleListPane> {
                       itemBuilder: (context, index) => ArticleListTile(
                         key: ValueKey<String>(articles[index].id),
                         article: articles[index],
+                        recommendation: list?.explanations[articles[index].id],
                         onOpen: () => widget.onOpenArticle(articles[index]),
                       ),
                       separatorBuilder: (context, index) =>
@@ -203,23 +258,25 @@ final class _ArticleListToolbar extends StatelessWidget {
             const SizedBox(width: 8),
             PopupMenuButton<FeedArticleSort>(
               onSelected: controller.sortBy,
-              itemBuilder: (context) => const <PopupMenuEntry<FeedArticleSort>>[
+              itemBuilder: (context) => <PopupMenuEntry<FeedArticleSort>>[
                 PopupMenuItem<FeedArticleSort>(
+                  value: FeedArticleSort.smart,
+                  enabled: controller.personalizationEnabled,
+                  child: const Text('智能排序'),
+                ),
+                const PopupMenuItem<FeedArticleSort>(
                   value: FeedArticleSort.newest,
                   child: Text('最新优先'),
                 ),
-                PopupMenuItem<FeedArticleSort>(
+                const PopupMenuItem<FeedArticleSort>(
                   value: FeedArticleSort.oldest,
                   child: Text('最早优先'),
                 ),
               ],
-              tooltip:
-                  query.sort == FeedArticleSort.newest ? '排序：最新优先' : '排序：最早优先',
+              tooltip: '排序：${_sortLabel(query.sort)}',
               child: Chip(
                 avatar: const Icon(Icons.swap_vert, size: 18),
-                label: Text(
-                  query.sort == FeedArticleSort.newest ? '最新优先' : '最早优先',
-                ),
+                label: Text(_sortLabel(query.sort)),
               ),
             ),
           ],
@@ -254,11 +311,13 @@ final class ArticleListTile extends StatelessWidget {
   const ArticleListTile({
     required this.article,
     required this.onOpen,
+    this.recommendation,
     super.key,
   });
 
   final FeedArticleRecord article;
   final VoidCallback onOpen;
+  final RecommendationExplanation? recommendation;
 
   @override
   Widget build(BuildContext context) {
@@ -276,8 +335,9 @@ final class ArticleListTile extends StatelessWidget {
     return Semantics(
       button: true,
       container: true,
-      excludeSemantics: true,
-      label: '${article.title}，$metadata，${states.join('，')}',
+      excludeSemantics: recommendation == null,
+      label: '${article.title}，$metadata，${states.join('，')}'
+          '${recommendation == null ? '' : '，可查看推荐理由'}',
       onTap: onOpen,
       child: ListTile(
         onTap: onOpen,
@@ -315,6 +375,19 @@ final class ArticleListTile extends StatelessWidget {
               const Tooltip(
                 message: '稍后读',
                 child: Icon(Icons.bookmark_outline),
+              ),
+            if (recommendation case final explanation?)
+              Semantics(
+                button: true,
+                label: '查看${article.title}的推荐理由',
+                child: IconButton(
+                  tooltip: '为什么推荐',
+                  onPressed: () => _showRecommendationExplanation(
+                    context,
+                    explanation,
+                  ),
+                  icon: const Icon(Icons.info_outline),
+                ),
               ),
           ],
         ),
@@ -395,3 +468,65 @@ String _dateLabel(DateTime value) {
   final day = local.day.toString().padLeft(2, '0');
   return '${local.year}-$month-$day';
 }
+
+String _sortLabel(FeedArticleSort sort) => switch (sort) {
+      FeedArticleSort.smart => '智能排序',
+      FeedArticleSort.newest => '最新优先',
+      FeedArticleSort.oldest => '最早优先',
+    };
+
+Future<void> _showRecommendationExplanation(
+  BuildContext context,
+  RecommendationExplanation explanation,
+) =>
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          children: <Widget>[
+            Text(
+              '为什么推荐',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            const Text('推荐只基于本机行为与当前文章的有限特征，不会上传正文或阅读记录。'),
+            const SizedBox(height: 12),
+            for (final reason in explanation.reasons)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(_reasonIcon(reason.kind)),
+                title: Text(_reasonLabel(reason.kind)),
+                subtitle: Text(
+                  '该因子贡献 ${(reason.contribution * 100).toStringAsFixed(1)}%',
+                ),
+              ),
+            Text(
+              '排序模型 ${explanation.rankingModelVersion} · '
+              '护栏模型 ${explanation.guardrailModelVersion}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+
+String _reasonLabel(RecommendationReasonKind kind) => switch (kind) {
+      RecommendationReasonKind.semanticMatch => '内容特征与你的偏好较匹配',
+      RecommendationReasonKind.preferredSource => '你更常认真阅读这个来源',
+      RecommendationReasonKind.preferredTopic => '主题符合你的本地偏好',
+      RecommendationReasonKind.likelyToFinish => '预计更可能完成阅读',
+      RecommendationReasonKind.recent => '内容较新',
+      RecommendationReasonKind.exploration => '用于保持来源与内容多样性',
+    };
+
+IconData _reasonIcon(RecommendationReasonKind kind) => switch (kind) {
+      RecommendationReasonKind.semanticMatch => Icons.auto_awesome_outlined,
+      RecommendationReasonKind.preferredSource => Icons.rss_feed,
+      RecommendationReasonKind.preferredTopic => Icons.label_outline,
+      RecommendationReasonKind.likelyToFinish => Icons.task_alt,
+      RecommendationReasonKind.recent => Icons.schedule,
+      RecommendationReasonKind.exploration => Icons.explore_outlined,
+    };

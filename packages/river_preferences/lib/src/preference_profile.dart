@@ -172,6 +172,34 @@ final class LocalPreferenceProfileModel {
   }
 }
 
+PreferenceProfile applyReadingPreferenceControls({
+  required PreferenceProfile profile,
+  required ReadingPreferenceControls controls,
+  double maximumAbsoluteDimensionScore = 1000,
+}) {
+  if (profile.modelVersion != preferenceProfileModelVersion ||
+      !maximumAbsoluteDimensionScore.isFinite ||
+      maximumAbsoluteDimensionScore <= 0) {
+    throw const FormatException('Invalid controlled preference profile.');
+  }
+  controls.validate();
+  final sources = SplayTreeMap<String, double>.from(profile.sourceScores);
+  final topics = SplayTreeMap<String, double>.from(profile.topicScores);
+  for (final entry in controls.sourceScoreAdjustments.entries) {
+    sources[entry.key] = (sources[entry.key] ?? 0) + entry.value;
+  }
+  for (final entry in controls.topicScoreAdjustments.entries) {
+    topics[entry.key] = (topics[entry.key] ?? 0) + entry.value;
+  }
+  return PreferenceProfile._(
+    modelVersion: profile.modelVersion,
+    generatedAt: profile.generatedAt,
+    evidenceCount: profile.evidenceCount,
+    sourceScores: _boundedScores(sources, maximumAbsoluteDimensionScore),
+    topicScores: _boundedScores(topics, maximumAbsoluteDimensionScore),
+  );
+}
+
 double readingSignalWeight(ReadingEvent event) {
   event.validate();
   return switch (event.type) {

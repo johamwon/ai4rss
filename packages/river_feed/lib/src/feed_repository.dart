@@ -36,6 +36,7 @@ final class FeedArticleRecord {
     required this.readLater,
     this.author,
     this.publishedAt,
+    this.createdAt,
     this.summary,
     this.folderId,
     this.estimatedReadingMinutes,
@@ -48,6 +49,7 @@ final class FeedArticleRecord {
   final String title;
   final String? author;
   final DateTime? publishedAt;
+  final DateTime? createdAt;
   final String? summary;
   final bool read;
   final bool starred;
@@ -121,7 +123,7 @@ final class FeedArticleDetailRecord {
 
 enum FeedArticleView { inbox, unread, starred, readLater, folder }
 
-enum FeedArticleSort { newest, oldest }
+enum FeedArticleSort { smart, newest, oldest }
 
 final class FeedArticleQuery {
   const FeedArticleQuery({

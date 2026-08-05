@@ -321,7 +321,7 @@ final class DriftFeedRepository
           database.feedSubscriptions.folderId.equals(query.folderId!),
         );
     }
-    final descending = query.sort == feed.FeedArticleSort.newest;
+    final descending = query.sort != feed.FeedArticleSort.oldest;
     statement.orderBy(<OrderingTerm>[
       descending
           ? OrderingTerm.desc(effectivePublishedAt)
@@ -785,6 +785,7 @@ feed.FeedArticleRecord _article(
   title: row.title,
   author: row.author,
   publishedAt: row.publishedAt,
+  createdAt: row.createdAt,
   summary: row.feedSummary,
   read: row.readState != 'unread',
   starred: row.starred,

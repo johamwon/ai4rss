@@ -125,6 +125,14 @@ class ReadingBehaviorSettingsRows extends Table {
   BoolColumn get captureEnabled =>
       boolean().withDefault(const Constant(true))();
   IntColumn get retentionDays => integer().withDefault(const Constant(90))();
+  TextColumn get sourceScoreAdjustmentsJson =>
+      text().withDefault(const Constant('{}'))();
+  TextColumn get topicScoreAdjustmentsJson =>
+      text().withDefault(const Constant('{}'))();
+  TextColumn get blockedSourceIdsJson =>
+      text().withDefault(const Constant('[]'))();
+  TextColumn get blockedTopicsJson =>
+      text().withDefault(const Constant('[]'))();
   DateTimeColumn get updatedAt => dateTime()();
 
   @override
