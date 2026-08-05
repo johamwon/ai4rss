@@ -80,6 +80,40 @@ void main() {
   });
 
   test(
+    'policy deferral does not consume the provider attempt budget',
+    () async {
+      final now = DateTime.utc(2026, 7, 15);
+      await queue.enqueue(
+        NewDurableJob(
+          id: 'job-1',
+          type: 'automatic-summary/v1',
+          idempotencyKey: 'summary:article-1',
+          payloadJson: '{}',
+          availableAt: now,
+          maxAttempts: 1,
+        ),
+        now,
+      );
+      final first = await queue.claimNext(now: now);
+      expect(first?.attempt, 1);
+      expect(
+        await queue.defer(
+          id: 'job-1',
+          reasonCode: 'wifi_required',
+          availableAt: now.add(const Duration(hours: 1)),
+          now: now,
+        ),
+        isTrue,
+      );
+
+      final resumed = await queue.claimNext(
+        now: now.add(const Duration(hours: 1)),
+      );
+      expect(resumed?.attempt, 1);
+    },
+  );
+
+  test(
     'explicit retry resets a terminal failure without duplicating work',
     () async {
       final now = DateTime.utc(2026, 7, 15);

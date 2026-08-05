@@ -196,6 +196,39 @@ final class PersistentJobQueue {
     });
   }
 
+  Future<bool> defer({
+    required String id,
+    required String reasonCode,
+    required DateTime availableAt,
+    required DateTime now,
+  }) {
+    return _database.transaction(() async {
+      final job = await (_database.select(
+        _database.backgroundJobs,
+      )..where((table) => table.id.equals(id))).getSingleOrNull();
+      if (job == null || job.status != DurableJobStatus.running.name) {
+        return false;
+      }
+      final updated =
+          await (_database.update(_database.backgroundJobs)..where(
+                (table) =>
+                    table.id.equals(id) &
+                    table.status.equals(DurableJobStatus.running.name),
+              ))
+              .write(
+                BackgroundJobsCompanion(
+                  status: Value<String>(DurableJobStatus.queued.name),
+                  attempt: Value<int>((job.attempt - 1).clamp(0, job.attempt)),
+                  availableAt: Value<DateTime>(availableAt),
+                  leaseUntil: const Value<DateTime?>(null),
+                  lastErrorCode: Value<String>(reasonCode),
+                  updatedAt: Value<DateTime>(now),
+                ),
+              );
+      return updated == 1;
+    });
+  }
+
   Future<bool> failPermanently({
     required String id,
     required String errorCode,

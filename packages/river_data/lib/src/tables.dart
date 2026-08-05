@@ -287,6 +287,31 @@ class BackgroundJobs extends Table {
   ];
 }
 
+class AutomaticSummarySettingsRows extends Table {
+  IntColumn get id => integer().withDefault(const Constant(1))();
+  BoolColumn get enabled => boolean().withDefault(const Constant(false))();
+  BoolColumn get wifiOnly => boolean().withDefault(const Constant(true))();
+  IntColumn get dailyLimit => integer().withDefault(const Constant(3))();
+  RealColumn get minimumRankingScore =>
+      real().withDefault(const Constant(0.7))();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
+class AutomaticSummaryUsageRows extends Table {
+  TextColumn get idempotencyKey => text()();
+  TextColumn get articleId => text()();
+  TextColumn get dayKey => text()();
+  TextColumn get status => text()();
+  DateTimeColumn get createdAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{idempotencyKey};
+}
+
 class SyncTombstones extends Table {
   TextColumn get id => text()();
   TextColumn get entityType => text()();
