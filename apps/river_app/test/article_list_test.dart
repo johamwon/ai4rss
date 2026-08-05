@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:river_app/app/article_list.dart';
+import 'package:river_app/preferences/personalized_articles.dart';
+import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
+import 'package:river_preferences/river_preferences.dart';
 
 void main() {
   test('article list controller preserves sort while changing views', () {
@@ -25,6 +28,29 @@ void main() {
     controller.showFolder('folder-1');
     expect(notifications, 3);
     controller.dispose();
+  });
+
+  test('disabling personalization immediately restores newest sorting',
+      () async {
+    final settings = StreamController<ReadingBehaviorSettings>();
+    final controller = ArticleListController(
+      load: (_) => const Stream<List<FeedArticleRecord>>.empty(),
+      loadPersonalized: (_) =>
+          const Stream<PersonalizedArticleListSnapshot>.empty(),
+      behaviorSettings: settings.stream,
+      personalizationEnabled: false,
+      initialQuery: const FeedArticleQuery(sort: FeedArticleSort.smart),
+    );
+    addTearDown(() async {
+      controller.dispose();
+      await settings.close();
+    });
+
+    settings.add(const ReadingBehaviorSettings(captureEnabled: false));
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.personalizationEnabled, isFalse);
+    expect(controller.query.sort, FeedArticleSort.newest);
   });
 
   testWidgets('toolbar requests unread, folder, and oldest queries', (
@@ -241,6 +267,55 @@ void main() {
     await tester.tap(find.text('Open article'));
 
     expect(opened?.id, 'open-me');
+  });
+
+  testWidgets('smart list exposes exact recommendation reasons', (
+    tester,
+  ) async {
+    final article = _article(id: 'recommended', title: 'Recommended article');
+    final explanation = RecommendationExplanation(
+      version: recommendationExplanationVersion,
+      rankingModelVersion: articleRankingModelVersion,
+      guardrailModelVersion: rankingGuardrailModelVersion,
+      score: 0.72,
+      reasons: const <RecommendationReason>[
+        RecommendationReason(
+          kind: RecommendationReasonKind.preferredSource,
+          factor: RankingFactor.source,
+          value: 0.8,
+          weight: 0.15,
+          contribution: 0.12,
+        ),
+      ],
+    );
+    final controller = ArticleListController(
+      load: (_) => Stream<List<FeedArticleRecord>>.value(<FeedArticleRecord>[
+        article,
+      ]),
+      loadPersonalized: (_) => Stream<PersonalizedArticleListSnapshot>.value(
+        PersonalizedArticleListSnapshot(
+          articles: <FeedArticleRecord>[article],
+          explanations: <String, RecommendationExplanation>{
+            article.id: explanation,
+          },
+          personalized: true,
+        ),
+      ),
+      personalizationEnabled: true,
+      initialQuery: const FeedArticleQuery(sort: FeedArticleSort.smart),
+    );
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(_TestHost(controller: controller));
+    await tester.pumpAndSettle();
+
+    expect(find.byTooltip('为什么推荐'), findsOneWidget);
+    await tester.tap(find.byTooltip('为什么推荐'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('为什么推荐'), findsOneWidget);
+    expect(find.text('你更常认真阅读这个来源'), findsOneWidget);
+    expect(find.text('该因子贡献 12.0%'), findsOneWidget);
+    expect(find.text('排序模型 1 · 护栏模型 1'), findsOneWidget);
   });
 
   testWidgets('loading and failure states are safe and retryable', (

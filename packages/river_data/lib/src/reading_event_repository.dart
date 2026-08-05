@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 import 'package:river_domain/river_domain.dart' as domain;
 
@@ -79,6 +81,22 @@ final class DriftReadingEventRepository
             id: _settingsId,
             captureEnabled: Value<bool>(settings.captureEnabled),
             retentionDays: Value<int>(settings.retentionDays),
+            sourceScoreAdjustmentsJson: Value<String>(
+              _encodeScoreAdjustments(
+                settings.preferenceControls.sourceScoreAdjustments,
+              ),
+            ),
+            topicScoreAdjustmentsJson: Value<String>(
+              _encodeScoreAdjustments(
+                settings.preferenceControls.topicScoreAdjustments,
+              ),
+            ),
+            blockedSourceIdsJson: Value<String>(
+              _encodeDimensions(settings.preferenceControls.blockedSourceIds),
+            ),
+            blockedTopicsJson: Value<String>(
+              _encodeDimensions(settings.preferenceControls.blockedTopics),
+            ),
             updatedAt: updatedAt.toUtc(),
           ),
         );
@@ -111,6 +129,25 @@ final class DriftReadingEventRepository
   @override
   Future<int> clearEvents() async {
     final deleted = await database.delete(database.readingEvents).go();
+    if (deleted > 0) {
+      await _checkpointSecureDeletion();
+    }
+    return deleted;
+  }
+
+  @override
+  Future<int> clearPreferenceProfile({required DateTime updatedAt}) async {
+    final deleted = await database.transaction(() async {
+      final settings = await _readSettings();
+      final count = await database.delete(database.readingEvents).go();
+      await saveSettings(
+        settings.copyWith(
+          preferenceControls: const domain.ReadingPreferenceControls(),
+        ),
+        updatedAt: updatedAt,
+      );
+      return count;
+    });
     if (deleted > 0) {
       await _checkpointSecureDeletion();
     }
@@ -162,9 +199,55 @@ domain.ReadingBehaviorSettings _settingsFromRow(
   final settings = domain.ReadingBehaviorSettings(
     captureEnabled: row.captureEnabled,
     retentionDays: row.retentionDays,
+    preferenceControls: domain.ReadingPreferenceControls(
+      sourceScoreAdjustments: _decodeScoreAdjustments(
+        row.sourceScoreAdjustmentsJson,
+      ),
+      topicScoreAdjustments: _decodeScoreAdjustments(
+        row.topicScoreAdjustmentsJson,
+      ),
+      blockedSourceIds: _decodeDimensions(row.blockedSourceIdsJson),
+      blockedTopics: _decodeDimensions(row.blockedTopicsJson),
+    ),
   );
   settings.validate();
   return settings;
+}
+
+String _encodeScoreAdjustments(Map<String, double> adjustments) {
+  final keys = adjustments.keys.toList()..sort();
+  return jsonEncode(<String, double>{
+    for (final key in keys) key: adjustments[key]!,
+  });
+}
+
+String _encodeDimensions(Set<String> dimensions) {
+  final values = dimensions.toList()..sort();
+  return jsonEncode(values);
+}
+
+Map<String, double> _decodeScoreAdjustments(String encoded) {
+  final decoded = jsonDecode(encoded);
+  if (decoded is! Map<String, dynamic>) {
+    throw const FormatException('Invalid stored preference adjustments.');
+  }
+  final result = <String, double>{};
+  for (final entry in decoded.entries) {
+    final value = entry.value;
+    if (value is! num) {
+      throw const FormatException('Invalid stored preference adjustment.');
+    }
+    result[entry.key] = value.toDouble();
+  }
+  return Map<String, double>.unmodifiable(result);
+}
+
+Set<String> _decodeDimensions(String encoded) {
+  final decoded = jsonDecode(encoded);
+  if (decoded is! List<dynamic> || decoded.any((item) => item is! String)) {
+    throw const FormatException('Invalid stored preference dimensions.');
+  }
+  return Set<String>.unmodifiable(decoded.cast<String>());
 }
 
 domain.ReadingEvent _eventFromRow(ReadingEvent row) {
