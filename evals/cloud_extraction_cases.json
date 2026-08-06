@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "cloud-private-literal",
+      "kind": "privateLiteral",
+      "expectedFailure": "blockedAddress"
+    },
+    {
+      "id": "cloud-private-redirect",
+      "kind": "privateRedirect",
+      "expectedFailure": "blockedAddress"
+    },
+    {
+      "id": "cloud-dns-rebinding",
+      "kind": "dnsRebind",
+      "expectedFailure": "blockedAddress"
+    },
+    {
+      "id": "cloud-oversized-response",
+      "kind": "oversized",
+      "expectedFailure": "responseTooLarge"
+    },
+    {
+      "id": "cloud-malicious-html",
+      "kind": "maliciousHtml",
+      "expectedOutcome": "success"
+    }
+  ]
+}

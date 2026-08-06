@@ -1,6 +1,7 @@
 library;
 
 export 'src/cached_extractor.dart';
+export 'src/cloud_extraction_rescue.dart';
 export 'src/dynamic_page_stage.dart';
 export 'src/extraction_pipeline.dart';
 export 'src/feed_content.dart';
