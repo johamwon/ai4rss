@@ -8,6 +8,7 @@ import 'package:river_commerce/river_commerce.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
 import 'package:river_feed/river_feed.dart';
+import 'package:river_knowledge/river_knowledge.dart';
 import 'package:river_preferences/river_preferences.dart';
 
 final class EvalFailure {
@@ -1482,6 +1483,115 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluateFreeProductReplay() async {
+    final failures = <EvalFailure>[];
+    final states = <String, EntitlementGate>{
+      'guest': _freeReplayGate(kind: 'guest'),
+      'expired-trial': _freeReplayGate(kind: 'expired-trial'),
+      'pro-downgrade': _freeReplayGate(kind: 'pro-downgrade'),
+    };
+    var wechatExtractions = 0;
+    var offlineReads = 0;
+    var speechSegments = 0;
+    var podcastEpisodes = 0;
+    var knowledgeItems = 0;
+    var exportBundles = 0;
+
+    final wechatHtml =
+        File(_path('fixtures/html/wechat_synthetic.html')).readAsStringSync();
+    final podcastXml =
+        File(_path('fixtures/feeds/podcast_rss.xml')).readAsStringSync();
+
+    for (final state in states.entries) {
+      final id = state.key;
+      final gate = state.value;
+      try {
+        await _requireFree(gate, EntitlementKey.fullTextExtraction);
+        final extraction = await const LayeredFullTextExtractor().extract(
+          ExtractionRequest(
+            sourceUri: Uri.parse('https://mp.weixin.qq.com/s/free-replay'),
+            pageHtml: wechatHtml,
+          ),
+        );
+        if (extraction is! ExtractionSuccess ||
+            !extraction.article.plainText.contains('本地优先架构')) {
+          failures.add(EvalFailure(id, 'WeChat full text was unavailable'));
+          continue;
+        }
+        wechatExtractions += 1;
+
+        await _requireFree(gate, EntitlementKey.offlineReading);
+        final cachedBody = extraction.article.plainText;
+        if (!cachedBody.contains('用户的数据控制权')) {
+          failures.add(EvalFailure(id, 'offline body could not be reused'));
+        } else {
+          offlineReads += 1;
+        }
+
+        await _requireFree(gate, EntitlementKey.systemTts);
+        final segments = const ArticleSpeechSegmenter().segment(cachedBody);
+        if (segments.isEmpty ||
+            segments.any((segment) => segment.text.isEmpty)) {
+          failures.add(EvalFailure(id, 'system TTS plan was empty'));
+        } else {
+          speechSegments += segments.length;
+        }
+
+        await _requireFree(gate, EntitlementKey.podcastPlayback);
+        final podcast = const PodcastFeedParser().parse(
+          podcastXml,
+          sourceUri: Uri.parse('https://podcast.example.test/feed.xml'),
+        );
+        if (podcast.episodes.isEmpty) {
+          failures.add(EvalFailure(id, 'podcast playback source was empty'));
+        } else {
+          podcastEpisodes += podcast.episodes.length;
+        }
+
+        await _requireFree(gate, EntitlementKey.localKnowledge);
+        final item = _freeKnowledgeItem(id, cachedBody);
+        if (item.markdown.isEmpty || item.contentHash.length != 71) {
+          failures.add(EvalFailure(id, 'local knowledge item was invalid'));
+        } else {
+          knowledgeItems += 1;
+        }
+
+        await _requireFree(gate, EntitlementKey.portableExport);
+        final bundle =
+            await const KnowledgeMarkdownExportBuilder().build(<KnowledgeItem>[
+          item,
+        ]);
+        final archive = const KnowledgeZipEncoder().encode(bundle);
+        if (bundle.markdownFiles.length != 1 ||
+            archive.length < 4 ||
+            archive[0] != 0x50 ||
+            archive[1] != 0x4b) {
+          failures.add(EvalFailure(id, 'portable export was incomplete'));
+        } else {
+          exportBundles += 1;
+        }
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'Free product replay failed: $error'));
+      }
+    }
+
+    return EvalReport(
+      name: 'free-product-replay',
+      total: states.length * 6,
+      failures: failures,
+      metrics: <String, Object>{
+        'states': states.length,
+        'wechatExtractions': wechatExtractions,
+        'offlineReads': offlineReads,
+        'speechSegments': speechSegments,
+        'podcastEpisodes': podcastEpisodes,
+        'knowledgeItems': knowledgeItems,
+        'exportBundles': exportBundles,
+        'networkCalls': 0,
+      },
+    );
+  }
+
   EvalReport evaluateRanking() {
     final manifest = _readJson('evals/ranking_sessions.json');
     final cases = _list(manifest['cases']);
@@ -2722,5 +2832,66 @@ Future<void> _replayCommit(
     operationId: operationId,
     producedUsableResult: true,
     at: _usageReplayNow.add(const Duration(seconds: 1)),
+  );
+}
+
+EntitlementGate _freeReplayGate({required String kind}) {
+  final guest = kind == 'guest';
+  final expired = kind == 'expired-trial';
+  final snapshot = EntitlementSnapshot(
+    revision: 1,
+    subjectHash: _commerceSubject,
+    plan: expired ? EntitlementPlan.trial : EntitlementPlan.free,
+    granted: expired
+        ? const <EntitlementKey>{EntitlementKey.managedAi}
+        : const <EntitlementKey>{},
+    issuedAt: expired ? DateTime.utc(2026, 8, 1) : DateTime.utc(2026, 8, 6, 10),
+    refreshAfter:
+        expired ? DateTime.utc(2026, 8, 2) : DateTime.utc(2026, 8, 6, 18),
+    validUntil:
+        expired ? DateTime.utc(2026, 8, 3) : DateTime.utc(2026, 8, 7, 10),
+    signature: 'valid',
+  );
+  final store = MemoryEntitlementSnapshotStore();
+  if (!guest) store.value = snapshot;
+  return EntitlementGate(
+    subjectHash: guest ? null : _commerceSubject,
+    source: _CommerceReplaySource(snapshot),
+    verifier: const _CommerceReplayVerifier(),
+    store: store,
+    clock: _CommerceReplayClock(DateTime.utc(2026, 8, 6, 12)),
+  );
+}
+
+Future<void> _requireFree(EntitlementGate gate, EntitlementKey key) async {
+  final decision = await gate.decision(key, networkAvailable: false);
+  if (!decision.allowed ||
+      decision.reason != EntitlementGateReason.freeBaseline) {
+    throw StateError('${key.name} is not permanently Free');
+  }
+}
+
+KnowledgeItem _freeKnowledgeItem(String state, String body) {
+  final title = 'River Free $state';
+  final markdown = '# $title\n\n$body';
+  final sanitizedHtml = '<h1>$title</h1><p>$body</p>';
+  return KnowledgeItem(
+    id: 'knowledge-$state',
+    source: KnowledgeSourceReference(
+      kind: KnowledgeSourceKind.article,
+      sourceId: 'article-$state',
+      originalUrl: Uri.parse('https://example.test/free/$state'),
+      sourceTitle: 'River Free Replay',
+    ),
+    title: title,
+    markdown: markdown,
+    sanitizedHtml: sanitizedHtml,
+    contentHash: const KnowledgeContentHasher().hash(
+      title: title,
+      markdown: markdown,
+      sanitizedHtml: sanitizedHtml,
+    ),
+    savedAt: DateTime.utc(2026, 8, 6),
+    updatedAt: DateTime.utc(2026, 8, 6),
   );
 }

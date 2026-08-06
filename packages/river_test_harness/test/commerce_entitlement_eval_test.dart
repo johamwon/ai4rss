@@ -27,6 +27,22 @@ void main() {
     expect(report.metrics['rejectedReservations'], 1);
     expect(report.metrics['thresholdNotices'], 2);
   });
+
+  test('Free product survives guest trial expiry and downgrade', () async {
+    final report =
+        await HarnessEvals(_workspaceRoot()).evaluateFreeProductReplay();
+
+    expect(report.isSuccess, isTrue);
+    expect(report.total, 18);
+    expect(report.metrics['states'], 3);
+    expect(report.metrics['wechatExtractions'], 3);
+    expect(report.metrics['offlineReads'], 3);
+    expect((report.metrics['speechSegments'] as int), greaterThanOrEqualTo(3));
+    expect((report.metrics['podcastEpisodes'] as int), greaterThanOrEqualTo(3));
+    expect(report.metrics['knowledgeItems'], 3);
+    expect(report.metrics['exportBundles'], 3);
+    expect(report.metrics['networkCalls'], 0);
+  });
 }
 
 Directory _workspaceRoot() {
