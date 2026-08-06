@@ -19,6 +19,7 @@ Future<void> main(List<String> arguments) async {
         ..add(await evals.evaluateCloudTtsReplay())
         ..add(await evals.evaluatePodcastTranscriptionReplay())
         ..add(await evals.evaluatePodcastAudioIntelligenceReplay())
+        ..add(await evals.evaluateFeedServerAccountReplay())
         ..add(await evals.evaluateCloudGovernanceReplay())
         ..add(await evals.evaluateCommerceEntitlementReplay())
         ..add(await evals.evaluateUsageLedgerReplay())
@@ -57,6 +58,9 @@ Future<void> main(List<String> arguments) async {
       break;
     case 'audio-intel':
       reports.add(await evals.evaluatePodcastAudioIntelligenceReplay());
+      break;
+    case 'feed-account':
+      reports.add(await evals.evaluateFeedServerAccountReplay());
       break;
     case 'governance':
       reports.add(await evals.evaluateCloudGovernanceReplay());
@@ -101,7 +105,7 @@ Future<void> main(List<String> arguments) async {
     default:
       stderr.writeln(
         'Usage: river_harness '
-        '[check|fixture|feed|extract|tts|transcribe|audio-intel|governance|commerce|free|knowledge|connector|ima|ai|rank]',
+        '[check|fixture|feed|feed-account|extract|tts|transcribe|audio-intel|governance|commerce|free|knowledge|connector|ima|ai|rank]',
       );
       exitCode = 64;
       return;
