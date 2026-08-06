@@ -1592,6 +1592,117 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluateKnowledgeVectorReplay() async {
+    final manifest = _readJson('evals/knowledge_vector_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    var providerCalls = 0;
+    var skippedBuilds = 0;
+    var rebuiltBuilds = 0;
+    var deletedDocuments = 0;
+    var recoveredCorruptions = 0;
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final kind = item['kind'] as String;
+      final provider = _KnowledgeVectorReplayProvider();
+      final index = MemoryKnowledgeVectorIndex();
+      final source = _knowledgeVectorReplayItem(id, _knowledgeVectorReplayText);
+      KnowledgeVectorIndexer service({
+        KnowledgeVectorIndex? target,
+        int revision = 1,
+      }) =>
+          KnowledgeVectorIndexer(
+            profile: _knowledgeVectorReplayProfile(revision: revision),
+            provider: provider,
+            index: target ?? index,
+            chunker: const KnowledgeChunker(
+              maximumCharacters: 128,
+              overlapCharacters: 16,
+            ),
+            maximumBatchSize: 2,
+            clock: const _KnowledgeVectorReplayClock(),
+          );
+
+      try {
+        switch (kind) {
+          case 'buildAndSkip':
+            final first = await service().indexItem(source);
+            final second = await service().indexItem(source);
+            if (first.skipped ||
+                !second.skipped ||
+                index.documents.length != 1) {
+              failures.add(EvalFailure(id, 'unchanged content was rebuilt'));
+            }
+            rebuiltBuilds += first.skipped ? 0 : 1;
+            skippedBuilds += second.skipped ? 1 : 0;
+          case 'modelUpgrade':
+            final first = await service().indexItem(source);
+            final upgraded = await service(revision: 2).indexItem(source);
+            if (upgraded.skipped ||
+                upgraded.recoveredCorruption ||
+                upgraded.document.profileIdentity ==
+                    first.document.profileIdentity) {
+              failures.add(EvalFailure(id, 'model upgrade did not rebuild'));
+            }
+            rebuiltBuilds += 2;
+          case 'contentChange':
+            await service().indexItem(source);
+            final changed = _knowledgeVectorReplayItem(
+              id,
+              'Changed $_knowledgeVectorReplayText',
+            );
+            final result = await service().indexItem(changed);
+            if (result.skipped ||
+                index.documents.single.contentHash != changed.contentHash ||
+                index.documents.single.records.any(
+                  (record) => record.chunk.contentHash != changed.contentHash,
+                )) {
+              failures.add(EvalFailure(id, 'stale content remained indexed'));
+            }
+            rebuiltBuilds += 2;
+          case 'delete':
+            await service().indexItem(source);
+            await service().deleteItem(source.id);
+            if (index.documents.isNotEmpty) {
+              failures.add(EvalFailure(id, 'deleted vectors remained indexed'));
+            } else {
+              deletedDocuments += 1;
+            }
+            rebuiltBuilds += 1;
+          case 'corruptionRecovery':
+            final valid = await service().indexItem(source);
+            final corrupt = _KnowledgeVectorReplayCorruptIndex(valid.document);
+            final recovered = await service(target: corrupt).indexItem(source);
+            if (!recovered.recoveredCorruption || corrupt.replacements != 1) {
+              failures.add(EvalFailure(id, 'corrupt index was not replaced'));
+            } else {
+              recoveredCorruptions += 1;
+            }
+            rebuiltBuilds += 2;
+          default:
+            failures.add(EvalFailure(id, 'unknown vector replay kind $kind'));
+        }
+        providerCalls += provider.calls;
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'knowledge vector replay failed: $error'));
+      }
+    }
+
+    return EvalReport(
+      name: 'knowledge-vector-replay',
+      total: cases.length,
+      failures: failures,
+      metrics: <String, Object>{
+        'providerCalls': providerCalls,
+        'skippedBuilds': skippedBuilds,
+        'rebuiltBuilds': rebuiltBuilds,
+        'deletedDocuments': deletedDocuments,
+        'recoveredCorruptions': recoveredCorruptions,
+      },
+    );
+  }
+
   EvalReport evaluateRanking() {
     final manifest = _readJson('evals/ranking_sessions.json');
     final cases = _list(manifest['cases']);
@@ -2894,4 +3005,111 @@ KnowledgeItem _freeKnowledgeItem(String state, String body) {
     savedAt: DateTime.utc(2026, 8, 6),
     updatedAt: DateTime.utc(2026, 8, 6),
   );
+}
+
+const _knowledgeVectorReplayText =
+    'River builds a deterministic local knowledge index. '
+    'Every chunk retains its source identity and content hash. '
+    'Model upgrades, content changes, deletion, and recovery are replayed.';
+
+EmbeddingProfile _knowledgeVectorReplayProfile({int revision = 1}) =>
+    EmbeddingProfile(
+      modelId: 'river-replay-mini',
+      revision: revision,
+      dimensions: 4,
+      location: EmbeddingExecutionLocation.local,
+    );
+
+KnowledgeItem _knowledgeVectorReplayItem(String id, String body) {
+  final title = 'Knowledge vector $id';
+  final markdown = '# $title\n\n$body';
+  final sanitizedHtml = '<h1>$title</h1><p>$body</p>';
+  return KnowledgeItem(
+    id: id,
+    source: KnowledgeSourceReference(
+      kind: KnowledgeSourceKind.article,
+      sourceId: 'article-$id',
+      originalUrl: Uri.parse('https://example.test/vector/$id'),
+      sourceTitle: 'River Vector Replay',
+    ),
+    title: title,
+    markdown: markdown,
+    sanitizedHtml: sanitizedHtml,
+    contentHash: const KnowledgeContentHasher().hash(
+      title: title,
+      markdown: markdown,
+      sanitizedHtml: sanitizedHtml,
+    ),
+    savedAt: DateTime.utc(2026, 8, 6),
+    updatedAt: DateTime.utc(2026, 8, 6),
+  );
+}
+
+final class _KnowledgeVectorReplayProvider
+    implements KnowledgeEmbeddingProvider {
+  var calls = 0;
+
+  @override
+  Future<List<EmbeddingVector>> embed({
+    required EmbeddingProfile profile,
+    required List<KnowledgeChunk> chunks,
+  }) async {
+    calls += 1;
+    return chunks
+        .map(
+          (chunk) => EmbeddingVector(
+            chunkId: chunk.id,
+            values: List<double>.generate(
+              profile.dimensions,
+              (index) => (chunk.ordinal + index + 1) / 10,
+            ),
+          ),
+        )
+        .toList(growable: false);
+  }
+}
+
+final class _KnowledgeVectorReplayCorruptIndex implements KnowledgeVectorIndex {
+  _KnowledgeVectorReplayCorruptIndex(this.document);
+
+  KnowledgeVectorDocument document;
+  var replacements = 0;
+
+  @override
+  Future<void> clearProfile(String profileIdentity) async {}
+
+  @override
+  Future<void> deleteDocument(String itemId) async {}
+
+  @override
+  Future<KnowledgeVectorDocument?> readDocument(String itemId) async =>
+      KnowledgeVectorDocument(
+        itemId: document.itemId,
+        contentHash: document.contentHash,
+        profileIdentity: document.profileIdentity,
+        chunkerVersion: document.chunkerVersion,
+        records: document.records
+            .map(
+              (record) => KnowledgeVectorRecord(
+                chunk: record.chunk,
+                profileIdentity: record.profileIdentity,
+                vector: const <double>[1],
+              ),
+            )
+            .toList(growable: false),
+        indexedAt: document.indexedAt,
+      );
+
+  @override
+  Future<void> replaceDocument(KnowledgeVectorDocument document) async {
+    this.document = document;
+    replacements += 1;
+  }
+}
+
+final class _KnowledgeVectorReplayClock implements KnowledgeIndexClock {
+  const _KnowledgeVectorReplayClock();
+
+  @override
+  DateTime now() => DateTime.utc(2026, 8, 6, 12);
 }
