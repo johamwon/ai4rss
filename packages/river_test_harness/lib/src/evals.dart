@@ -1796,6 +1796,108 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluateKnowledgeQuestionReplay() async {
+    final searchManifest = _readJson('evals/knowledge_search_cases.json');
+    final casesManifest = _readJson('evals/knowledge_qa_cases.json');
+    final cases = _list(casesManifest['cases']);
+    final embeddings = _KnowledgeSearchReplayProvider();
+    final index = MemoryKnowledgeVectorIndex();
+    final profile = _knowledgeSearchReplayProfile();
+    final indexer = KnowledgeVectorIndexer(
+      profile: profile,
+      provider: embeddings,
+      index: index,
+      chunker: const KnowledgeChunker(
+        maximumCharacters: 128,
+        overlapCharacters: 16,
+      ),
+      clock: const _KnowledgeVectorReplayClock(),
+    );
+    for (final document in _list(searchManifest['documents'])) {
+      await indexer.indexItem(_knowledgeSearchReplayItem(document));
+    }
+    final search = KnowledgeSemanticSearch(
+      profile: profile,
+      provider: embeddings,
+      index: index,
+      maximumEvidencePerItem: 2,
+    );
+    final failures = <EvalFailure>[];
+    var answered = 0;
+    var refusedWithoutProvider = 0;
+    var providerRefusals = 0;
+    var rejectedOutputs = 0;
+    var materializedCitations = 0;
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final kind = item['kind'] as String;
+      final provider = _KnowledgeQuestionReplayProvider(kind);
+      final service = KnowledgeGroundedQuestionAnswering(
+        search: search,
+        provider: provider,
+      );
+      try {
+        final result = await service.ask(item['question'] as String);
+        switch (kind) {
+          case 'answered':
+            if (result.outcome != KnowledgeAnswerOutcome.answered ||
+                result.statements.any((value) => value.citations.isEmpty)) {
+              failures.add(EvalFailure(id, 'answer was not fully cited'));
+            } else {
+              answered += 1;
+              materializedCitations += result.statements.fold<int>(
+                0,
+                (total, value) => total + value.citations.length,
+              );
+            }
+          case 'noEvidence':
+            if (result.outcome != KnowledgeAnswerOutcome.insufficientEvidence ||
+                result.providerCalled ||
+                provider.requests.isNotEmpty) {
+              failures.add(EvalFailure(id, 'no-evidence gate called Provider'));
+            } else {
+              refusedWithoutProvider += 1;
+            }
+          case 'providerRefusal':
+            if (result.outcome != KnowledgeAnswerOutcome.insufficientEvidence ||
+                !result.providerCalled) {
+              failures.add(EvalFailure(id, 'Provider refusal was not kept'));
+            } else {
+              providerRefusals += 1;
+            }
+          case 'unknownCitation' || 'uncited':
+            failures.add(EvalFailure(id, 'invalid answer was accepted'));
+          default:
+            failures.add(EvalFailure(id, 'unknown question replay kind'));
+        }
+      } on KnowledgeQuestionFailure {
+        if (kind == 'unknownCitation' || kind == 'uncited') {
+          rejectedOutputs += 1;
+        } else {
+          failures.add(EvalFailure(id, 'valid answer was rejected'));
+        }
+      } on Object catch (error) {
+        failures
+            .add(EvalFailure(id, 'knowledge question replay failed: $error'));
+      }
+    }
+
+    return EvalReport(
+      name: 'knowledge-question-replay',
+      total: cases.length,
+      failures: failures,
+      metrics: <String, Object>{
+        'answered': answered,
+        'refusedWithoutProvider': refusedWithoutProvider,
+        'providerRefusals': providerRefusals,
+        'rejectedOutputs': rejectedOutputs,
+        'materializedCitations': materializedCitations,
+        'privateContentInDiagnostics': false,
+      },
+    );
+  }
+
   EvalReport evaluateRanking() {
     final manifest = _readJson('evals/ranking_sessions.json');
     final cases = _list(manifest['cases']);
@@ -3323,6 +3425,56 @@ final class _KnowledgeSearchReplayProvider
   }
 }
 
+final class _KnowledgeQuestionReplayProvider
+    implements KnowledgeQuestionAnswerProvider {
+  _KnowledgeQuestionReplayProvider(this.kind);
+
+  final String kind;
+  final List<KnowledgeQuestionProviderRequest> requests =
+      <KnowledgeQuestionProviderRequest>[];
+
+  @override
+  Future<KnowledgeQuestionProviderResponse> answer(
+    KnowledgeQuestionProviderRequest request,
+  ) async {
+    requests.add(request);
+    switch (kind) {
+      case 'providerRefusal':
+        return KnowledgeQuestionProviderResponse(insufficientEvidence: true);
+      case 'unknownCitation':
+        return KnowledgeQuestionProviderResponse(
+          insufficientEvidence: false,
+          statements: <KnowledgeQuestionProviderStatement>[
+            KnowledgeQuestionProviderStatement(
+              text: 'Synthetic unsupported answer.',
+              citationChunkIds: const <String>['unknown-chunk'],
+            ),
+          ],
+        );
+      case 'uncited':
+        return KnowledgeQuestionProviderResponse(
+          insufficientEvidence: false,
+          statements: <KnowledgeQuestionProviderStatement>[
+            KnowledgeQuestionProviderStatement(
+              text: 'Synthetic uncited answer.',
+              citationChunkIds: const <String>[],
+            ),
+          ],
+        );
+      default:
+        return KnowledgeQuestionProviderResponse(
+          insufficientEvidence: false,
+          statements: <KnowledgeQuestionProviderStatement>[
+            KnowledgeQuestionProviderStatement(
+              text: 'Solar and wind sources generate renewable electricity.',
+              citationChunkIds: <String>[request.evidence.first.chunkId],
+            ),
+          ],
+        );
+    }
+  }
+}
+
 List<double> _knowledgeSearchReplayVector(String text) {
   final value = text.toLowerCase();
   if (value.contains('solar') ||
@@ -3346,5 +3498,5 @@ List<double> _knowledgeSearchReplayVector(String text) {
       value.contains('markets')) {
     return const <double>[0, 0, 0, 1];
   }
-  return const <double>[0.5, 0.5, 0.5, 0.5];
+  return const <double>[0, 0, 0, 0];
 }
