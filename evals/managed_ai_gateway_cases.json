@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "managed-provider-failure",
+      "kind": "providerFailure",
+      "expectedRoute": "fallback.route",
+      "expectedPrimaryCalls": 1,
+      "expectedFallbackCalls": 1
+    },
+    {
+      "id": "managed-provider-timeout",
+      "kind": "timeout",
+      "expectedRoute": "fallback.route",
+      "expectedPrimaryCalls": 1,
+      "expectedFallbackCalls": 1
+    },
+    {
+      "id": "managed-duplicate-coalescing",
+      "kind": "duplicate",
+      "expectedRoute": "primary.route",
+      "expectedPrimaryCalls": 1,
+      "expectedFallbackCalls": 0
+    },
+    {
+      "id": "managed-quality-fallback",
+      "kind": "qualityFallback",
+      "expectedRoute": "fallback.route",
+      "expectedPrimaryCalls": 1,
+      "expectedFallbackCalls": 1
+    }
+  ]
+}
