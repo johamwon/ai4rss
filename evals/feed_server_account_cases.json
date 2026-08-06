@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {"id": "fresh-pull", "kind": "freshPull"},
+    {"id": "miniflux-pull", "kind": "minifluxPull"},
+    {"id": "duplicate-source", "kind": "duplicateSource"},
+    {"id": "monotonic-cursor", "kind": "cursor"},
+    {"id": "entry-state", "kind": "stateSync"},
+    {"id": "account-removal", "kind": "removeAccount"}
+  ]
+}
