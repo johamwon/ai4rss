@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:river_ai/river_ai.dart';
 import 'package:river_audio/river_audio.dart';
+import 'package:river_commerce/river_commerce.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
 import 'package:river_feed/river_feed.dart';
@@ -1226,6 +1227,150 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluateCommerceEntitlementReplay() async {
+    final manifest = _readJson('evals/commerce_entitlement_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    var freeChecks = 0;
+    var premiumChecks = 0;
+    var forgedSnapshotsRejected = 0;
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final kind = item['kind'] as String;
+      final now = DateTime.utc(2026, 8, 6, 12);
+      final store = MemoryEntitlementSnapshotStore();
+      final snapshot = _commerceSnapshot(
+        revision: (item['revision'] as int?) ?? 1,
+        plan: item['plan'] == 'trial'
+            ? EntitlementPlan.trial
+            : EntitlementPlan.pro,
+        refreshAfter: kind == 'offline-cache'
+            ? DateTime.utc(2026, 8, 6, 11)
+            : kind == 'expired-trial'
+                ? DateTime.utc(2026, 8, 4, 18)
+                : DateTime.utc(2026, 8, 6, 18),
+        validUntil: kind == 'expired-trial'
+            ? DateTime.utc(2026, 8, 5, 12)
+            : DateTime.utc(2026, 8, 7, 12),
+        issuedAt: kind == 'expired-trial'
+            ? DateTime.utc(2026, 8, 4, 12)
+            : DateTime.utc(2026, 8, 6, 10),
+        signature: kind == 'forged' ? 'forged' : 'valid',
+      );
+      if (kind != 'free-guest' && kind != 'forged') store.value = snapshot;
+      final gate = EntitlementGate(
+        subjectHash: kind == 'free-guest' ? null : _commerceSubject,
+        source: _CommerceReplaySource(snapshot),
+        verifier: const _CommerceReplayVerifier(),
+        store: store,
+        clock: _CommerceReplayClock(now),
+      );
+
+      try {
+        switch (kind) {
+          case 'free-guest':
+            for (final key in freeEntitlements) {
+              final decision =
+                  await gate.decision(key, networkAvailable: false);
+              freeChecks += 1;
+              if (!decision.allowed ||
+                  decision.reason != EntitlementGateReason.freeBaseline) {
+                failures.add(EvalFailure(id, '${key.name} lost Free access'));
+              }
+            }
+          case 'verified-pro':
+            final decision = await gate.decision(
+              EntitlementKey.managedAi,
+              networkAvailable: true,
+            );
+            premiumChecks += 1;
+            if (!decision.allowed ||
+                decision.reason != EntitlementGateReason.verifiedSnapshot) {
+              failures.add(EvalFailure(id, 'verified Pro grant was denied'));
+            }
+          case 'offline-cache':
+            final decision = await gate.decision(
+              EntitlementKey.managedAi,
+              networkAvailable: false,
+            );
+            premiumChecks += 1;
+            if (!decision.allowed ||
+                decision.reason != EntitlementGateReason.offlineCache) {
+              failures.add(EvalFailure(id, 'bounded offline grant was denied'));
+            }
+          case 'expired-trial':
+            final paid = await gate.decision(
+              EntitlementKey.managedAi,
+              networkAvailable: false,
+            );
+            premiumChecks += 1;
+            if (paid.allowed ||
+                paid.reason != EntitlementGateReason.expiredSnapshot) {
+              failures.add(EvalFailure(id, 'expired trial kept paid access'));
+            }
+            for (final key in freeEntitlements) {
+              freeChecks += 1;
+              if (!(await gate.decision(key, networkAvailable: false))
+                  .allowed) {
+                failures.add(EvalFailure(id, '${key.name} lost after trial'));
+              }
+            }
+          case 'forged':
+            try {
+              await gate.refresh();
+              failures.add(EvalFailure(id, 'forged snapshot was accepted'));
+            } on EntitlementFailure catch (error) {
+              if (error.code == EntitlementFailureCode.invalidSignature) {
+                forgedSnapshotsRejected += 1;
+              } else {
+                failures.add(
+                  EvalFailure(id, 'unexpected failure ${error.code.name}'),
+                );
+              }
+            }
+          default:
+            failures.add(EvalFailure(id, 'unknown replay kind $kind'));
+        }
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'entitlement replay failed: $error'));
+      }
+    }
+
+    final appLibrary = Directory(_path('apps/river_app/lib'));
+    final forbiddenUiBinding = RegExp(
+      r'\b(productId|productIdentifier|storeProductId|sku)\b',
+      caseSensitive: false,
+    );
+    final boundFiles = appLibrary
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((file) => file.path.endsWith('.dart'))
+        .where((file) => forbiddenUiBinding.hasMatch(file.readAsStringSync()))
+        .map((file) => file.path)
+        .toList(growable: false);
+    if (boundFiles.isNotEmpty) {
+      failures.add(
+        const EvalFailure(
+          'semantic-gate',
+          'application UI references a store product identifier',
+        ),
+      );
+    }
+
+    return EvalReport(
+      name: 'commerce-entitlement-replay',
+      total: cases.length + 1,
+      failures: failures,
+      metrics: <String, Object>{
+        'freeChecks': freeChecks,
+        'premiumChecks': premiumChecks,
+        'forgedSnapshotsRejected': forgedSnapshotsRejected,
+        'uiProductIdentifierReferences': boundFiles.length,
+      },
+    );
+  }
+
   EvalReport evaluateRanking() {
     final manifest = _readJson('evals/ranking_sessions.json');
     final cases = _list(manifest['cases']);
@@ -2374,4 +2519,56 @@ final class _RankingExperimentReplayRepository
   @override
   Stream<RankingExperimentEnrollment?> watchEnrollment() =>
       const Stream<RankingExperimentEnrollment?>.empty();
+}
+
+const _commerceSubject =
+    'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
+
+EntitlementSnapshot _commerceSnapshot({
+  required int revision,
+  required EntitlementPlan plan,
+  required DateTime issuedAt,
+  required DateTime refreshAfter,
+  required DateTime validUntil,
+  required String signature,
+}) =>
+    EntitlementSnapshot(
+      revision: revision,
+      subjectHash: _commerceSubject,
+      plan: plan,
+      granted: const <EntitlementKey>{
+        EntitlementKey.managedAi,
+        EntitlementKey.cloudExtraction,
+        EntitlementKey.cloudTts,
+      },
+      issuedAt: issuedAt,
+      refreshAfter: refreshAfter,
+      validUntil: validUntil,
+      signature: signature,
+    );
+
+final class _CommerceReplaySource implements EntitlementSnapshotSource {
+  const _CommerceReplaySource(this.snapshot);
+
+  final EntitlementSnapshot snapshot;
+
+  @override
+  Future<EntitlementSnapshot> fetch(String subjectHash) async => snapshot;
+}
+
+final class _CommerceReplayVerifier implements EntitlementSnapshotVerifier {
+  const _CommerceReplayVerifier();
+
+  @override
+  Future<bool> verify(String canonicalPayload, String signature) async =>
+      signature == 'valid';
+}
+
+final class _CommerceReplayClock implements EntitlementClock {
+  const _CommerceReplayClock(this.value);
+
+  final DateTime value;
+
+  @override
+  DateTime now() => value;
 }
