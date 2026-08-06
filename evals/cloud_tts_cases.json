@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "river.cloud-tts-replay.v1",
+  "cases": [
+    {"id": "exact-billing", "kind": "billing"},
+    {"id": "duplicate-generation", "kind": "duplicate"},
+    {"id": "cancel-late-result", "kind": "cancel"},
+    {"id": "content-revision-change", "kind": "contentChange"},
+    {"id": "metered-network-block", "kind": "network"}
+  ]
+}
