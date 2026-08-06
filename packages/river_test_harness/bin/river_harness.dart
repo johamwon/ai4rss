@@ -19,7 +19,8 @@ Future<void> main(List<String> arguments) async {
         ..add(await evals.evaluateAiProviderReplay())
         ..add(await evals.evaluateAiLongReplay())
         ..add(await evals.evaluateAiCacheReplay())
-        ..add(evals.evaluateRanking());
+        ..add(evals.evaluateRanking())
+        ..add(await evals.evaluateRankingExperiment());
       break;
     case 'fixture':
       reports.add(evals.verifyFixtures());
@@ -38,7 +39,9 @@ Future<void> main(List<String> arguments) async {
         ..add(await evals.evaluateAiCacheReplay());
       break;
     case 'rank':
-      reports.add(evals.evaluateRanking());
+      reports
+        ..add(evals.evaluateRanking())
+        ..add(await evals.evaluateRankingExperiment());
       break;
     default:
       stderr

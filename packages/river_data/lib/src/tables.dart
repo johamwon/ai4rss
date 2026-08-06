@@ -472,3 +472,48 @@ class PodcastDownloads extends Table {
   @override
   Set<Column<Object>> get primaryKey => <Column<Object>>{episodeId};
 }
+
+@DataClassName('RankingExperimentEnrollmentRow')
+class RankingExperimentEnrollmentRows extends Table {
+  IntColumn get id => integer().withDefault(const Constant(1))();
+  TextColumn get experimentId => text()();
+  TextColumn get arm => text()();
+  DateTimeColumn get assignedAt => dateTime()();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{id};
+}
+
+@DataClassName('RankingExperimentDailyMetricRow')
+class RankingExperimentDailyMetricRows extends Table {
+  TextColumn get experimentId => text()();
+  TextColumn get arm => text()();
+  TextColumn get dayKey => text()();
+  IntColumn get exposures => integer().withDefault(const Constant(0))();
+  IntColumn get exposedArticles => integer().withDefault(const Constant(0))();
+  RealColumn get sourceDiversitySum => real().withDefault(const Constant(0))();
+  RealColumn get sourceDiversitySquaredSum =>
+      real().withDefault(const Constant(0))();
+  IntColumn get opens => integer().withDefault(const Constant(0))();
+  IntColumn get activeSeconds => integer().withDefault(const Constant(0))();
+  IntColumn get completions => integer().withDefault(const Constant(0))();
+  IntColumn get quickExits => integer().withDefault(const Constant(0))();
+  IntColumn get summaryEligible => integer().withDefault(const Constant(0))();
+  IntColumn get summaryCacheHits => integer().withDefault(const Constant(0))();
+  IntColumn get summaryGenerated => integer().withDefault(const Constant(0))();
+  IntColumn get summaryFailures => integer().withDefault(const Constant(0))();
+  IntColumn get summaryProviderCalls =>
+      integer().withDefault(const Constant(0))();
+  IntColumn get summaryLatencyMilliseconds =>
+      integer().withDefault(const Constant(0))();
+  RealColumn get summaryCostUsd => real().withDefault(const Constant(0))();
+  DateTimeColumn get updatedAt => dateTime()();
+
+  @override
+  Set<Column<Object>> get primaryKey => <Column<Object>>{
+    experimentId,
+    arm,
+    dayKey,
+  };
+}

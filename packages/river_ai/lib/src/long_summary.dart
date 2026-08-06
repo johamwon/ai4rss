@@ -934,6 +934,14 @@ final class LongArticleSummaryService {
     return _readCached(article, identity, plan);
   }
 
+  /// Returns accounting for a previously validated long-summary cache entry.
+  Future<AiArtifact?> readCachedArtifact(Article article) async {
+    preflight(article);
+    final (_, identity) = _cacheIdentityFor(article);
+    final artifact = await _readCachedArtifact(article, identity);
+    return artifact;
+  }
+
   (String, SummaryCacheIdentity) _cacheIdentityFor(Article article) {
     final content = normalizeSummaryContent(article.plainText ?? '');
     final identity = SummaryCacheIdentity(
@@ -1085,6 +1093,28 @@ final class LongArticleSummaryService {
     SummaryCacheIdentity identity,
     LongSummaryPreflight plan,
   ) async {
+    final artifact = await _readCachedArtifact(article, identity);
+    if (artifact == null) return null;
+    final decoded = _decodeLongCache(
+      artifact,
+      expectedArticleId: article.id,
+    );
+    return LongArticleSummaryResult(
+      summary: decoded.summary,
+      sourcedFacts: decoded.sourcedFacts,
+      usage: AiTokenUsage(inputTokens: 0, outputTokens: 0),
+      preflightEstimate: plan.estimate,
+      resumedChunks: 0,
+      omittedFacts: decoded.omittedFacts,
+      checkpointCleanupPending: false,
+      cacheHit: true,
+    );
+  }
+
+  Future<AiArtifact?> _readCachedArtifact(
+    Article article,
+    SummaryCacheIdentity identity,
+  ) async {
     final repository = artifacts;
     if (repository == null) return null;
     AiArtifact? artifact;
@@ -1105,20 +1135,11 @@ final class LongArticleSummaryService {
       return null;
     }
     try {
-      final decoded = _decodeLongCache(
+      _decodeLongCache(
         artifact,
         expectedArticleId: article.id,
       );
-      return LongArticleSummaryResult(
-        summary: decoded.summary,
-        sourcedFacts: decoded.sourcedFacts,
-        usage: AiTokenUsage(inputTokens: 0, outputTokens: 0),
-        preflightEstimate: plan.estimate,
-        resumedChunks: 0,
-        omittedFacts: decoded.omittedFacts,
-        checkpointCleanupPending: false,
-        cacheHit: true,
-      );
+      return artifact;
     } on FormatException {
       await _deleteInvalidCache(identity.cacheKey);
       return null;

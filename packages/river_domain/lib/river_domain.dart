@@ -12,4 +12,5 @@ export 'src/network_status.dart';
 export 'src/offline_articles.dart';
 export 'src/podcast_downloads.dart';
 export 'src/ports.dart';
+export 'src/ranking_experiment.dart';
 export 'src/reading_events.dart';

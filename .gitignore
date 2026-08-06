@@ -1,6 +1,7 @@
 .dart_tool/
 .packages
 build/
+**/build-*/
 dist/
 coverage/
 .flutter-plugins

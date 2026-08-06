@@ -894,6 +894,68 @@ final class HarnessEvals {
     return EvalReport(name: 'ranking', total: cases.length, failures: failures);
   }
 
+  Future<EvalReport> evaluateRankingExperiment() async {
+    final manifest = _readJson('evals/ranking_experiment.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final repository =
+          _RankingExperimentReplayRepository(<RankingExperimentDailyMetrics>[
+        _experimentMetrics(
+          RankingExperimentArm.chronological,
+          _map(item['control']),
+        ),
+        _experimentMetrics(
+          RankingExperimentArm.personalized,
+          _map(item['treatment']),
+        ),
+      ]);
+      final report = await LocalRankingExperiment(repository: repository)
+          .buildReport(startDay: '2026-08-01', endDay: '2026-08-06');
+      final expected = item['expectedDecision'] as String;
+      if (report.decision.name != expected) {
+        failures.add(
+          EvalFailure(
+            id,
+            'expected decision $expected, got ${report.decision.name}',
+          ),
+        );
+      }
+      if (report.decision == RankingExperimentDecision.insufficientData) {
+        try {
+          report.exportAggregateJson();
+          failures.add(EvalFailure(id, 'insufficient sample was exportable'));
+        } on StateError {
+          // Expected fail-closed export behavior.
+        }
+      } else {
+        final keys = _jsonKeys(jsonDecode(report.exportAggregateJson()));
+        final forbidden = <String>{
+          'articleId',
+          'sourceId',
+          'title',
+          'url',
+          'body',
+          'summaryText',
+        };
+        if (keys.any(forbidden.contains)) {
+          failures.add(EvalFailure(id, 'aggregate export leaked identity'));
+        }
+      }
+    }
+    return EvalReport(
+      name: 'ranking-experiment-replay',
+      total: cases.length,
+      failures: failures,
+      metrics: const <String, Object>{
+        'minimumOpensPerArm': 100,
+        'minimumExposuresPerArm': 20,
+        'automaticUpload': false,
+      },
+    );
+  }
+
   EvalReport evaluateFeeds() {
     final manifest = _readJson('evals/feed_manifest.json');
     final cases = _list(manifest['cases']);
@@ -1165,4 +1227,83 @@ final class _ReplayClock implements Clock {
 
   @override
   DateTime now() => DateTime.utc(2026, 7, 30, 12);
+}
+
+RankingExperimentDailyMetrics _experimentMetrics(
+  RankingExperimentArm arm,
+  Map<String, Object?> values,
+) {
+  final exposures = values['exposures'] as int;
+  final diversity = (values['diversity'] as num).toDouble();
+  return RankingExperimentDailyMetrics(
+    experimentId: rankingExperimentId,
+    arm: arm,
+    dayKey: '2026-08-06',
+    exposures: exposures,
+    exposedArticles: exposures * 20,
+    sourceDiversitySum: exposures * diversity,
+    sourceDiversitySquaredSum: exposures * diversity * diversity,
+    opens: values['opens'] as int,
+    completions: values['completions'] as int,
+    quickExits: values['quickExits'] as int,
+  );
+}
+
+Set<String> _jsonKeys(Object? value) {
+  final keys = <String>{};
+  void visit(Object? current) {
+    if (current is Map<String, Object?>) {
+      keys.addAll(current.keys);
+      current.values.forEach(visit);
+    } else if (current is List<Object?>) {
+      current.forEach(visit);
+    }
+  }
+
+  visit(value);
+  return keys;
+}
+
+final class _RankingExperimentReplayRepository
+    implements RankingExperimentRepository {
+  _RankingExperimentReplayRepository(this.rows);
+
+  final List<RankingExperimentDailyMetrics> rows;
+
+  @override
+  Future<int> clearMetrics({required String experimentId}) async => 0;
+
+  @override
+  Future<void> disable({required DateTime updatedAt}) async {}
+
+  @override
+  Future<RankingExperimentEnrollment?> readEnrollment() async => null;
+
+  @override
+  Future<List<RankingExperimentDailyMetrics>> readMetrics({
+    required String experimentId,
+    required String startDay,
+    required String endDay,
+  }) async =>
+      rows;
+
+  @override
+  Future<void> recordExposure(RankingExperimentExposure exposure) async {}
+
+  @override
+  Future<void> recordReadingOutcome(
+    RankingExperimentReadingOutcome outcome,
+  ) async {}
+
+  @override
+  Future<void> recordSummaryObservation(
+    RankingExperimentSummaryObservation observation,
+  ) async {}
+
+  @override
+  Future<void> saveEnrollment(RankingExperimentEnrollment enrollment) async {}
+
+  @override
+  Stream<RankingExperimentEnrollment?> watchEnrollment() =>
+      const Stream<RankingExperimentEnrollment?>.empty();
 }

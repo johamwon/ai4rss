@@ -10,6 +10,7 @@ import 'package:river_extract/river_extract.dart';
 import 'package:river_feed/river_feed.dart';
 import 'package:river_knowledge/river_knowledge.dart';
 import 'package:river_platform/river_platform.dart';
+import 'package:river_preferences/river_preferences.dart';
 import 'package:river_sync/river_sync.dart';
 
 import '../knowledge/notion_workspace.dart';
@@ -132,10 +133,15 @@ final class AppDependencies {
     readerSettings = DriftReaderSettingsRepository(database);
     readingBehavior =
         readingBehaviorRepository ?? DriftReadingEventRepository(database);
+    rankingExperimentRepository = DriftRankingExperimentRepository(database);
+    rankingExperiment = LocalRankingExperiment(
+      repository: rankingExperimentRepository,
+    );
     personalizedArticles = LocalPersonalizedArticleExperience(
       feeds: feeds,
       behavior: readingBehavior,
       clock: clock,
+      experiment: rankingExperiment,
     );
     this.articleSummaries = articleSummaries ??
         ByokArticleSummaryExperience(
@@ -158,6 +164,7 @@ final class AppDependencies {
       clock: clock,
       ids: ids,
       extractor: fullTextExtractor,
+      metrics: rankingExperiment,
     );
     annotations = DriftArticleAnnotationRepository(database);
     audioQueueRepository = DriftAudioQueueRepository(database);
@@ -301,6 +308,8 @@ final class AppDependencies {
   late final SubscriptionOrganizerService subscriptionOrganizer;
   late final DriftReaderSettingsRepository readerSettings;
   late final ReadingBehaviorRepository readingBehavior;
+  late final DriftRankingExperimentRepository rankingExperimentRepository;
+  late final LocalRankingExperiment rankingExperiment;
   late final LocalPersonalizedArticleExperience personalizedArticles;
   late final DriftAutomaticSummaryRepository automaticSummaryRepository;
   late final DurableAutomaticSummaryManager automaticSummaries;

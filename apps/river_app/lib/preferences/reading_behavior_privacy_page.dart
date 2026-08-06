@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:river_domain/river_domain.dart';
+import 'package:river_preferences/river_preferences.dart';
 
 import 'automatic_summaries.dart';
 import 'personalized_articles.dart';
+import 'ranking_experiment_page.dart';
 
 const String readingBehaviorLocalOnlyExplanation =
     'River 只在这台设备上记录文章展示、打开、有效阅读时长、阅读进度、完成、'
@@ -45,6 +47,8 @@ final class ReadingBehaviorPrivacyPage extends StatefulWidget {
     this.copyExport,
     this.personalization,
     this.automaticSummaries,
+    this.rankingExperiment,
+    this.experimentIds,
     super.key,
   });
 
@@ -53,6 +57,8 @@ final class ReadingBehaviorPrivacyPage extends StatefulWidget {
   final Future<void> Function(String contents)? copyExport;
   final PreferenceProfileExperience? personalization;
   final AutomaticSummaryExperience? automaticSummaries;
+  final LocalRankingExperiment? rankingExperiment;
+  final IdGenerator? experimentIds;
 
   @override
   State<ReadingBehaviorPrivacyPage> createState() =>
@@ -273,6 +279,26 @@ final class _ReadingBehaviorPrivacyPageState
                                 builder: (context) =>
                                     AutomaticSummarySettingsPage(
                                   experience: automaticSummaries,
+                                ),
+                              ),
+                            ),
+                  ),
+                if ((widget.rankingExperiment, widget.experimentIds)
+                    case (final experiment?, final ids?))
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.science_outlined),
+                    title: const Text('本地排序对照实验'),
+                    subtitle: const Text('自愿参加；查看聚合效果、AI 延迟和成本'),
+                    enabled: !_busy,
+                    onTap: _busy
+                        ? null
+                        : () => Navigator.of(context).push<void>(
+                              MaterialPageRoute<void>(
+                                builder: (context) => RankingExperimentPage(
+                                  experiment: experiment,
+                                  clock: widget.clock,
+                                  entropy: ids.next,
                                 ),
                               ),
                             ),

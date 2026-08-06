@@ -5,6 +5,7 @@ import 'package:river_ai/river_ai.dart';
 import 'package:river_data/river_data.dart' hide Article;
 import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
+import 'package:river_preferences/river_preferences.dart';
 
 import '../app/article_summary.dart';
 import 'personalized_articles.dart';
@@ -45,6 +46,8 @@ final class DurableAutomaticSummaryManager
     FullTextExtractor? extractor,
     AutomaticSummaryDayKey? dayKey,
     AutomaticSummaryNextDay? nextDay,
+    LocalRankingExperiment? metrics,
+    AiMonotonicClock? metricsClock,
     this.maxAttempts = 3,
     this.leaseDuration = const Duration(minutes: 5),
     this.networkRetryDelay = const Duration(minutes: 5),
@@ -57,6 +60,8 @@ final class DurableAutomaticSummaryManager
         _clock = clock,
         _ids = ids,
         _extractor = extractor,
+        _metrics = metrics,
+        _metricsClock = metricsClock ?? StopwatchAiMonotonicClock(),
         _dayKey = dayKey ?? automaticSummaryLocalDayKey,
         _nextDay = nextDay ?? automaticSummaryNextLocalDay {
     if (maxAttempts < 1 ||
@@ -79,6 +84,8 @@ final class DurableAutomaticSummaryManager
   final Clock _clock;
   final IdGenerator _ids;
   final FullTextExtractor? _extractor;
+  final LocalRankingExperiment? _metrics;
+  final AiMonotonicClock _metricsClock;
   final AutomaticSummaryDayKey _dayKey;
   final AutomaticSummaryNextDay _nextDay;
   final int maxAttempts;
@@ -149,6 +156,9 @@ final class DurableAutomaticSummaryManager
       )) {
         inserted += 1;
       }
+    }
+    if (inserted > 0) {
+      await _recordMetrics(eligible: inserted);
     }
     if (inserted > 0) await resumePending();
     return inserted;
@@ -272,6 +282,7 @@ final class DurableAutomaticSummaryManager
       return;
     }
     if (inspection.cachedSummary != null) {
+      await _recordMetrics(cacheHits: 1);
       if (await _repository.readUsageStatus(usageKey) ==
           AutomaticSummaryUsageStatus.reserved) {
         await _repository.completeUsage(
@@ -298,6 +309,7 @@ final class DurableAutomaticSummaryManager
       await _jobs.complete(job.id, now);
       return;
     }
+    final startedAt = _metricsClock.elapsed();
     try {
       await _summaries.summarize(article);
       final persisted = await _summaries.inspect(article);
@@ -311,13 +323,58 @@ final class DurableAutomaticSummaryManager
         idempotencyKey: usageKey,
         completedAt: _clock.now().toUtc(),
       );
+      final accounting = persisted.accounting;
+      await _recordMetrics(
+        generated: 1,
+        providerCalls: accounting?.providerCalls ?? 0,
+        latencyMilliseconds:
+            (_metricsClock.elapsed() - startedAt).inMilliseconds,
+        costUsd: accounting?.costUsd ?? 0,
+      );
       await _jobs.complete(job.id, _clock.now().toUtc());
     } on ArticleSummaryExperienceFailure catch (failure) {
       await _repository.releaseUsage(idempotencyKey: usageKey);
+      await _recordMetrics(
+        failures: 1,
+        latencyMilliseconds:
+            (_metricsClock.elapsed() - startedAt).inMilliseconds,
+      );
       await _fail(job, failure);
     } on Object {
       await _repository.releaseUsage(idempotencyKey: usageKey);
+      await _recordMetrics(
+        failures: 1,
+        latencyMilliseconds:
+            (_metricsClock.elapsed() - startedAt).inMilliseconds,
+      );
       await _failUnexpected(job);
+    }
+  }
+
+  Future<void> _recordMetrics({
+    int eligible = 0,
+    int cacheHits = 0,
+    int generated = 0,
+    int failures = 0,
+    int providerCalls = 0,
+    int latencyMilliseconds = 0,
+    double costUsd = 0,
+  }) async {
+    final metrics = _metrics;
+    if (metrics == null) return;
+    try {
+      await metrics.recordSummaryObservation(
+        now: _clock.now(),
+        eligible: eligible,
+        cacheHits: cacheHits,
+        generated: generated,
+        failures: failures,
+        providerCalls: providerCalls,
+        latencyMilliseconds: latencyMilliseconds,
+        costUsd: costUsd,
+      );
+    } on Object {
+      // Local observability is best-effort and never changes job outcomes.
     }
   }
 

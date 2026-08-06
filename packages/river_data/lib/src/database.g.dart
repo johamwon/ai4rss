@@ -16240,6 +16240,1487 @@ class PodcastDownloadsCompanion extends UpdateCompanion<PodcastDownload> {
   }
 }
 
+class $RankingExperimentEnrollmentRowsTable
+    extends RankingExperimentEnrollmentRows
+    with
+        TableInfo<
+          $RankingExperimentEnrollmentRowsTable,
+          RankingExperimentEnrollmentRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RankingExperimentEnrollmentRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _experimentIdMeta = const VerificationMeta(
+    'experimentId',
+  );
+  @override
+  late final GeneratedColumn<String> experimentId = GeneratedColumn<String>(
+    'experiment_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _armMeta = const VerificationMeta('arm');
+  @override
+  late final GeneratedColumn<String> arm = GeneratedColumn<String>(
+    'arm',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _assignedAtMeta = const VerificationMeta(
+    'assignedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> assignedAt = GeneratedColumn<DateTime>(
+    'assigned_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    experimentId,
+    arm,
+    assignedAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ranking_experiment_enrollment_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RankingExperimentEnrollmentRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('experiment_id')) {
+      context.handle(
+        _experimentIdMeta,
+        experimentId.isAcceptableOrUnknown(
+          data['experiment_id']!,
+          _experimentIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_experimentIdMeta);
+    }
+    if (data.containsKey('arm')) {
+      context.handle(
+        _armMeta,
+        arm.isAcceptableOrUnknown(data['arm']!, _armMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_armMeta);
+    }
+    if (data.containsKey('assigned_at')) {
+      context.handle(
+        _assignedAtMeta,
+        assignedAt.isAcceptableOrUnknown(data['assigned_at']!, _assignedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_assignedAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  RankingExperimentEnrollmentRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RankingExperimentEnrollmentRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      experimentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}experiment_id'],
+      )!,
+      arm: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}arm'],
+      )!,
+      assignedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}assigned_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RankingExperimentEnrollmentRowsTable createAlias(String alias) {
+    return $RankingExperimentEnrollmentRowsTable(attachedDatabase, alias);
+  }
+}
+
+class RankingExperimentEnrollmentRow extends DataClass
+    implements Insertable<RankingExperimentEnrollmentRow> {
+  final int id;
+  final String experimentId;
+  final String arm;
+  final DateTime assignedAt;
+  final DateTime updatedAt;
+  const RankingExperimentEnrollmentRow({
+    required this.id,
+    required this.experimentId,
+    required this.arm,
+    required this.assignedAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['experiment_id'] = Variable<String>(experimentId);
+    map['arm'] = Variable<String>(arm);
+    map['assigned_at'] = Variable<DateTime>(assignedAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  RankingExperimentEnrollmentRowsCompanion toCompanion(bool nullToAbsent) {
+    return RankingExperimentEnrollmentRowsCompanion(
+      id: Value(id),
+      experimentId: Value(experimentId),
+      arm: Value(arm),
+      assignedAt: Value(assignedAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory RankingExperimentEnrollmentRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RankingExperimentEnrollmentRow(
+      id: serializer.fromJson<int>(json['id']),
+      experimentId: serializer.fromJson<String>(json['experimentId']),
+      arm: serializer.fromJson<String>(json['arm']),
+      assignedAt: serializer.fromJson<DateTime>(json['assignedAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'experimentId': serializer.toJson<String>(experimentId),
+      'arm': serializer.toJson<String>(arm),
+      'assignedAt': serializer.toJson<DateTime>(assignedAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  RankingExperimentEnrollmentRow copyWith({
+    int? id,
+    String? experimentId,
+    String? arm,
+    DateTime? assignedAt,
+    DateTime? updatedAt,
+  }) => RankingExperimentEnrollmentRow(
+    id: id ?? this.id,
+    experimentId: experimentId ?? this.experimentId,
+    arm: arm ?? this.arm,
+    assignedAt: assignedAt ?? this.assignedAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  RankingExperimentEnrollmentRow copyWithCompanion(
+    RankingExperimentEnrollmentRowsCompanion data,
+  ) {
+    return RankingExperimentEnrollmentRow(
+      id: data.id.present ? data.id.value : this.id,
+      experimentId: data.experimentId.present
+          ? data.experimentId.value
+          : this.experimentId,
+      arm: data.arm.present ? data.arm.value : this.arm,
+      assignedAt: data.assignedAt.present
+          ? data.assignedAt.value
+          : this.assignedAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RankingExperimentEnrollmentRow(')
+          ..write('id: $id, ')
+          ..write('experimentId: $experimentId, ')
+          ..write('arm: $arm, ')
+          ..write('assignedAt: $assignedAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, experimentId, arm, assignedAt, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RankingExperimentEnrollmentRow &&
+          other.id == this.id &&
+          other.experimentId == this.experimentId &&
+          other.arm == this.arm &&
+          other.assignedAt == this.assignedAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class RankingExperimentEnrollmentRowsCompanion
+    extends UpdateCompanion<RankingExperimentEnrollmentRow> {
+  final Value<int> id;
+  final Value<String> experimentId;
+  final Value<String> arm;
+  final Value<DateTime> assignedAt;
+  final Value<DateTime> updatedAt;
+  const RankingExperimentEnrollmentRowsCompanion({
+    this.id = const Value.absent(),
+    this.experimentId = const Value.absent(),
+    this.arm = const Value.absent(),
+    this.assignedAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  RankingExperimentEnrollmentRowsCompanion.insert({
+    this.id = const Value.absent(),
+    required String experimentId,
+    required String arm,
+    required DateTime assignedAt,
+    required DateTime updatedAt,
+  }) : experimentId = Value(experimentId),
+       arm = Value(arm),
+       assignedAt = Value(assignedAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<RankingExperimentEnrollmentRow> custom({
+    Expression<int>? id,
+    Expression<String>? experimentId,
+    Expression<String>? arm,
+    Expression<DateTime>? assignedAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (experimentId != null) 'experiment_id': experimentId,
+      if (arm != null) 'arm': arm,
+      if (assignedAt != null) 'assigned_at': assignedAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  RankingExperimentEnrollmentRowsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? experimentId,
+    Value<String>? arm,
+    Value<DateTime>? assignedAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return RankingExperimentEnrollmentRowsCompanion(
+      id: id ?? this.id,
+      experimentId: experimentId ?? this.experimentId,
+      arm: arm ?? this.arm,
+      assignedAt: assignedAt ?? this.assignedAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (experimentId.present) {
+      map['experiment_id'] = Variable<String>(experimentId.value);
+    }
+    if (arm.present) {
+      map['arm'] = Variable<String>(arm.value);
+    }
+    if (assignedAt.present) {
+      map['assigned_at'] = Variable<DateTime>(assignedAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RankingExperimentEnrollmentRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('experimentId: $experimentId, ')
+          ..write('arm: $arm, ')
+          ..write('assignedAt: $assignedAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $RankingExperimentDailyMetricRowsTable
+    extends RankingExperimentDailyMetricRows
+    with
+        TableInfo<
+          $RankingExperimentDailyMetricRowsTable,
+          RankingExperimentDailyMetricRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $RankingExperimentDailyMetricRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _experimentIdMeta = const VerificationMeta(
+    'experimentId',
+  );
+  @override
+  late final GeneratedColumn<String> experimentId = GeneratedColumn<String>(
+    'experiment_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _armMeta = const VerificationMeta('arm');
+  @override
+  late final GeneratedColumn<String> arm = GeneratedColumn<String>(
+    'arm',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dayKeyMeta = const VerificationMeta('dayKey');
+  @override
+  late final GeneratedColumn<String> dayKey = GeneratedColumn<String>(
+    'day_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _exposuresMeta = const VerificationMeta(
+    'exposures',
+  );
+  @override
+  late final GeneratedColumn<int> exposures = GeneratedColumn<int>(
+    'exposures',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _exposedArticlesMeta = const VerificationMeta(
+    'exposedArticles',
+  );
+  @override
+  late final GeneratedColumn<int> exposedArticles = GeneratedColumn<int>(
+    'exposed_articles',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _sourceDiversitySumMeta =
+      const VerificationMeta('sourceDiversitySum');
+  @override
+  late final GeneratedColumn<double> sourceDiversitySum =
+      GeneratedColumn<double>(
+        'source_diversity_sum',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      );
+  static const VerificationMeta _sourceDiversitySquaredSumMeta =
+      const VerificationMeta('sourceDiversitySquaredSum');
+  @override
+  late final GeneratedColumn<double> sourceDiversitySquaredSum =
+      GeneratedColumn<double>(
+        'source_diversity_squared_sum',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      );
+  static const VerificationMeta _opensMeta = const VerificationMeta('opens');
+  @override
+  late final GeneratedColumn<int> opens = GeneratedColumn<int>(
+    'opens',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _activeSecondsMeta = const VerificationMeta(
+    'activeSeconds',
+  );
+  @override
+  late final GeneratedColumn<int> activeSeconds = GeneratedColumn<int>(
+    'active_seconds',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _completionsMeta = const VerificationMeta(
+    'completions',
+  );
+  @override
+  late final GeneratedColumn<int> completions = GeneratedColumn<int>(
+    'completions',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _quickExitsMeta = const VerificationMeta(
+    'quickExits',
+  );
+  @override
+  late final GeneratedColumn<int> quickExits = GeneratedColumn<int>(
+    'quick_exits',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _summaryEligibleMeta = const VerificationMeta(
+    'summaryEligible',
+  );
+  @override
+  late final GeneratedColumn<int> summaryEligible = GeneratedColumn<int>(
+    'summary_eligible',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _summaryCacheHitsMeta = const VerificationMeta(
+    'summaryCacheHits',
+  );
+  @override
+  late final GeneratedColumn<int> summaryCacheHits = GeneratedColumn<int>(
+    'summary_cache_hits',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _summaryGeneratedMeta = const VerificationMeta(
+    'summaryGenerated',
+  );
+  @override
+  late final GeneratedColumn<int> summaryGenerated = GeneratedColumn<int>(
+    'summary_generated',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _summaryFailuresMeta = const VerificationMeta(
+    'summaryFailures',
+  );
+  @override
+  late final GeneratedColumn<int> summaryFailures = GeneratedColumn<int>(
+    'summary_failures',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _summaryProviderCallsMeta =
+      const VerificationMeta('summaryProviderCalls');
+  @override
+  late final GeneratedColumn<int> summaryProviderCalls = GeneratedColumn<int>(
+    'summary_provider_calls',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _summaryLatencyMillisecondsMeta =
+      const VerificationMeta('summaryLatencyMilliseconds');
+  @override
+  late final GeneratedColumn<int> summaryLatencyMilliseconds =
+      GeneratedColumn<int>(
+        'summary_latency_milliseconds',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0),
+      );
+  static const VerificationMeta _summaryCostUsdMeta = const VerificationMeta(
+    'summaryCostUsd',
+  );
+  @override
+  late final GeneratedColumn<double> summaryCostUsd = GeneratedColumn<double>(
+    'summary_cost_usd',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    experimentId,
+    arm,
+    dayKey,
+    exposures,
+    exposedArticles,
+    sourceDiversitySum,
+    sourceDiversitySquaredSum,
+    opens,
+    activeSeconds,
+    completions,
+    quickExits,
+    summaryEligible,
+    summaryCacheHits,
+    summaryGenerated,
+    summaryFailures,
+    summaryProviderCalls,
+    summaryLatencyMilliseconds,
+    summaryCostUsd,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'ranking_experiment_daily_metric_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<RankingExperimentDailyMetricRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('experiment_id')) {
+      context.handle(
+        _experimentIdMeta,
+        experimentId.isAcceptableOrUnknown(
+          data['experiment_id']!,
+          _experimentIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_experimentIdMeta);
+    }
+    if (data.containsKey('arm')) {
+      context.handle(
+        _armMeta,
+        arm.isAcceptableOrUnknown(data['arm']!, _armMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_armMeta);
+    }
+    if (data.containsKey('day_key')) {
+      context.handle(
+        _dayKeyMeta,
+        dayKey.isAcceptableOrUnknown(data['day_key']!, _dayKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dayKeyMeta);
+    }
+    if (data.containsKey('exposures')) {
+      context.handle(
+        _exposuresMeta,
+        exposures.isAcceptableOrUnknown(data['exposures']!, _exposuresMeta),
+      );
+    }
+    if (data.containsKey('exposed_articles')) {
+      context.handle(
+        _exposedArticlesMeta,
+        exposedArticles.isAcceptableOrUnknown(
+          data['exposed_articles']!,
+          _exposedArticlesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_diversity_sum')) {
+      context.handle(
+        _sourceDiversitySumMeta,
+        sourceDiversitySum.isAcceptableOrUnknown(
+          data['source_diversity_sum']!,
+          _sourceDiversitySumMeta,
+        ),
+      );
+    }
+    if (data.containsKey('source_diversity_squared_sum')) {
+      context.handle(
+        _sourceDiversitySquaredSumMeta,
+        sourceDiversitySquaredSum.isAcceptableOrUnknown(
+          data['source_diversity_squared_sum']!,
+          _sourceDiversitySquaredSumMeta,
+        ),
+      );
+    }
+    if (data.containsKey('opens')) {
+      context.handle(
+        _opensMeta,
+        opens.isAcceptableOrUnknown(data['opens']!, _opensMeta),
+      );
+    }
+    if (data.containsKey('active_seconds')) {
+      context.handle(
+        _activeSecondsMeta,
+        activeSeconds.isAcceptableOrUnknown(
+          data['active_seconds']!,
+          _activeSecondsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('completions')) {
+      context.handle(
+        _completionsMeta,
+        completions.isAcceptableOrUnknown(
+          data['completions']!,
+          _completionsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('quick_exits')) {
+      context.handle(
+        _quickExitsMeta,
+        quickExits.isAcceptableOrUnknown(data['quick_exits']!, _quickExitsMeta),
+      );
+    }
+    if (data.containsKey('summary_eligible')) {
+      context.handle(
+        _summaryEligibleMeta,
+        summaryEligible.isAcceptableOrUnknown(
+          data['summary_eligible']!,
+          _summaryEligibleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('summary_cache_hits')) {
+      context.handle(
+        _summaryCacheHitsMeta,
+        summaryCacheHits.isAcceptableOrUnknown(
+          data['summary_cache_hits']!,
+          _summaryCacheHitsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('summary_generated')) {
+      context.handle(
+        _summaryGeneratedMeta,
+        summaryGenerated.isAcceptableOrUnknown(
+          data['summary_generated']!,
+          _summaryGeneratedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('summary_failures')) {
+      context.handle(
+        _summaryFailuresMeta,
+        summaryFailures.isAcceptableOrUnknown(
+          data['summary_failures']!,
+          _summaryFailuresMeta,
+        ),
+      );
+    }
+    if (data.containsKey('summary_provider_calls')) {
+      context.handle(
+        _summaryProviderCallsMeta,
+        summaryProviderCalls.isAcceptableOrUnknown(
+          data['summary_provider_calls']!,
+          _summaryProviderCallsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('summary_latency_milliseconds')) {
+      context.handle(
+        _summaryLatencyMillisecondsMeta,
+        summaryLatencyMilliseconds.isAcceptableOrUnknown(
+          data['summary_latency_milliseconds']!,
+          _summaryLatencyMillisecondsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('summary_cost_usd')) {
+      context.handle(
+        _summaryCostUsdMeta,
+        summaryCostUsd.isAcceptableOrUnknown(
+          data['summary_cost_usd']!,
+          _summaryCostUsdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {experimentId, arm, dayKey};
+  @override
+  RankingExperimentDailyMetricRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return RankingExperimentDailyMetricRow(
+      experimentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}experiment_id'],
+      )!,
+      arm: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}arm'],
+      )!,
+      dayKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}day_key'],
+      )!,
+      exposures: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}exposures'],
+      )!,
+      exposedArticles: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}exposed_articles'],
+      )!,
+      sourceDiversitySum: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}source_diversity_sum'],
+      )!,
+      sourceDiversitySquaredSum: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}source_diversity_squared_sum'],
+      )!,
+      opens: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}opens'],
+      )!,
+      activeSeconds: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}active_seconds'],
+      )!,
+      completions: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}completions'],
+      )!,
+      quickExits: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quick_exits'],
+      )!,
+      summaryEligible: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}summary_eligible'],
+      )!,
+      summaryCacheHits: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}summary_cache_hits'],
+      )!,
+      summaryGenerated: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}summary_generated'],
+      )!,
+      summaryFailures: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}summary_failures'],
+      )!,
+      summaryProviderCalls: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}summary_provider_calls'],
+      )!,
+      summaryLatencyMilliseconds: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}summary_latency_milliseconds'],
+      )!,
+      summaryCostUsd: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}summary_cost_usd'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $RankingExperimentDailyMetricRowsTable createAlias(String alias) {
+    return $RankingExperimentDailyMetricRowsTable(attachedDatabase, alias);
+  }
+}
+
+class RankingExperimentDailyMetricRow extends DataClass
+    implements Insertable<RankingExperimentDailyMetricRow> {
+  final String experimentId;
+  final String arm;
+  final String dayKey;
+  final int exposures;
+  final int exposedArticles;
+  final double sourceDiversitySum;
+  final double sourceDiversitySquaredSum;
+  final int opens;
+  final int activeSeconds;
+  final int completions;
+  final int quickExits;
+  final int summaryEligible;
+  final int summaryCacheHits;
+  final int summaryGenerated;
+  final int summaryFailures;
+  final int summaryProviderCalls;
+  final int summaryLatencyMilliseconds;
+  final double summaryCostUsd;
+  final DateTime updatedAt;
+  const RankingExperimentDailyMetricRow({
+    required this.experimentId,
+    required this.arm,
+    required this.dayKey,
+    required this.exposures,
+    required this.exposedArticles,
+    required this.sourceDiversitySum,
+    required this.sourceDiversitySquaredSum,
+    required this.opens,
+    required this.activeSeconds,
+    required this.completions,
+    required this.quickExits,
+    required this.summaryEligible,
+    required this.summaryCacheHits,
+    required this.summaryGenerated,
+    required this.summaryFailures,
+    required this.summaryProviderCalls,
+    required this.summaryLatencyMilliseconds,
+    required this.summaryCostUsd,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['experiment_id'] = Variable<String>(experimentId);
+    map['arm'] = Variable<String>(arm);
+    map['day_key'] = Variable<String>(dayKey);
+    map['exposures'] = Variable<int>(exposures);
+    map['exposed_articles'] = Variable<int>(exposedArticles);
+    map['source_diversity_sum'] = Variable<double>(sourceDiversitySum);
+    map['source_diversity_squared_sum'] = Variable<double>(
+      sourceDiversitySquaredSum,
+    );
+    map['opens'] = Variable<int>(opens);
+    map['active_seconds'] = Variable<int>(activeSeconds);
+    map['completions'] = Variable<int>(completions);
+    map['quick_exits'] = Variable<int>(quickExits);
+    map['summary_eligible'] = Variable<int>(summaryEligible);
+    map['summary_cache_hits'] = Variable<int>(summaryCacheHits);
+    map['summary_generated'] = Variable<int>(summaryGenerated);
+    map['summary_failures'] = Variable<int>(summaryFailures);
+    map['summary_provider_calls'] = Variable<int>(summaryProviderCalls);
+    map['summary_latency_milliseconds'] = Variable<int>(
+      summaryLatencyMilliseconds,
+    );
+    map['summary_cost_usd'] = Variable<double>(summaryCostUsd);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  RankingExperimentDailyMetricRowsCompanion toCompanion(bool nullToAbsent) {
+    return RankingExperimentDailyMetricRowsCompanion(
+      experimentId: Value(experimentId),
+      arm: Value(arm),
+      dayKey: Value(dayKey),
+      exposures: Value(exposures),
+      exposedArticles: Value(exposedArticles),
+      sourceDiversitySum: Value(sourceDiversitySum),
+      sourceDiversitySquaredSum: Value(sourceDiversitySquaredSum),
+      opens: Value(opens),
+      activeSeconds: Value(activeSeconds),
+      completions: Value(completions),
+      quickExits: Value(quickExits),
+      summaryEligible: Value(summaryEligible),
+      summaryCacheHits: Value(summaryCacheHits),
+      summaryGenerated: Value(summaryGenerated),
+      summaryFailures: Value(summaryFailures),
+      summaryProviderCalls: Value(summaryProviderCalls),
+      summaryLatencyMilliseconds: Value(summaryLatencyMilliseconds),
+      summaryCostUsd: Value(summaryCostUsd),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory RankingExperimentDailyMetricRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return RankingExperimentDailyMetricRow(
+      experimentId: serializer.fromJson<String>(json['experimentId']),
+      arm: serializer.fromJson<String>(json['arm']),
+      dayKey: serializer.fromJson<String>(json['dayKey']),
+      exposures: serializer.fromJson<int>(json['exposures']),
+      exposedArticles: serializer.fromJson<int>(json['exposedArticles']),
+      sourceDiversitySum: serializer.fromJson<double>(
+        json['sourceDiversitySum'],
+      ),
+      sourceDiversitySquaredSum: serializer.fromJson<double>(
+        json['sourceDiversitySquaredSum'],
+      ),
+      opens: serializer.fromJson<int>(json['opens']),
+      activeSeconds: serializer.fromJson<int>(json['activeSeconds']),
+      completions: serializer.fromJson<int>(json['completions']),
+      quickExits: serializer.fromJson<int>(json['quickExits']),
+      summaryEligible: serializer.fromJson<int>(json['summaryEligible']),
+      summaryCacheHits: serializer.fromJson<int>(json['summaryCacheHits']),
+      summaryGenerated: serializer.fromJson<int>(json['summaryGenerated']),
+      summaryFailures: serializer.fromJson<int>(json['summaryFailures']),
+      summaryProviderCalls: serializer.fromJson<int>(
+        json['summaryProviderCalls'],
+      ),
+      summaryLatencyMilliseconds: serializer.fromJson<int>(
+        json['summaryLatencyMilliseconds'],
+      ),
+      summaryCostUsd: serializer.fromJson<double>(json['summaryCostUsd']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'experimentId': serializer.toJson<String>(experimentId),
+      'arm': serializer.toJson<String>(arm),
+      'dayKey': serializer.toJson<String>(dayKey),
+      'exposures': serializer.toJson<int>(exposures),
+      'exposedArticles': serializer.toJson<int>(exposedArticles),
+      'sourceDiversitySum': serializer.toJson<double>(sourceDiversitySum),
+      'sourceDiversitySquaredSum': serializer.toJson<double>(
+        sourceDiversitySquaredSum,
+      ),
+      'opens': serializer.toJson<int>(opens),
+      'activeSeconds': serializer.toJson<int>(activeSeconds),
+      'completions': serializer.toJson<int>(completions),
+      'quickExits': serializer.toJson<int>(quickExits),
+      'summaryEligible': serializer.toJson<int>(summaryEligible),
+      'summaryCacheHits': serializer.toJson<int>(summaryCacheHits),
+      'summaryGenerated': serializer.toJson<int>(summaryGenerated),
+      'summaryFailures': serializer.toJson<int>(summaryFailures),
+      'summaryProviderCalls': serializer.toJson<int>(summaryProviderCalls),
+      'summaryLatencyMilliseconds': serializer.toJson<int>(
+        summaryLatencyMilliseconds,
+      ),
+      'summaryCostUsd': serializer.toJson<double>(summaryCostUsd),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  RankingExperimentDailyMetricRow copyWith({
+    String? experimentId,
+    String? arm,
+    String? dayKey,
+    int? exposures,
+    int? exposedArticles,
+    double? sourceDiversitySum,
+    double? sourceDiversitySquaredSum,
+    int? opens,
+    int? activeSeconds,
+    int? completions,
+    int? quickExits,
+    int? summaryEligible,
+    int? summaryCacheHits,
+    int? summaryGenerated,
+    int? summaryFailures,
+    int? summaryProviderCalls,
+    int? summaryLatencyMilliseconds,
+    double? summaryCostUsd,
+    DateTime? updatedAt,
+  }) => RankingExperimentDailyMetricRow(
+    experimentId: experimentId ?? this.experimentId,
+    arm: arm ?? this.arm,
+    dayKey: dayKey ?? this.dayKey,
+    exposures: exposures ?? this.exposures,
+    exposedArticles: exposedArticles ?? this.exposedArticles,
+    sourceDiversitySum: sourceDiversitySum ?? this.sourceDiversitySum,
+    sourceDiversitySquaredSum:
+        sourceDiversitySquaredSum ?? this.sourceDiversitySquaredSum,
+    opens: opens ?? this.opens,
+    activeSeconds: activeSeconds ?? this.activeSeconds,
+    completions: completions ?? this.completions,
+    quickExits: quickExits ?? this.quickExits,
+    summaryEligible: summaryEligible ?? this.summaryEligible,
+    summaryCacheHits: summaryCacheHits ?? this.summaryCacheHits,
+    summaryGenerated: summaryGenerated ?? this.summaryGenerated,
+    summaryFailures: summaryFailures ?? this.summaryFailures,
+    summaryProviderCalls: summaryProviderCalls ?? this.summaryProviderCalls,
+    summaryLatencyMilliseconds:
+        summaryLatencyMilliseconds ?? this.summaryLatencyMilliseconds,
+    summaryCostUsd: summaryCostUsd ?? this.summaryCostUsd,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  RankingExperimentDailyMetricRow copyWithCompanion(
+    RankingExperimentDailyMetricRowsCompanion data,
+  ) {
+    return RankingExperimentDailyMetricRow(
+      experimentId: data.experimentId.present
+          ? data.experimentId.value
+          : this.experimentId,
+      arm: data.arm.present ? data.arm.value : this.arm,
+      dayKey: data.dayKey.present ? data.dayKey.value : this.dayKey,
+      exposures: data.exposures.present ? data.exposures.value : this.exposures,
+      exposedArticles: data.exposedArticles.present
+          ? data.exposedArticles.value
+          : this.exposedArticles,
+      sourceDiversitySum: data.sourceDiversitySum.present
+          ? data.sourceDiversitySum.value
+          : this.sourceDiversitySum,
+      sourceDiversitySquaredSum: data.sourceDiversitySquaredSum.present
+          ? data.sourceDiversitySquaredSum.value
+          : this.sourceDiversitySquaredSum,
+      opens: data.opens.present ? data.opens.value : this.opens,
+      activeSeconds: data.activeSeconds.present
+          ? data.activeSeconds.value
+          : this.activeSeconds,
+      completions: data.completions.present
+          ? data.completions.value
+          : this.completions,
+      quickExits: data.quickExits.present
+          ? data.quickExits.value
+          : this.quickExits,
+      summaryEligible: data.summaryEligible.present
+          ? data.summaryEligible.value
+          : this.summaryEligible,
+      summaryCacheHits: data.summaryCacheHits.present
+          ? data.summaryCacheHits.value
+          : this.summaryCacheHits,
+      summaryGenerated: data.summaryGenerated.present
+          ? data.summaryGenerated.value
+          : this.summaryGenerated,
+      summaryFailures: data.summaryFailures.present
+          ? data.summaryFailures.value
+          : this.summaryFailures,
+      summaryProviderCalls: data.summaryProviderCalls.present
+          ? data.summaryProviderCalls.value
+          : this.summaryProviderCalls,
+      summaryLatencyMilliseconds: data.summaryLatencyMilliseconds.present
+          ? data.summaryLatencyMilliseconds.value
+          : this.summaryLatencyMilliseconds,
+      summaryCostUsd: data.summaryCostUsd.present
+          ? data.summaryCostUsd.value
+          : this.summaryCostUsd,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RankingExperimentDailyMetricRow(')
+          ..write('experimentId: $experimentId, ')
+          ..write('arm: $arm, ')
+          ..write('dayKey: $dayKey, ')
+          ..write('exposures: $exposures, ')
+          ..write('exposedArticles: $exposedArticles, ')
+          ..write('sourceDiversitySum: $sourceDiversitySum, ')
+          ..write('sourceDiversitySquaredSum: $sourceDiversitySquaredSum, ')
+          ..write('opens: $opens, ')
+          ..write('activeSeconds: $activeSeconds, ')
+          ..write('completions: $completions, ')
+          ..write('quickExits: $quickExits, ')
+          ..write('summaryEligible: $summaryEligible, ')
+          ..write('summaryCacheHits: $summaryCacheHits, ')
+          ..write('summaryGenerated: $summaryGenerated, ')
+          ..write('summaryFailures: $summaryFailures, ')
+          ..write('summaryProviderCalls: $summaryProviderCalls, ')
+          ..write('summaryLatencyMilliseconds: $summaryLatencyMilliseconds, ')
+          ..write('summaryCostUsd: $summaryCostUsd, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    experimentId,
+    arm,
+    dayKey,
+    exposures,
+    exposedArticles,
+    sourceDiversitySum,
+    sourceDiversitySquaredSum,
+    opens,
+    activeSeconds,
+    completions,
+    quickExits,
+    summaryEligible,
+    summaryCacheHits,
+    summaryGenerated,
+    summaryFailures,
+    summaryProviderCalls,
+    summaryLatencyMilliseconds,
+    summaryCostUsd,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is RankingExperimentDailyMetricRow &&
+          other.experimentId == this.experimentId &&
+          other.arm == this.arm &&
+          other.dayKey == this.dayKey &&
+          other.exposures == this.exposures &&
+          other.exposedArticles == this.exposedArticles &&
+          other.sourceDiversitySum == this.sourceDiversitySum &&
+          other.sourceDiversitySquaredSum == this.sourceDiversitySquaredSum &&
+          other.opens == this.opens &&
+          other.activeSeconds == this.activeSeconds &&
+          other.completions == this.completions &&
+          other.quickExits == this.quickExits &&
+          other.summaryEligible == this.summaryEligible &&
+          other.summaryCacheHits == this.summaryCacheHits &&
+          other.summaryGenerated == this.summaryGenerated &&
+          other.summaryFailures == this.summaryFailures &&
+          other.summaryProviderCalls == this.summaryProviderCalls &&
+          other.summaryLatencyMilliseconds == this.summaryLatencyMilliseconds &&
+          other.summaryCostUsd == this.summaryCostUsd &&
+          other.updatedAt == this.updatedAt);
+}
+
+class RankingExperimentDailyMetricRowsCompanion
+    extends UpdateCompanion<RankingExperimentDailyMetricRow> {
+  final Value<String> experimentId;
+  final Value<String> arm;
+  final Value<String> dayKey;
+  final Value<int> exposures;
+  final Value<int> exposedArticles;
+  final Value<double> sourceDiversitySum;
+  final Value<double> sourceDiversitySquaredSum;
+  final Value<int> opens;
+  final Value<int> activeSeconds;
+  final Value<int> completions;
+  final Value<int> quickExits;
+  final Value<int> summaryEligible;
+  final Value<int> summaryCacheHits;
+  final Value<int> summaryGenerated;
+  final Value<int> summaryFailures;
+  final Value<int> summaryProviderCalls;
+  final Value<int> summaryLatencyMilliseconds;
+  final Value<double> summaryCostUsd;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const RankingExperimentDailyMetricRowsCompanion({
+    this.experimentId = const Value.absent(),
+    this.arm = const Value.absent(),
+    this.dayKey = const Value.absent(),
+    this.exposures = const Value.absent(),
+    this.exposedArticles = const Value.absent(),
+    this.sourceDiversitySum = const Value.absent(),
+    this.sourceDiversitySquaredSum = const Value.absent(),
+    this.opens = const Value.absent(),
+    this.activeSeconds = const Value.absent(),
+    this.completions = const Value.absent(),
+    this.quickExits = const Value.absent(),
+    this.summaryEligible = const Value.absent(),
+    this.summaryCacheHits = const Value.absent(),
+    this.summaryGenerated = const Value.absent(),
+    this.summaryFailures = const Value.absent(),
+    this.summaryProviderCalls = const Value.absent(),
+    this.summaryLatencyMilliseconds = const Value.absent(),
+    this.summaryCostUsd = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  RankingExperimentDailyMetricRowsCompanion.insert({
+    required String experimentId,
+    required String arm,
+    required String dayKey,
+    this.exposures = const Value.absent(),
+    this.exposedArticles = const Value.absent(),
+    this.sourceDiversitySum = const Value.absent(),
+    this.sourceDiversitySquaredSum = const Value.absent(),
+    this.opens = const Value.absent(),
+    this.activeSeconds = const Value.absent(),
+    this.completions = const Value.absent(),
+    this.quickExits = const Value.absent(),
+    this.summaryEligible = const Value.absent(),
+    this.summaryCacheHits = const Value.absent(),
+    this.summaryGenerated = const Value.absent(),
+    this.summaryFailures = const Value.absent(),
+    this.summaryProviderCalls = const Value.absent(),
+    this.summaryLatencyMilliseconds = const Value.absent(),
+    this.summaryCostUsd = const Value.absent(),
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : experimentId = Value(experimentId),
+       arm = Value(arm),
+       dayKey = Value(dayKey),
+       updatedAt = Value(updatedAt);
+  static Insertable<RankingExperimentDailyMetricRow> custom({
+    Expression<String>? experimentId,
+    Expression<String>? arm,
+    Expression<String>? dayKey,
+    Expression<int>? exposures,
+    Expression<int>? exposedArticles,
+    Expression<double>? sourceDiversitySum,
+    Expression<double>? sourceDiversitySquaredSum,
+    Expression<int>? opens,
+    Expression<int>? activeSeconds,
+    Expression<int>? completions,
+    Expression<int>? quickExits,
+    Expression<int>? summaryEligible,
+    Expression<int>? summaryCacheHits,
+    Expression<int>? summaryGenerated,
+    Expression<int>? summaryFailures,
+    Expression<int>? summaryProviderCalls,
+    Expression<int>? summaryLatencyMilliseconds,
+    Expression<double>? summaryCostUsd,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (experimentId != null) 'experiment_id': experimentId,
+      if (arm != null) 'arm': arm,
+      if (dayKey != null) 'day_key': dayKey,
+      if (exposures != null) 'exposures': exposures,
+      if (exposedArticles != null) 'exposed_articles': exposedArticles,
+      if (sourceDiversitySum != null)
+        'source_diversity_sum': sourceDiversitySum,
+      if (sourceDiversitySquaredSum != null)
+        'source_diversity_squared_sum': sourceDiversitySquaredSum,
+      if (opens != null) 'opens': opens,
+      if (activeSeconds != null) 'active_seconds': activeSeconds,
+      if (completions != null) 'completions': completions,
+      if (quickExits != null) 'quick_exits': quickExits,
+      if (summaryEligible != null) 'summary_eligible': summaryEligible,
+      if (summaryCacheHits != null) 'summary_cache_hits': summaryCacheHits,
+      if (summaryGenerated != null) 'summary_generated': summaryGenerated,
+      if (summaryFailures != null) 'summary_failures': summaryFailures,
+      if (summaryProviderCalls != null)
+        'summary_provider_calls': summaryProviderCalls,
+      if (summaryLatencyMilliseconds != null)
+        'summary_latency_milliseconds': summaryLatencyMilliseconds,
+      if (summaryCostUsd != null) 'summary_cost_usd': summaryCostUsd,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  RankingExperimentDailyMetricRowsCompanion copyWith({
+    Value<String>? experimentId,
+    Value<String>? arm,
+    Value<String>? dayKey,
+    Value<int>? exposures,
+    Value<int>? exposedArticles,
+    Value<double>? sourceDiversitySum,
+    Value<double>? sourceDiversitySquaredSum,
+    Value<int>? opens,
+    Value<int>? activeSeconds,
+    Value<int>? completions,
+    Value<int>? quickExits,
+    Value<int>? summaryEligible,
+    Value<int>? summaryCacheHits,
+    Value<int>? summaryGenerated,
+    Value<int>? summaryFailures,
+    Value<int>? summaryProviderCalls,
+    Value<int>? summaryLatencyMilliseconds,
+    Value<double>? summaryCostUsd,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return RankingExperimentDailyMetricRowsCompanion(
+      experimentId: experimentId ?? this.experimentId,
+      arm: arm ?? this.arm,
+      dayKey: dayKey ?? this.dayKey,
+      exposures: exposures ?? this.exposures,
+      exposedArticles: exposedArticles ?? this.exposedArticles,
+      sourceDiversitySum: sourceDiversitySum ?? this.sourceDiversitySum,
+      sourceDiversitySquaredSum:
+          sourceDiversitySquaredSum ?? this.sourceDiversitySquaredSum,
+      opens: opens ?? this.opens,
+      activeSeconds: activeSeconds ?? this.activeSeconds,
+      completions: completions ?? this.completions,
+      quickExits: quickExits ?? this.quickExits,
+      summaryEligible: summaryEligible ?? this.summaryEligible,
+      summaryCacheHits: summaryCacheHits ?? this.summaryCacheHits,
+      summaryGenerated: summaryGenerated ?? this.summaryGenerated,
+      summaryFailures: summaryFailures ?? this.summaryFailures,
+      summaryProviderCalls: summaryProviderCalls ?? this.summaryProviderCalls,
+      summaryLatencyMilliseconds:
+          summaryLatencyMilliseconds ?? this.summaryLatencyMilliseconds,
+      summaryCostUsd: summaryCostUsd ?? this.summaryCostUsd,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (experimentId.present) {
+      map['experiment_id'] = Variable<String>(experimentId.value);
+    }
+    if (arm.present) {
+      map['arm'] = Variable<String>(arm.value);
+    }
+    if (dayKey.present) {
+      map['day_key'] = Variable<String>(dayKey.value);
+    }
+    if (exposures.present) {
+      map['exposures'] = Variable<int>(exposures.value);
+    }
+    if (exposedArticles.present) {
+      map['exposed_articles'] = Variable<int>(exposedArticles.value);
+    }
+    if (sourceDiversitySum.present) {
+      map['source_diversity_sum'] = Variable<double>(sourceDiversitySum.value);
+    }
+    if (sourceDiversitySquaredSum.present) {
+      map['source_diversity_squared_sum'] = Variable<double>(
+        sourceDiversitySquaredSum.value,
+      );
+    }
+    if (opens.present) {
+      map['opens'] = Variable<int>(opens.value);
+    }
+    if (activeSeconds.present) {
+      map['active_seconds'] = Variable<int>(activeSeconds.value);
+    }
+    if (completions.present) {
+      map['completions'] = Variable<int>(completions.value);
+    }
+    if (quickExits.present) {
+      map['quick_exits'] = Variable<int>(quickExits.value);
+    }
+    if (summaryEligible.present) {
+      map['summary_eligible'] = Variable<int>(summaryEligible.value);
+    }
+    if (summaryCacheHits.present) {
+      map['summary_cache_hits'] = Variable<int>(summaryCacheHits.value);
+    }
+    if (summaryGenerated.present) {
+      map['summary_generated'] = Variable<int>(summaryGenerated.value);
+    }
+    if (summaryFailures.present) {
+      map['summary_failures'] = Variable<int>(summaryFailures.value);
+    }
+    if (summaryProviderCalls.present) {
+      map['summary_provider_calls'] = Variable<int>(summaryProviderCalls.value);
+    }
+    if (summaryLatencyMilliseconds.present) {
+      map['summary_latency_milliseconds'] = Variable<int>(
+        summaryLatencyMilliseconds.value,
+      );
+    }
+    if (summaryCostUsd.present) {
+      map['summary_cost_usd'] = Variable<double>(summaryCostUsd.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('RankingExperimentDailyMetricRowsCompanion(')
+          ..write('experimentId: $experimentId, ')
+          ..write('arm: $arm, ')
+          ..write('dayKey: $dayKey, ')
+          ..write('exposures: $exposures, ')
+          ..write('exposedArticles: $exposedArticles, ')
+          ..write('sourceDiversitySum: $sourceDiversitySum, ')
+          ..write('sourceDiversitySquaredSum: $sourceDiversitySquaredSum, ')
+          ..write('opens: $opens, ')
+          ..write('activeSeconds: $activeSeconds, ')
+          ..write('completions: $completions, ')
+          ..write('quickExits: $quickExits, ')
+          ..write('summaryEligible: $summaryEligible, ')
+          ..write('summaryCacheHits: $summaryCacheHits, ')
+          ..write('summaryGenerated: $summaryGenerated, ')
+          ..write('summaryFailures: $summaryFailures, ')
+          ..write('summaryProviderCalls: $summaryProviderCalls, ')
+          ..write('summaryLatencyMilliseconds: $summaryLatencyMilliseconds, ')
+          ..write('summaryCostUsd: $summaryCostUsd, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$RiverDatabase extends GeneratedDatabase {
   _$RiverDatabase(QueryExecutor e) : super(e);
   $RiverDatabaseManager get managers => $RiverDatabaseManager(this);
@@ -16286,6 +17767,12 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
   late final $PodcastDownloadsTable podcastDownloads = $PodcastDownloadsTable(
     this,
   );
+  late final $RankingExperimentEnrollmentRowsTable
+  rankingExperimentEnrollmentRows = $RankingExperimentEnrollmentRowsTable(this);
+  late final $RankingExperimentDailyMetricRowsTable
+  rankingExperimentDailyMetricRows = $RankingExperimentDailyMetricRowsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -16316,6 +17803,8 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
     podcastShows,
     podcastEpisodes,
     podcastDownloads,
+    rankingExperimentEnrollmentRows,
+    rankingExperimentDailyMetricRows,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -26333,6 +27822,736 @@ typedef $$PodcastDownloadsTableProcessedTableManager =
       PodcastDownload,
       PrefetchHooks Function({bool episodeId})
     >;
+typedef $$RankingExperimentEnrollmentRowsTableCreateCompanionBuilder =
+    RankingExperimentEnrollmentRowsCompanion Function({
+      Value<int> id,
+      required String experimentId,
+      required String arm,
+      required DateTime assignedAt,
+      required DateTime updatedAt,
+    });
+typedef $$RankingExperimentEnrollmentRowsTableUpdateCompanionBuilder =
+    RankingExperimentEnrollmentRowsCompanion Function({
+      Value<int> id,
+      Value<String> experimentId,
+      Value<String> arm,
+      Value<DateTime> assignedAt,
+      Value<DateTime> updatedAt,
+    });
+
+class $$RankingExperimentEnrollmentRowsTableFilterComposer
+    extends Composer<_$RiverDatabase, $RankingExperimentEnrollmentRowsTable> {
+  $$RankingExperimentEnrollmentRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get experimentId => $composableBuilder(
+    column: $table.experimentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get arm => $composableBuilder(
+    column: $table.arm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get assignedAt => $composableBuilder(
+    column: $table.assignedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RankingExperimentEnrollmentRowsTableOrderingComposer
+    extends Composer<_$RiverDatabase, $RankingExperimentEnrollmentRowsTable> {
+  $$RankingExperimentEnrollmentRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get experimentId => $composableBuilder(
+    column: $table.experimentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get arm => $composableBuilder(
+    column: $table.arm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get assignedAt => $composableBuilder(
+    column: $table.assignedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RankingExperimentEnrollmentRowsTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $RankingExperimentEnrollmentRowsTable> {
+  $$RankingExperimentEnrollmentRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get experimentId => $composableBuilder(
+    column: $table.experimentId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get arm =>
+      $composableBuilder(column: $table.arm, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get assignedAt => $composableBuilder(
+    column: $table.assignedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$RankingExperimentEnrollmentRowsTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $RankingExperimentEnrollmentRowsTable,
+          RankingExperimentEnrollmentRow,
+          $$RankingExperimentEnrollmentRowsTableFilterComposer,
+          $$RankingExperimentEnrollmentRowsTableOrderingComposer,
+          $$RankingExperimentEnrollmentRowsTableAnnotationComposer,
+          $$RankingExperimentEnrollmentRowsTableCreateCompanionBuilder,
+          $$RankingExperimentEnrollmentRowsTableUpdateCompanionBuilder,
+          (
+            RankingExperimentEnrollmentRow,
+            BaseReferences<
+              _$RiverDatabase,
+              $RankingExperimentEnrollmentRowsTable,
+              RankingExperimentEnrollmentRow
+            >,
+          ),
+          RankingExperimentEnrollmentRow,
+          PrefetchHooks Function()
+        > {
+  $$RankingExperimentEnrollmentRowsTableTableManager(
+    _$RiverDatabase db,
+    $RankingExperimentEnrollmentRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RankingExperimentEnrollmentRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$RankingExperimentEnrollmentRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$RankingExperimentEnrollmentRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> experimentId = const Value.absent(),
+                Value<String> arm = const Value.absent(),
+                Value<DateTime> assignedAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => RankingExperimentEnrollmentRowsCompanion(
+                id: id,
+                experimentId: experimentId,
+                arm: arm,
+                assignedAt: assignedAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String experimentId,
+                required String arm,
+                required DateTime assignedAt,
+                required DateTime updatedAt,
+              }) => RankingExperimentEnrollmentRowsCompanion.insert(
+                id: id,
+                experimentId: experimentId,
+                arm: arm,
+                assignedAt: assignedAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RankingExperimentEnrollmentRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $RankingExperimentEnrollmentRowsTable,
+      RankingExperimentEnrollmentRow,
+      $$RankingExperimentEnrollmentRowsTableFilterComposer,
+      $$RankingExperimentEnrollmentRowsTableOrderingComposer,
+      $$RankingExperimentEnrollmentRowsTableAnnotationComposer,
+      $$RankingExperimentEnrollmentRowsTableCreateCompanionBuilder,
+      $$RankingExperimentEnrollmentRowsTableUpdateCompanionBuilder,
+      (
+        RankingExperimentEnrollmentRow,
+        BaseReferences<
+          _$RiverDatabase,
+          $RankingExperimentEnrollmentRowsTable,
+          RankingExperimentEnrollmentRow
+        >,
+      ),
+      RankingExperimentEnrollmentRow,
+      PrefetchHooks Function()
+    >;
+typedef $$RankingExperimentDailyMetricRowsTableCreateCompanionBuilder =
+    RankingExperimentDailyMetricRowsCompanion Function({
+      required String experimentId,
+      required String arm,
+      required String dayKey,
+      Value<int> exposures,
+      Value<int> exposedArticles,
+      Value<double> sourceDiversitySum,
+      Value<double> sourceDiversitySquaredSum,
+      Value<int> opens,
+      Value<int> activeSeconds,
+      Value<int> completions,
+      Value<int> quickExits,
+      Value<int> summaryEligible,
+      Value<int> summaryCacheHits,
+      Value<int> summaryGenerated,
+      Value<int> summaryFailures,
+      Value<int> summaryProviderCalls,
+      Value<int> summaryLatencyMilliseconds,
+      Value<double> summaryCostUsd,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$RankingExperimentDailyMetricRowsTableUpdateCompanionBuilder =
+    RankingExperimentDailyMetricRowsCompanion Function({
+      Value<String> experimentId,
+      Value<String> arm,
+      Value<String> dayKey,
+      Value<int> exposures,
+      Value<int> exposedArticles,
+      Value<double> sourceDiversitySum,
+      Value<double> sourceDiversitySquaredSum,
+      Value<int> opens,
+      Value<int> activeSeconds,
+      Value<int> completions,
+      Value<int> quickExits,
+      Value<int> summaryEligible,
+      Value<int> summaryCacheHits,
+      Value<int> summaryGenerated,
+      Value<int> summaryFailures,
+      Value<int> summaryProviderCalls,
+      Value<int> summaryLatencyMilliseconds,
+      Value<double> summaryCostUsd,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$RankingExperimentDailyMetricRowsTableFilterComposer
+    extends Composer<_$RiverDatabase, $RankingExperimentDailyMetricRowsTable> {
+  $$RankingExperimentDailyMetricRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get experimentId => $composableBuilder(
+    column: $table.experimentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get arm => $composableBuilder(
+    column: $table.arm,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dayKey => $composableBuilder(
+    column: $table.dayKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get exposures => $composableBuilder(
+    column: $table.exposures,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get exposedArticles => $composableBuilder(
+    column: $table.exposedArticles,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sourceDiversitySum => $composableBuilder(
+    column: $table.sourceDiversitySum,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get sourceDiversitySquaredSum => $composableBuilder(
+    column: $table.sourceDiversitySquaredSum,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get opens => $composableBuilder(
+    column: $table.opens,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get activeSeconds => $composableBuilder(
+    column: $table.activeSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get completions => $composableBuilder(
+    column: $table.completions,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quickExits => $composableBuilder(
+    column: $table.quickExits,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get summaryEligible => $composableBuilder(
+    column: $table.summaryEligible,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get summaryCacheHits => $composableBuilder(
+    column: $table.summaryCacheHits,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get summaryGenerated => $composableBuilder(
+    column: $table.summaryGenerated,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get summaryFailures => $composableBuilder(
+    column: $table.summaryFailures,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get summaryProviderCalls => $composableBuilder(
+    column: $table.summaryProviderCalls,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get summaryLatencyMilliseconds => $composableBuilder(
+    column: $table.summaryLatencyMilliseconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get summaryCostUsd => $composableBuilder(
+    column: $table.summaryCostUsd,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$RankingExperimentDailyMetricRowsTableOrderingComposer
+    extends Composer<_$RiverDatabase, $RankingExperimentDailyMetricRowsTable> {
+  $$RankingExperimentDailyMetricRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get experimentId => $composableBuilder(
+    column: $table.experimentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get arm => $composableBuilder(
+    column: $table.arm,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dayKey => $composableBuilder(
+    column: $table.dayKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get exposures => $composableBuilder(
+    column: $table.exposures,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get exposedArticles => $composableBuilder(
+    column: $table.exposedArticles,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get sourceDiversitySum => $composableBuilder(
+    column: $table.sourceDiversitySum,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get sourceDiversitySquaredSum => $composableBuilder(
+    column: $table.sourceDiversitySquaredSum,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get opens => $composableBuilder(
+    column: $table.opens,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get activeSeconds => $composableBuilder(
+    column: $table.activeSeconds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get completions => $composableBuilder(
+    column: $table.completions,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quickExits => $composableBuilder(
+    column: $table.quickExits,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get summaryEligible => $composableBuilder(
+    column: $table.summaryEligible,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get summaryCacheHits => $composableBuilder(
+    column: $table.summaryCacheHits,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get summaryGenerated => $composableBuilder(
+    column: $table.summaryGenerated,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get summaryFailures => $composableBuilder(
+    column: $table.summaryFailures,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get summaryProviderCalls => $composableBuilder(
+    column: $table.summaryProviderCalls,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get summaryLatencyMilliseconds => $composableBuilder(
+    column: $table.summaryLatencyMilliseconds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get summaryCostUsd => $composableBuilder(
+    column: $table.summaryCostUsd,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$RankingExperimentDailyMetricRowsTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $RankingExperimentDailyMetricRowsTable> {
+  $$RankingExperimentDailyMetricRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get experimentId => $composableBuilder(
+    column: $table.experimentId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get arm =>
+      $composableBuilder(column: $table.arm, builder: (column) => column);
+
+  GeneratedColumn<String> get dayKey =>
+      $composableBuilder(column: $table.dayKey, builder: (column) => column);
+
+  GeneratedColumn<int> get exposures =>
+      $composableBuilder(column: $table.exposures, builder: (column) => column);
+
+  GeneratedColumn<int> get exposedArticles => $composableBuilder(
+    column: $table.exposedArticles,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get sourceDiversitySum => $composableBuilder(
+    column: $table.sourceDiversitySum,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get sourceDiversitySquaredSum => $composableBuilder(
+    column: $table.sourceDiversitySquaredSum,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get opens =>
+      $composableBuilder(column: $table.opens, builder: (column) => column);
+
+  GeneratedColumn<int> get activeSeconds => $composableBuilder(
+    column: $table.activeSeconds,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get completions => $composableBuilder(
+    column: $table.completions,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get quickExits => $composableBuilder(
+    column: $table.quickExits,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get summaryEligible => $composableBuilder(
+    column: $table.summaryEligible,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get summaryCacheHits => $composableBuilder(
+    column: $table.summaryCacheHits,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get summaryGenerated => $composableBuilder(
+    column: $table.summaryGenerated,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get summaryFailures => $composableBuilder(
+    column: $table.summaryFailures,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get summaryProviderCalls => $composableBuilder(
+    column: $table.summaryProviderCalls,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get summaryLatencyMilliseconds => $composableBuilder(
+    column: $table.summaryLatencyMilliseconds,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get summaryCostUsd => $composableBuilder(
+    column: $table.summaryCostUsd,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$RankingExperimentDailyMetricRowsTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $RankingExperimentDailyMetricRowsTable,
+          RankingExperimentDailyMetricRow,
+          $$RankingExperimentDailyMetricRowsTableFilterComposer,
+          $$RankingExperimentDailyMetricRowsTableOrderingComposer,
+          $$RankingExperimentDailyMetricRowsTableAnnotationComposer,
+          $$RankingExperimentDailyMetricRowsTableCreateCompanionBuilder,
+          $$RankingExperimentDailyMetricRowsTableUpdateCompanionBuilder,
+          (
+            RankingExperimentDailyMetricRow,
+            BaseReferences<
+              _$RiverDatabase,
+              $RankingExperimentDailyMetricRowsTable,
+              RankingExperimentDailyMetricRow
+            >,
+          ),
+          RankingExperimentDailyMetricRow,
+          PrefetchHooks Function()
+        > {
+  $$RankingExperimentDailyMetricRowsTableTableManager(
+    _$RiverDatabase db,
+    $RankingExperimentDailyMetricRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$RankingExperimentDailyMetricRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$RankingExperimentDailyMetricRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$RankingExperimentDailyMetricRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> experimentId = const Value.absent(),
+                Value<String> arm = const Value.absent(),
+                Value<String> dayKey = const Value.absent(),
+                Value<int> exposures = const Value.absent(),
+                Value<int> exposedArticles = const Value.absent(),
+                Value<double> sourceDiversitySum = const Value.absent(),
+                Value<double> sourceDiversitySquaredSum = const Value.absent(),
+                Value<int> opens = const Value.absent(),
+                Value<int> activeSeconds = const Value.absent(),
+                Value<int> completions = const Value.absent(),
+                Value<int> quickExits = const Value.absent(),
+                Value<int> summaryEligible = const Value.absent(),
+                Value<int> summaryCacheHits = const Value.absent(),
+                Value<int> summaryGenerated = const Value.absent(),
+                Value<int> summaryFailures = const Value.absent(),
+                Value<int> summaryProviderCalls = const Value.absent(),
+                Value<int> summaryLatencyMilliseconds = const Value.absent(),
+                Value<double> summaryCostUsd = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => RankingExperimentDailyMetricRowsCompanion(
+                experimentId: experimentId,
+                arm: arm,
+                dayKey: dayKey,
+                exposures: exposures,
+                exposedArticles: exposedArticles,
+                sourceDiversitySum: sourceDiversitySum,
+                sourceDiversitySquaredSum: sourceDiversitySquaredSum,
+                opens: opens,
+                activeSeconds: activeSeconds,
+                completions: completions,
+                quickExits: quickExits,
+                summaryEligible: summaryEligible,
+                summaryCacheHits: summaryCacheHits,
+                summaryGenerated: summaryGenerated,
+                summaryFailures: summaryFailures,
+                summaryProviderCalls: summaryProviderCalls,
+                summaryLatencyMilliseconds: summaryLatencyMilliseconds,
+                summaryCostUsd: summaryCostUsd,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String experimentId,
+                required String arm,
+                required String dayKey,
+                Value<int> exposures = const Value.absent(),
+                Value<int> exposedArticles = const Value.absent(),
+                Value<double> sourceDiversitySum = const Value.absent(),
+                Value<double> sourceDiversitySquaredSum = const Value.absent(),
+                Value<int> opens = const Value.absent(),
+                Value<int> activeSeconds = const Value.absent(),
+                Value<int> completions = const Value.absent(),
+                Value<int> quickExits = const Value.absent(),
+                Value<int> summaryEligible = const Value.absent(),
+                Value<int> summaryCacheHits = const Value.absent(),
+                Value<int> summaryGenerated = const Value.absent(),
+                Value<int> summaryFailures = const Value.absent(),
+                Value<int> summaryProviderCalls = const Value.absent(),
+                Value<int> summaryLatencyMilliseconds = const Value.absent(),
+                Value<double> summaryCostUsd = const Value.absent(),
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => RankingExperimentDailyMetricRowsCompanion.insert(
+                experimentId: experimentId,
+                arm: arm,
+                dayKey: dayKey,
+                exposures: exposures,
+                exposedArticles: exposedArticles,
+                sourceDiversitySum: sourceDiversitySum,
+                sourceDiversitySquaredSum: sourceDiversitySquaredSum,
+                opens: opens,
+                activeSeconds: activeSeconds,
+                completions: completions,
+                quickExits: quickExits,
+                summaryEligible: summaryEligible,
+                summaryCacheHits: summaryCacheHits,
+                summaryGenerated: summaryGenerated,
+                summaryFailures: summaryFailures,
+                summaryProviderCalls: summaryProviderCalls,
+                summaryLatencyMilliseconds: summaryLatencyMilliseconds,
+                summaryCostUsd: summaryCostUsd,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$RankingExperimentDailyMetricRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $RankingExperimentDailyMetricRowsTable,
+      RankingExperimentDailyMetricRow,
+      $$RankingExperimentDailyMetricRowsTableFilterComposer,
+      $$RankingExperimentDailyMetricRowsTableOrderingComposer,
+      $$RankingExperimentDailyMetricRowsTableAnnotationComposer,
+      $$RankingExperimentDailyMetricRowsTableCreateCompanionBuilder,
+      $$RankingExperimentDailyMetricRowsTableUpdateCompanionBuilder,
+      (
+        RankingExperimentDailyMetricRow,
+        BaseReferences<
+          _$RiverDatabase,
+          $RankingExperimentDailyMetricRowsTable,
+          RankingExperimentDailyMetricRow
+        >,
+      ),
+      RankingExperimentDailyMetricRow,
+      PrefetchHooks Function()
+    >;
 
 class $RiverDatabaseManager {
   final _$RiverDatabase _db;
@@ -26401,4 +28620,16 @@ class $RiverDatabaseManager {
       $$PodcastEpisodesTableTableManager(_db, _db.podcastEpisodes);
   $$PodcastDownloadsTableTableManager get podcastDownloads =>
       $$PodcastDownloadsTableTableManager(_db, _db.podcastDownloads);
+  $$RankingExperimentEnrollmentRowsTableTableManager
+  get rankingExperimentEnrollmentRows =>
+      $$RankingExperimentEnrollmentRowsTableTableManager(
+        _db,
+        _db.rankingExperimentEnrollmentRows,
+      );
+  $$RankingExperimentDailyMetricRowsTableTableManager
+  get rankingExperimentDailyMetricRows =>
+      $$RankingExperimentDailyMetricRowsTableTableManager(
+        _db,
+        _db.rankingExperimentDailyMetricRows,
+      );
 }

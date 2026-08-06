@@ -52,10 +52,26 @@ final class ArticleSummaryInspection {
   const ArticleSummaryInspection({
     required this.preparation,
     this.cachedSummary,
+    this.accounting,
   });
 
   final ArticleSummaryPreparation preparation;
   final ArticleSummary? cachedSummary;
+  final ArticleSummaryAccounting? accounting;
+}
+
+final class ArticleSummaryAccounting {
+  const ArticleSummaryAccounting({
+    required this.inputTokens,
+    required this.outputTokens,
+    required this.providerCalls,
+    required this.costUsd,
+  });
+
+  final int inputTokens;
+  final int outputTokens;
+  final int providerCalls;
+  final double costUsd;
 }
 
 abstract interface class ArticleSummaryExperience {
@@ -96,9 +112,22 @@ final class ByokArticleSummaryExperience implements ArticleSummaryExperience {
       final cached = route.isLongArticle
           ? (await route.longService.readCached(article))?.summary
           : await route.shortService.readCached(article);
+      final artifact = cached == null
+          ? null
+          : route.isLongArticle
+              ? await route.longService.readCachedArtifact(article)
+              : await route.shortService.readCachedArtifact(article);
       return ArticleSummaryInspection(
         preparation: route.preparation,
         cachedSummary: cached,
+        accounting: artifact == null
+            ? null
+            : ArticleSummaryAccounting(
+                inputTokens: artifact.inputTokens,
+                outputTokens: artifact.outputTokens,
+                providerCalls: artifact.providerCalls,
+                costUsd: artifact.costUsd,
+              ),
       );
     } on Object catch (error) {
       throw _mapFailure(error);

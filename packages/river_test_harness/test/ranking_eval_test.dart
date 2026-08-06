@@ -38,6 +38,15 @@ void main() {
     expect(report.isSuccess, isFalse);
     expect(report.failures.single.message, contains('model version'));
   });
+
+  test('local experiment replay enforces decisions and privacy', () async {
+    final report =
+        await HarnessEvals(_workspaceRoot()).evaluateRankingExperiment();
+
+    expect(report.isSuccess, isTrue);
+    expect(report.total, 3);
+    expect(report.metrics['automaticUpload'], isFalse);
+  });
 }
 
 Directory _workspaceRoot() {
