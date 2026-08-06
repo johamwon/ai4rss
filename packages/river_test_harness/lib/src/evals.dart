@@ -398,6 +398,172 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluatePodcastTranscriptionReplay() async {
+    final manifest = _readJson('evals/podcast_transcription_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    var ingestCalls = 0;
+    var transcriptionCalls = 0;
+    var resumeSkippedStages = false;
+    var deletionComplete = false;
+    var privateContentInDiagnostics = false;
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final kind = item['kind'] as String;
+      final ingestor = _PodcastReplayIngestor(
+        invalidFormat: kind == 'invalidFormat',
+        pending: kind == 'duplicate',
+      );
+      final transcriber = _PodcastReplayTranscriber();
+      final analyzer = _PodcastReplayAnalyzer();
+      final checkpoints = MemoryPodcastTranscriptionCheckpointStore();
+      final artifacts = MemoryPodcastTranscriptionArtifactStore();
+      final usage = MemoryPodcastCloudUsageLedger();
+      PodcastTranscriptionService service({
+        PodcastIntelligenceProvider? intelligence,
+      }) =>
+          PodcastTranscriptionService(
+            ingestor: ingestor,
+            transcriptionProvider: transcriber,
+            intelligenceProvider: intelligence ?? analyzer,
+            checkpoints: checkpoints,
+            artifacts: artifacts,
+            usageLedger: usage,
+            clock: const _PodcastReplayClock(),
+          );
+
+      try {
+        switch (kind) {
+          case 'longAudio':
+            final result = await service().run(
+              _podcastReplayRequest(),
+              PodcastTaskCancellation(),
+            );
+            final billed = usage.records
+                .where(
+                  (record) =>
+                      record.stage == PodcastCloudUsageStage.transcription,
+                )
+                .single
+                .billableDuration;
+            if (result.artifact.transcript.segments.length != 2 ||
+                billed != const Duration(hours: 6)) {
+              failures.add(EvalFailure(id, 'long audio bounds changed'));
+            }
+            break;
+          case 'invalidFormat':
+            try {
+              await service().run(
+                _podcastReplayRequest(),
+                PodcastTaskCancellation(),
+              );
+              failures.add(EvalFailure(id, 'invalid format was accepted'));
+            } on PodcastTranscriptionFailure catch (failure) {
+              if (failure.code !=
+                  PodcastTranscriptionFailureCode.invalidMedia) {
+                failures.add(EvalFailure(id, 'wrong invalid format code'));
+              }
+            }
+            if (transcriber.calls != 0) {
+              failures.add(EvalFailure(id, 'invalid format reached Provider'));
+            }
+            break;
+          case 'resume':
+            final failing = _PodcastReplayAnalyzer()..fail = true;
+            try {
+              await service(intelligence: failing).run(
+                _podcastReplayRequest(),
+                PodcastTaskCancellation(),
+              );
+              failures.add(EvalFailure(id, 'interruption did not fail'));
+            } on PodcastTranscriptionFailure catch (failure) {
+              if (failure.code !=
+                  PodcastTranscriptionFailureCode.intelligenceFailure) {
+                failures.add(EvalFailure(id, 'wrong interruption code'));
+              }
+            }
+            final resumed = await service().run(
+              _podcastReplayRequest(),
+              PodcastTaskCancellation(),
+            );
+            resumeSkippedStages = resumed.resumedAfterIngest &&
+                resumed.resumedAfterTranscription &&
+                ingestor.calls == 1 &&
+                transcriber.calls == 1;
+            if (!resumeSkippedStages) {
+              failures.add(EvalFailure(id, 'checkpoint stages were repeated'));
+            }
+            break;
+          case 'duplicate':
+            final running = service();
+            final first = running.run(
+              _podcastReplayRequest(),
+              PodcastTaskCancellation(),
+            );
+            final second = running.run(
+              _podcastReplayRequest(),
+              PodcastTaskCancellation(),
+            );
+            await _podcastReplayFlush();
+            ingestor.complete();
+            await Future.wait(<Future<PodcastTranscriptionRunResult>>[
+              first,
+              second,
+            ]);
+            if (ingestor.calls != 1 || transcriber.calls != 1) {
+              failures.add(EvalFailure(id, 'duplicate cloud stages ran'));
+            }
+            break;
+          case 'delete':
+            final running = service();
+            final result = await running.run(
+              _podcastReplayRequest(),
+              PodcastTaskCancellation(),
+            );
+            final diagnostics = <Object>[
+              _podcastReplayRequest(),
+              result.artifact,
+              ...usage.records,
+            ].join('\n');
+            privateContentInDiagnostics =
+                diagnostics.contains('PRIVATE-PODCAST-TRANSCRIPT') ||
+                    diagnostics.contains('upload-private-replay');
+            await running.delete('podcast-replay-job');
+            deletionComplete = ingestor.deleted.length == 1 &&
+                await checkpoints.read('podcast-replay-job') == null &&
+                await artifacts.read('podcast-replay-job') == null &&
+                usage.records.isEmpty;
+            if (!deletionComplete || privateContentInDiagnostics) {
+              failures.add(EvalFailure(id, 'privacy deletion failed'));
+            }
+            break;
+          default:
+            failures.add(EvalFailure(id, 'unknown transcription replay kind'));
+            break;
+        }
+        ingestCalls += ingestor.calls;
+        transcriptionCalls += transcriber.calls;
+      } on Object catch (error) {
+        failures.add(
+          EvalFailure(id, 'podcast transcription replay failed: $error'),
+        );
+      }
+    }
+    return EvalReport(
+      name: 'podcast-transcription-replay',
+      total: cases.length,
+      failures: failures,
+      metrics: <String, Object>{
+        'ingestCalls': ingestCalls,
+        'transcriptionCalls': transcriptionCalls,
+        'resumeSkippedStages': resumeSkippedStages,
+        'deletionComplete': deletionComplete,
+        'privateContentInDiagnostics': privateContentInDiagnostics,
+      },
+    );
+  }
+
   EvalReport evaluateAiReplay() {
     final manifest = _readJson('evals/summary_cases.json');
     final cases = _list(manifest['cases']);
@@ -1600,6 +1766,141 @@ CloudTtsSynthesisResponse _cloudTtsReplayResponse() =>
     );
 
 Future<void> _cloudTtsReplayFlush() async {
+  await Future<void>.delayed(Duration.zero);
+  await Future<void>.delayed(Duration.zero);
+}
+
+final class _PodcastReplayClock implements PodcastTranscriptionClock {
+  const _PodcastReplayClock();
+
+  @override
+  DateTime now() => DateTime.utc(2026, 8, 6, 12);
+}
+
+final class _PodcastReplayIngestor implements PodcastMediaIngestor {
+  _PodcastReplayIngestor({
+    required this.invalidFormat,
+    required this.pending,
+  });
+
+  final bool invalidFormat;
+  final bool pending;
+  final Completer<void> _gate = Completer<void>();
+  final List<String> deleted = <String>[];
+  var calls = 0;
+
+  @override
+  Future<void> deleteAsset(String assetId) async => deleted.add(assetId);
+
+  @override
+  Future<PodcastMediaAsset> ingest(
+    PodcastMediaSource source,
+    PodcastTaskCancellation cancellation,
+  ) async {
+    calls += 1;
+    if (pending) await _gate.future;
+    cancellation.throwIfCancelled();
+    return PodcastMediaAsset(
+      assetId: 'podcast-replay-asset',
+      contentDigest: List<String>.filled(64, 'b').join(),
+      mediaType: invalidFormat ? 'application/octet-stream' : 'audio/mpeg',
+      bytes: 1024,
+      duration: const Duration(hours: 6),
+    );
+  }
+
+  void complete() => _gate.complete();
+}
+
+final class _PodcastReplayTranscriber implements PodcastTranscriptionProvider {
+  var calls = 0;
+
+  @override
+  Future<PodcastTranscriptionProviderResult> transcribe(
+    PodcastMediaAsset asset, {
+    required String? outputLanguage,
+    required String operationId,
+    required PodcastTaskCancellation cancellation,
+  }) async {
+    calls += 1;
+    cancellation.throwIfCancelled();
+    return PodcastTranscriptionProviderResult(
+      transcript: PodcastTranscript(
+        language: 'en-US',
+        providerVersion: 'replay-v1',
+        segments: const <PodcastTranscriptSegment>[
+          PodcastTranscriptSegment(
+            index: 0,
+            start: Duration.zero,
+            end: Duration(hours: 3),
+            text: 'PRIVATE-PODCAST-TRANSCRIPT first half.',
+          ),
+          PodcastTranscriptSegment(
+            index: 1,
+            start: Duration(hours: 3),
+            end: Duration(hours: 6),
+            text: 'PRIVATE-PODCAST-TRANSCRIPT second half.',
+          ),
+        ],
+      ),
+      billableDuration: const Duration(hours: 6),
+      costMicros: 1200,
+    );
+  }
+}
+
+final class _PodcastReplayAnalyzer implements PodcastIntelligenceProvider {
+  var calls = 0;
+  var fail = false;
+
+  @override
+  Future<PodcastIntelligenceProviderResult> analyze(
+    PodcastTranscript transcript, {
+    required bool generateChapters,
+    required bool generateSummary,
+    required String operationId,
+    required PodcastTaskCancellation cancellation,
+  }) async {
+    calls += 1;
+    cancellation.throwIfCancelled();
+    if (fail) throw StateError('synthetic replay interruption');
+    return PodcastIntelligenceProviderResult(
+      chapters: const <PodcastGeneratedChapter>[
+        PodcastGeneratedChapter(
+          start: Duration.zero,
+          title: 'Opening',
+          summary: 'Synthetic opening section.',
+        ),
+        PodcastGeneratedChapter(
+          start: Duration(hours: 3),
+          title: 'Closing',
+          summary: 'Synthetic closing section.',
+        ),
+      ],
+      summary: PodcastGeneratedSummary(
+        oneLine: 'A deterministic synthetic podcast summary.',
+        keyPoints: const <String>['One', 'Two', 'Three'],
+        topics: const <String>['testing'],
+        language: 'en-US',
+      ),
+      costMicros: 200,
+    );
+  }
+}
+
+PodcastTranscriptionRequest _podcastReplayRequest() =>
+    PodcastTranscriptionRequest(
+      jobId: 'podcast-replay-job',
+      source: PodcastUploadedMediaSource(
+        uploadId: 'upload-private-replay',
+        mediaType: 'audio/mpeg',
+        bytes: 1024,
+        duration: const Duration(hours: 6),
+      ),
+      outputLanguage: 'en-US',
+    );
+
+Future<void> _podcastReplayFlush() async {
   await Future<void>.delayed(Duration.zero);
   await Future<void>.delayed(Duration.zero);
 }
