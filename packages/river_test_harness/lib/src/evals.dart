@@ -1898,6 +1898,143 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluatePortableConnectorReplay() async {
+    final manifest = _readJson('evals/portable_connector_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    var idempotentCreates = 0;
+    var conflicts = 0;
+    var conditionalWrites = 0;
+    var rateLimits = 0;
+    var offlineRetries = 0;
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final kind = item['kind'] as String;
+      try {
+        switch (kind) {
+          case 'obsidianIdempotent':
+            final store = _PortableReplayStore();
+            final connector = _portableReplayObsidian(store);
+            final request = _portableReplayCreate(id, destinationId: 'vault');
+            final first = await connector.create(request);
+            final second = await connector.create(request);
+            if (first.externalObjectId != second.externalObjectId ||
+                store.writes != 1) {
+              failures
+                  .add(EvalFailure(id, 'Obsidian create was not idempotent'));
+            } else {
+              idempotentCreates += 1;
+            }
+          case 'obsidianConflict':
+            final store = _PortableReplayStore();
+            final connector = _portableReplayObsidian(store);
+            final created = await connector.create(
+              _portableReplayCreate(id, destinationId: 'vault'),
+            );
+            store.conflictNextWrite = true;
+            try {
+              await connector.update(
+                KnowledgeConnectorUpdateRequest(
+                  item: _portableReplayItem(id, 'Changed portable body.'),
+                  destinationId: 'vault',
+                  externalObjectId: created.externalObjectId,
+                  idempotencyKey: 'update-$id',
+                ),
+              );
+              failures.add(EvalFailure(id, 'Obsidian conflict was accepted'));
+            } on KnowledgeConnectorFailure catch (failure) {
+              if (failure.code != KnowledgeConnectorFailureCode.conflict ||
+                  !failure.retryable) {
+                failures
+                    .add(EvalFailure(id, 'wrong Obsidian conflict mapping'));
+              } else {
+                conflicts += 1;
+              }
+            }
+          case 'webdavConditional':
+            final transport = _PortableReplayWebDav();
+            final connector = _portableReplayWebDav(transport);
+            final created = await connector.create(
+              _portableReplayCreate(id, destinationId: 'remote'),
+            );
+            await connector.update(
+              KnowledgeConnectorUpdateRequest(
+                item: _portableReplayItem(id, 'Changed portable body.'),
+                destinationId: 'remote',
+                externalObjectId: created.externalObjectId,
+                idempotencyKey: 'update-$id',
+              ),
+            );
+            final puts = transport.requests
+                .where((request) => request.method == WebDavMethod.put)
+                .toList();
+            if (puts.first.headers['If-None-Match'] != '*' ||
+                puts.last.headers['If-Match'] == null) {
+              failures.add(EvalFailure(id, 'WebDAV write was not conditional'));
+            } else {
+              conditionalWrites += 1;
+            }
+          case 'webdavRateLimit':
+            final transport = _PortableReplayWebDav()
+              ..scripted = WebDavResponse(
+                statusCode: 429,
+                headers: const <String, String>{'Retry-After': '60'},
+              );
+            try {
+              await _portableReplayWebDav(transport).create(
+                _portableReplayCreate(id, destinationId: 'remote'),
+              );
+              failures.add(EvalFailure(id, 'WebDAV rate limit was accepted'));
+            } on KnowledgeConnectorFailure catch (failure) {
+              if (failure.code != KnowledgeConnectorFailureCode.rateLimited ||
+                  failure.retryAfter != const Duration(minutes: 1)) {
+                failures.add(EvalFailure(id, 'wrong WebDAV rate mapping'));
+              } else {
+                rateLimits += 1;
+              }
+            }
+          case 'webdavOffline':
+            final transport = _PortableReplayWebDav()
+              ..failure = const WebDavTransportFailure(
+                WebDavTransportFailureCode.offline,
+              );
+            try {
+              await _portableReplayWebDav(transport).create(
+                _portableReplayCreate(id, destinationId: 'remote'),
+              );
+              failures.add(EvalFailure(id, 'offline WebDAV was accepted'));
+            } on KnowledgeConnectorFailure catch (failure) {
+              if (failure.code != KnowledgeConnectorFailureCode.offline ||
+                  !failure.retryable) {
+                failures.add(EvalFailure(id, 'wrong WebDAV offline mapping'));
+              } else {
+                offlineRetries += 1;
+              }
+            }
+          default:
+            failures.add(EvalFailure(id, 'unknown portable connector kind'));
+        }
+      } on Object catch (error) {
+        failures
+            .add(EvalFailure(id, 'portable connector replay failed: $error'));
+      }
+    }
+    return EvalReport(
+      name: 'portable-connector-replay',
+      total: cases.length,
+      failures: failures,
+      metrics: <String, Object>{
+        'idempotentCreates': idempotentCreates,
+        'conflicts': conflicts,
+        'conditionalWrites': conditionalWrites,
+        'rateLimits': rateLimits,
+        'offlineRetries': offlineRetries,
+        'privateContentInDiagnostics': false,
+      },
+    );
+  }
+
   EvalReport evaluateRanking() {
     final manifest = _readJson('evals/ranking_sessions.json');
     final cases = _list(manifest['cases']);
@@ -3499,4 +3636,179 @@ List<double> _knowledgeSearchReplayVector(String text) {
     return const <double>[0, 0, 0, 1];
   }
   return const <double>[0, 0, 0, 0];
+}
+
+ObsidianKnowledgeConnector _portableReplayObsidian(
+  _PortableReplayStore store,
+) =>
+    ObsidianKnowledgeConnector(
+      store: store,
+      destinations: const <String, String>{'vault': 'River/Knowledge'},
+    );
+
+WebDavKnowledgeConnector _portableReplayWebDav(
+  _PortableReplayWebDav transport,
+) =>
+    WebDavKnowledgeConnector(
+      transport: transport,
+      destinations: <String, Uri>{
+        'remote': Uri.parse('https://dav.example.test/knowledge/'),
+      },
+    );
+
+KnowledgeConnectorCreateRequest _portableReplayCreate(
+  String id, {
+  required String destinationId,
+}) =>
+    KnowledgeConnectorCreateRequest(
+      item: _portableReplayItem(id, 'Original portable body.'),
+      destinationId: destinationId,
+      idempotencyKey: 'create-$id',
+    );
+
+KnowledgeItem _portableReplayItem(String id, String body) {
+  final title = 'Portable $id';
+  final html = '<p>$body</p>';
+  return KnowledgeItem(
+    id: id,
+    source: KnowledgeSourceReference(
+      kind: KnowledgeSourceKind.article,
+      sourceId: 'source-$id',
+      originalUrl: Uri.parse('https://example.test/portable/$id'),
+      sourceTitle: 'River Portable Replay',
+    ),
+    title: title,
+    markdown: body,
+    sanitizedHtml: html,
+    contentHash: const KnowledgeContentHasher().hash(
+      title: title,
+      markdown: body,
+      sanitizedHtml: html,
+    ),
+    savedAt: DateTime.utc(2026, 8, 6),
+    updatedAt: DateTime.utc(2026, 8, 6),
+  );
+}
+
+final class _PortableReplayStore implements KnowledgeDocumentStore {
+  final Map<String, KnowledgeStoredDocument> values =
+      <String, KnowledgeStoredDocument>{};
+  var writes = 0;
+  var revision = 0;
+  var conflictNextWrite = false;
+
+  @override
+  Future<void> delete(String path, {required String expectedRevision}) async {
+    final current = values[path];
+    if (current == null) {
+      throw const KnowledgeDocumentStoreFailure(
+        KnowledgeDocumentStoreFailureCode.notFound,
+      );
+    }
+    if (current.revision != expectedRevision) {
+      throw const KnowledgeDocumentStoreFailure(
+        KnowledgeDocumentStoreFailureCode.conflict,
+      );
+    }
+    values.remove(path);
+  }
+
+  @override
+  Future<bool> isAvailable() async => true;
+
+  @override
+  Future<KnowledgeStoredDocument?> read(String path) async => values[path];
+
+  @override
+  Future<KnowledgeStoredDocument> write(
+    String path,
+    List<int> bytes, {
+    required String? expectedRevision,
+    required bool createOnly,
+  }) async {
+    final current = values[path];
+    if (conflictNextWrite) {
+      conflictNextWrite = false;
+      throw const KnowledgeDocumentStoreFailure(
+        KnowledgeDocumentStoreFailureCode.conflict,
+      );
+    }
+    if ((createOnly && current != null) ||
+        (!createOnly && current?.revision != expectedRevision)) {
+      throw const KnowledgeDocumentStoreFailure(
+        KnowledgeDocumentStoreFailureCode.conflict,
+      );
+    }
+    revision += 1;
+    writes += 1;
+    final result = KnowledgeStoredDocument(
+      path: path,
+      bytes: bytes,
+      revision: '$revision',
+    );
+    values[path] = result;
+    return result;
+  }
+}
+
+final class _PortableReplayDavValue {
+  _PortableReplayDavValue(this.body, this.etag);
+
+  List<int> body;
+  String etag;
+}
+
+final class _PortableReplayWebDav implements WebDavTransport {
+  final Map<String, _PortableReplayDavValue> values =
+      <String, _PortableReplayDavValue>{};
+  final List<WebDavRequest> requests = <WebDavRequest>[];
+  WebDavResponse? scripted;
+  WebDavTransportFailure? failure;
+  var revision = 0;
+
+  @override
+  Future<WebDavResponse> send(WebDavRequest request) async {
+    requests.add(request);
+    final transportFailure = failure;
+    if (transportFailure != null) throw transportFailure;
+    final response = scripted;
+    if (response != null) {
+      scripted = null;
+      return response;
+    }
+    final key = request.uri.toString();
+    final current = values[key];
+    switch (request.method) {
+      case WebDavMethod.head:
+        return current == null
+            ? WebDavResponse(statusCode: 404)
+            : WebDavResponse(
+                statusCode: 200,
+                headers: <String, String>{'ETag': current.etag},
+              );
+      case WebDavMethod.get:
+        return current == null
+            ? WebDavResponse(statusCode: 404)
+            : WebDavResponse(
+                statusCode: 200,
+                headers: <String, String>{'ETag': current.etag},
+                body: current.body,
+              );
+      case WebDavMethod.put:
+        if (request.headers['If-None-Match'] == '*' && current != null) {
+          return WebDavResponse(statusCode: 412);
+        }
+        if (request.headers['If-Match'] != null &&
+            request.headers['If-Match'] != current?.etag) {
+          return WebDavResponse(statusCode: 412);
+        }
+        revision += 1;
+        values[key] = _PortableReplayDavValue(request.body, '"$revision"');
+        return WebDavResponse(statusCode: current == null ? 201 : 204);
+      case WebDavMethod.delete:
+        if (current == null) return WebDavResponse(statusCode: 404);
+        values.remove(key);
+        return WebDavResponse(statusCode: 204);
+    }
+  }
 }

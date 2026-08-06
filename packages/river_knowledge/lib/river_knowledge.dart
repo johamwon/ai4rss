@@ -15,6 +15,7 @@ export 'src/notion_http.dart';
 export 'src/notion_models.dart';
 export 'src/notion_oauth.dart';
 export 'src/notion_oauth_server.dart';
+export 'src/portable_knowledge_connectors.dart';
 
 final class KnowledgeExportService {
   const KnowledgeExportService(this._manager);
