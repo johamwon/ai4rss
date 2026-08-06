@@ -1,0 +1,9 @@
+{
+  "cases": [
+    { "id": "qa-grounded-answer", "kind": "answered", "question": "How is renewable electricity generated?" },
+    { "id": "qa-no-evidence", "kind": "noEvidence", "question": "What does the library say about quantum gravity?" },
+    { "id": "qa-provider-refusal", "kind": "providerRefusal", "question": "How is renewable electricity generated?" },
+    { "id": "qa-unknown-citation", "kind": "unknownCitation", "question": "How is renewable electricity generated?" },
+    { "id": "qa-uncited-claim", "kind": "uncited", "question": "How is renewable electricity generated?" }
+  ]
+}

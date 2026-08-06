@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:river_domain/river_domain.dart';
 
+export 'src/knowledge_grounded_qa.dart';
 export 'src/knowledge_markdown.dart';
 export 'src/knowledge_markdown_export.dart';
 export 'src/knowledge_semantic_search.dart';
