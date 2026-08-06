@@ -32,6 +32,8 @@ part 'database.g.dart';
     PodcastShows,
     PodcastEpisodes,
     PodcastDownloads,
+    RankingExperimentEnrollmentRows,
+    RankingExperimentDailyMetricRows,
   ],
 )
 final class RiverDatabase extends _$RiverDatabase {
@@ -44,7 +46,7 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 17;
+  int get schemaVersion => 18;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -290,6 +292,14 @@ final class RiverDatabase extends _$RiverDatabase {
           await migrator.createTable(automaticSummaryUsageRows);
         }
         await _createAutomaticSummaryUsageIndex();
+      }
+      if (from < 18) {
+        if (!await _hasTable('ranking_experiment_enrollment_rows')) {
+          await migrator.createTable(rankingExperimentEnrollmentRows);
+        }
+        if (!await _hasTable('ranking_experiment_daily_metric_rows')) {
+          await migrator.createTable(rankingExperimentDailyMetricRows);
+        }
       }
     },
     beforeOpen: (OpeningDetails details) async {

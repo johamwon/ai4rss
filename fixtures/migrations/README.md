@@ -14,6 +14,9 @@ v011_article_annotations.sql
 v012_knowledge_model.sql
 v013_ai_artifact_cache.sql
 v014_reading_behavior_settings.sql
+v015_preference_controls.sql
+v016_automatic_summaries.sql
+v017_ranking_experiment.sql
 ```
 
 Never rewrite or delete a released fixture. Migration tests must cover upgrade to current, interruption recovery, idempotent retry and downgrade/export behavior where supported.
@@ -25,4 +28,6 @@ retains populated playback, Podcast catalog and resumable-download state.
 The v10 through v13 fixtures preserve the predecessor state for Podcasting 2.0
 metadata, article annotations, unified knowledge identity, and the v14
 validated AI artifact cache respectively. The v14 fixture preserves predecessor
-state for the v15 local reading-behavior privacy settings.
+state for the v15 local reading-behavior privacy settings. The v15 through v17
+fixtures preserve preference controls, automatic-summary policy and usage, and
+the predecessor state for the v18 local ranking experiment respectively.
