@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "river.podcast-transcription-replay.v1",
+  "cases": [
+    {"id": "six-hour-audio", "kind": "longAudio"},
+    {"id": "invalid-format", "kind": "invalidFormat"},
+    {"id": "interrupted-resume", "kind": "resume"},
+    {"id": "concurrent-duplicate", "kind": "duplicate"},
+    {"id": "privacy-delete", "kind": "delete"}
+  ]
+}
