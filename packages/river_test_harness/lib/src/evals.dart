@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:river_ai/river_ai.dart';
+import 'package:river_audio/river_audio.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
 import 'package:river_feed/river_feed.dart';
@@ -227,6 +228,172 @@ final class HarnessEvals {
         'transportCalls': transportCalls,
         'privateLiteralTransportCalls': 0,
         'dnsPinned': true,
+      },
+    );
+  }
+
+  Future<EvalReport> evaluateCloudTtsReplay() async {
+    final manifest = _readJson('evals/cloud_tts_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    var providerCalls = 0;
+    var billedMilliseconds = 0;
+    var cancellationPropagated = false;
+    var privateContentInDiagnostics = false;
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final kind = item['kind'] as String;
+      final cache = InMemoryCloudTtsCacheStore();
+      final ledger = InMemoryCloudTtsUsageLedger();
+      final synthesizer = _CloudTtsReplaySynthesizer(
+        pending: kind == 'duplicate' || kind == 'cancel',
+      );
+      final backend = CloudTtsPreparationBackend(
+        synthesizer: synthesizer,
+        cache: cache,
+        usageLedger: ledger,
+        entitlement: const StaticCloudTtsEntitlementGate(true),
+        network: StaticCloudTtsNetworkMonitor(
+          kind == 'network'
+              ? CloudTtsNetworkKind.metered
+              : CloudTtsNetworkKind.wifi,
+        ),
+        profile: CloudTtsProfile(profileId: 'replay', version: 'v1'),
+        clock: const _CloudTtsReplayClock(),
+      );
+      try {
+        switch (kind) {
+          case 'billing':
+            final prepared = await backend.prepare(
+              _cloudTtsReplayRequest(),
+              AudioPrefetchCancellation(),
+            );
+            await prepared.release();
+            if (ledger.records.length != 1 ||
+                ledger.records.single.billableDuration.inMilliseconds != 3500 ||
+                ledger.records.single.costMicros != 17) {
+              failures.add(EvalFailure(id, 'exact usage was not recorded'));
+            }
+            break;
+          case 'duplicate':
+            final first = backend.prepare(
+              _cloudTtsReplayRequest(),
+              AudioPrefetchCancellation(),
+            );
+            final second = backend.prepare(
+              _cloudTtsReplayRequest(),
+              AudioPrefetchCancellation(),
+            );
+            await _cloudTtsReplayFlush();
+            synthesizer.complete();
+            final prepared = await Future.wait(<Future<PreparedAudioSegment>>[
+              first,
+              second,
+            ]);
+            for (final segment in prepared) {
+              await segment.release();
+            }
+            if (synthesizer.requests.length != 1 ||
+                ledger.records.length != 1) {
+              failures.add(
+                EvalFailure(id, 'duplicate generation was charged'),
+              );
+            }
+            break;
+          case 'cancel':
+            final cancellation = AudioPrefetchCancellation();
+            final preparation = backend.prepare(
+              _cloudTtsReplayRequest(),
+              cancellation,
+            );
+            await _cloudTtsReplayFlush();
+            cancellation.cancel();
+            try {
+              await preparation;
+              failures.add(EvalFailure(id, 'cancelled request returned audio'));
+            } on AudioPrefetchCancelledException {
+              // Expected.
+            }
+            cancellationPropagated =
+                synthesizer.cancellations.single.isCancelled;
+            synthesizer.complete();
+            await _cloudTtsReplayFlush();
+            await _cloudTtsReplayFlush();
+            if (!cancellationPropagated ||
+                (await cache.listEntries()).isNotEmpty) {
+              failures
+                  .add(EvalFailure(id, 'cancel did not release cloud work'));
+            }
+            break;
+          case 'contentChange':
+            final first = await backend.prepare(
+              _cloudTtsReplayRequest(),
+              AudioPrefetchCancellation(),
+            );
+            final changed = await backend.prepare(
+              _cloudTtsReplayRequest(revision: 'revision-v2'),
+              AudioPrefetchCancellation(),
+            );
+            await first.release();
+            await changed.release();
+            if (synthesizer.requests.length != 2 ||
+                synthesizer.requests
+                        .map((request) => request.operationId)
+                        .toSet()
+                        .length !=
+                    2) {
+              failures.add(
+                EvalFailure(id, 'changed content reused stale audio'),
+              );
+            }
+            break;
+          case 'network':
+            try {
+              await backend.prepare(
+                _cloudTtsReplayRequest(),
+                AudioPrefetchCancellation(),
+              );
+              failures.add(EvalFailure(id, 'metered network was accepted'));
+            } on CloudTtsFailure catch (failure) {
+              if (failure.code != CloudTtsFailureCode.wifiRequired) {
+                failures.add(EvalFailure(id, 'wrong network failure code'));
+              }
+            }
+            if (synthesizer.requests.isNotEmpty) {
+              failures.add(EvalFailure(id, 'network gate called provider'));
+            }
+            break;
+          default:
+            failures.add(EvalFailure(id, 'unknown cloud TTS replay kind'));
+            break;
+        }
+        providerCalls += synthesizer.requests.length;
+        billedMilliseconds += ledger.records.fold<int>(
+          0,
+          (sum, record) => sum + record.billableDuration.inMilliseconds,
+        );
+        final diagnostics = <Object>[
+          ...synthesizer.requests,
+          ...ledger.records,
+        ].join('\n');
+        if (diagnostics.contains('PRIVATE-REPLAY-TEXT') ||
+            diagnostics.contains('PRIVATE-REVISION')) {
+          privateContentInDiagnostics = true;
+        }
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'cloud TTS replay failed: $error'));
+      }
+    }
+    return EvalReport(
+      name: 'cloud-tts-replay',
+      total: cases.length,
+      failures: failures,
+      metrics: <String, Object>{
+        'providerCalls': providerCalls,
+        'billedMilliseconds': billedMilliseconds,
+        'cancellationPropagated': cancellationPropagated,
+        'privateContentInDiagnostics': privateContentInDiagnostics,
       },
     );
   }
@@ -1368,6 +1535,74 @@ final _cloudReplayMaliciousHtml = '''
 <img src="https://images.example.test/safe.png" onerror="alert(1)">
 </article></body></html>
 ''';
+
+final class _CloudTtsReplayClock implements CloudTtsClock {
+  const _CloudTtsReplayClock();
+
+  @override
+  DateTime now() => DateTime.utc(2026, 8, 6, 12);
+}
+
+final class _CloudTtsReplaySynthesizer implements CloudTtsSynthesizer {
+  _CloudTtsReplaySynthesizer({required this.pending});
+
+  final bool pending;
+  final List<CloudTtsSynthesisRequest> requests = <CloudTtsSynthesisRequest>[];
+  final List<AudioPrefetchCancellation> cancellations =
+      <AudioPrefetchCancellation>[];
+  final Completer<CloudTtsSynthesisResponse> _completion =
+      Completer<CloudTtsSynthesisResponse>();
+
+  @override
+  Future<CloudTtsSynthesisResponse> synthesize(
+    CloudTtsSynthesisRequest request,
+    AudioPrefetchCancellation cancellation,
+  ) async {
+    requests.add(request);
+    cancellations.add(cancellation);
+    if (pending) return _completion.future;
+    return _cloudTtsReplayResponse();
+  }
+
+  void complete() => _completion.complete(_cloudTtsReplayResponse());
+}
+
+AudioSegmentPreparationRequest _cloudTtsReplayRequest({
+  String revision = 'PRIVATE-REVISION',
+}) =>
+    AudioSegmentPreparationRequest(
+      item: AudioItem(
+        id: 'private-replay-article',
+        kind: AudioKind.articleTts,
+        title: 'Private replay title',
+        sourceUri: Uri.parse('https://reader.example/private?secret=1'),
+      ),
+      contentRevision: revision,
+      segment: const SpeechSegment(
+        index: 0,
+        text: 'PRIVATE-REPLAY-TEXT',
+        sourceStart: 0,
+        sourceEnd: 19,
+      ),
+      settings: const AudioPlaybackSettings(
+        voiceId: 'reader-voice',
+        languageTag: 'en-US',
+      ),
+    );
+
+CloudTtsSynthesisResponse _cloudTtsReplayResponse() =>
+    CloudTtsSynthesisResponse(
+      audioBytes: const <int>[0x49, 0x44, 0x33, 1, 2, 3],
+      mediaType: 'audio/mpeg',
+      audioDuration: const Duration(seconds: 3),
+      billableDuration: const Duration(milliseconds: 3500),
+      costMicros: 17,
+    );
+
+Future<void> _cloudTtsReplayFlush() async {
+  await Future<void>.delayed(Duration.zero);
+  await Future<void>.delayed(Duration.zero);
+}
 
 final class _ZeroAiClock implements AiMonotonicClock {
   const _ZeroAiClock();
