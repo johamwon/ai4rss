@@ -77,6 +77,27 @@ void main() {
     );
   });
 
+  test('filter metadata changes rebuild an unchanged body', () async {
+    final provider = _Provider();
+    final index = MemoryKnowledgeVectorIndex();
+    final service = _service(provider: provider, index: index);
+    final original = _item('item-metadata', _longText);
+    final changed = _item(
+      'item-metadata',
+      _longText,
+      kind: KnowledgeSourceKind.webClip,
+      sourceId: 'changed-source',
+    );
+    expect(changed.contentHash, original.contentHash);
+    await service.indexItem(original);
+
+    final result = await service.indexItem(changed);
+
+    expect(result.skipped, isFalse);
+    expect(result.document.sourceKind, KnowledgeSourceKind.webClip);
+    expect(result.document.sourceId, 'changed-source');
+  });
+
   test('delete removes all vectors for one knowledge item', () async {
     final index = MemoryKnowledgeVectorIndex();
     final service = _service(provider: _Provider(), index: index);
@@ -219,14 +240,19 @@ EmbeddingProfile _profile({int revision = 1}) => EmbeddingProfile(
       location: EmbeddingExecutionLocation.local,
     );
 
-KnowledgeItem _item(String id, String markdown) {
+KnowledgeItem _item(
+  String id,
+  String markdown, {
+  KnowledgeSourceKind kind = KnowledgeSourceKind.article,
+  String? sourceId,
+}) {
   final title = 'Knowledge $id';
   final html = '<p>$markdown</p>';
   return KnowledgeItem(
     id: id,
     source: KnowledgeSourceReference(
-      kind: KnowledgeSourceKind.article,
-      sourceId: 'source-$id',
+      kind: kind,
+      sourceId: sourceId ?? 'source-$id',
       originalUrl: Uri.parse('https://example.test/$id'),
       sourceTitle: 'River',
     ),
@@ -276,6 +302,13 @@ final class _Provider implements KnowledgeEmbeddingProvider {
         )
         .toList(growable: false);
   }
+
+  @override
+  Future<List<double>> embedQuery({
+    required EmbeddingProfile profile,
+    required String query,
+  }) async =>
+      List<double>.filled(profile.dimensions, 0.5);
 }
 
 final class _CorruptIndex implements KnowledgeVectorIndex {
@@ -295,6 +328,13 @@ final class _CorruptIndex implements KnowledgeVectorIndex {
     return KnowledgeVectorDocument(
       itemId: document.itemId,
       contentHash: document.contentHash,
+      sourceKind: document.sourceKind,
+      sourceId: document.sourceId,
+      title: document.title,
+      savedAt: document.savedAt,
+      updatedAt: document.updatedAt,
+      tags: document.tags,
+      topics: document.topics,
       profileIdentity: document.profileIdentity,
       chunkerVersion: document.chunkerVersion,
       records: document.records
@@ -315,6 +355,16 @@ final class _CorruptIndex implements KnowledgeVectorIndex {
     this.document = document;
     replacements += 1;
   }
+
+  @override
+  Future<List<KnowledgeVectorMatch>> searchRecords({
+    required String profileIdentity,
+    required List<double> vector,
+    required KnowledgeVectorQueryFilter filter,
+    required int limit,
+    required double minimumScore,
+  }) async =>
+      const <KnowledgeVectorMatch>[];
 }
 
 final class _Clock implements KnowledgeIndexClock {

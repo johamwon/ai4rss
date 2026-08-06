@@ -1703,6 +1703,99 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluateKnowledgeSearchReplay() async {
+    final manifest = _readJson('evals/knowledge_search_cases.json');
+    final documents = _list(manifest['documents']);
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    final provider = _KnowledgeSearchReplayProvider();
+    final index = MemoryKnowledgeVectorIndex();
+    final profile = _knowledgeSearchReplayProfile();
+    final indexer = KnowledgeVectorIndexer(
+      profile: profile,
+      provider: provider,
+      index: index,
+      chunker: const KnowledgeChunker(
+        maximumCharacters: 128,
+        overlapCharacters: 16,
+      ),
+      clock: const _KnowledgeVectorReplayClock(),
+    );
+    for (final document in documents) {
+      await indexer.indexItem(_knowledgeSearchReplayItem(document));
+    }
+    final search = KnowledgeSemanticSearch(
+      profile: profile,
+      provider: provider,
+      index: index,
+      maximumEvidencePerItem: 2,
+    );
+    var relevantRetrieved = 0;
+    var retrieved = 0;
+    var relevantTotal = 0;
+    var evidenceHits = 0;
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final relevant = _strings(item['relevant']).toSet();
+      final limit = item['limit'] as int;
+      try {
+        final hits = item['mode'] == 'similar'
+            ? await search.similarItems(
+                item['itemId'] as String,
+                limit: limit,
+              )
+            : await search.search(
+                item['query'] as String,
+                limit: limit,
+                filter: _knowledgeSearchReplayFilter(item['filter']),
+              );
+        final resultIds = hits.map((hit) => hit.itemId).toSet();
+        final matched = resultIds.intersection(relevant).length;
+        relevantRetrieved += matched;
+        retrieved += hits.length;
+        relevantTotal += relevant.length;
+        evidenceHits += hits.where((hit) => hit.evidence.isNotEmpty).length;
+        if (matched != relevant.length || hits.length != limit) {
+          failures.add(
+            EvalFailure(
+              id,
+              'expected ${relevant.join(',')}, got ${resultIds.join(',')}',
+            ),
+          );
+        }
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'knowledge search replay failed: $error'));
+      }
+    }
+    final recall = relevantTotal == 0 ? 1.0 : relevantRetrieved / relevantTotal;
+    final precision = retrieved == 0 ? 1.0 : relevantRetrieved / retrieved;
+    if (recall < 0.90) {
+      failures
+          .add(EvalFailure('recall-gate', 'Recall@K $recall is below 0.90'));
+    }
+    if (precision < 0.90) {
+      failures.add(
+        EvalFailure('precision-gate', 'Precision@K $precision is below 0.90'),
+      );
+    }
+
+    return EvalReport(
+      name: 'knowledge-search-replay',
+      total: cases.length,
+      failures: failures,
+      metrics: <String, Object>{
+        'recallAtK': recall,
+        'precisionAtK': precision,
+        'relevantRetrieved': relevantRetrieved,
+        'relevantTotal': relevantTotal,
+        'retrieved': retrieved,
+        'evidenceHits': evidenceHits,
+        'queryEmbeddingCalls': provider.queryCalls,
+      },
+    );
+  }
+
   EvalReport evaluateRanking() {
     final manifest = _readJson('evals/ranking_sessions.json');
     final cases = _list(manifest['cases']);
@@ -3067,6 +3160,13 @@ final class _KnowledgeVectorReplayProvider
         )
         .toList(growable: false);
   }
+
+  @override
+  Future<List<double>> embedQuery({
+    required EmbeddingProfile profile,
+    required String query,
+  }) async =>
+      List<double>.filled(profile.dimensions, 0.5);
 }
 
 final class _KnowledgeVectorReplayCorruptIndex implements KnowledgeVectorIndex {
@@ -3086,6 +3186,13 @@ final class _KnowledgeVectorReplayCorruptIndex implements KnowledgeVectorIndex {
       KnowledgeVectorDocument(
         itemId: document.itemId,
         contentHash: document.contentHash,
+        sourceKind: document.sourceKind,
+        sourceId: document.sourceId,
+        title: document.title,
+        savedAt: document.savedAt,
+        updatedAt: document.updatedAt,
+        tags: document.tags,
+        topics: document.topics,
         profileIdentity: document.profileIdentity,
         chunkerVersion: document.chunkerVersion,
         records: document.records
@@ -3105,6 +3212,16 @@ final class _KnowledgeVectorReplayCorruptIndex implements KnowledgeVectorIndex {
     this.document = document;
     replacements += 1;
   }
+
+  @override
+  Future<List<KnowledgeVectorMatch>> searchRecords({
+    required String profileIdentity,
+    required List<double> vector,
+    required KnowledgeVectorQueryFilter filter,
+    required int limit,
+    required double minimumScore,
+  }) async =>
+      const <KnowledgeVectorMatch>[];
 }
 
 final class _KnowledgeVectorReplayClock implements KnowledgeIndexClock {
@@ -3112,4 +3229,122 @@ final class _KnowledgeVectorReplayClock implements KnowledgeIndexClock {
 
   @override
   DateTime now() => DateTime.utc(2026, 8, 6, 12);
+}
+
+EmbeddingProfile _knowledgeSearchReplayProfile() => EmbeddingProfile(
+      modelId: 'river-search-golden',
+      revision: 1,
+      dimensions: 4,
+      location: EmbeddingExecutionLocation.local,
+    );
+
+KnowledgeItem _knowledgeSearchReplayItem(Map<String, Object?> value) {
+  final id = value['id'] as String;
+  final body = value['body'] as String;
+  final title = 'Golden $id';
+  final markdown = '# $title\n\n$body';
+  final html = '<h1>$title</h1><p>$body</p>';
+  final tags = _strings(value['tags']);
+  final topics = _strings(value['topics']);
+  final day = value['day'] as int;
+  final kind = KnowledgeSourceKind.values.byName(value['kind'] as String);
+  return KnowledgeItem(
+    id: id,
+    source: KnowledgeSourceReference(
+      kind: kind,
+      sourceId: 'source-$id',
+      originalUrl: Uri.parse('https://example.test/search/$id'),
+      sourceTitle: 'River Search Golden Set',
+    ),
+    title: title,
+    markdown: markdown,
+    sanitizedHtml: html,
+    tags: tags,
+    topics: topics,
+    contentHash: const KnowledgeContentHasher().hash(
+      title: title,
+      markdown: markdown,
+      sanitizedHtml: html,
+      tags: tags,
+      topics: topics,
+    ),
+    savedAt: DateTime.utc(2026, 8, day),
+    updatedAt: DateTime.utc(2026, 8, day),
+  );
+}
+
+KnowledgeVectorQueryFilter _knowledgeSearchReplayFilter(Object? value) {
+  if (value == null) return KnowledgeVectorQueryFilter();
+  final filter = (value as Map).cast<String, Object?>();
+  final fromDay = filter['savedFromDay'] as int?;
+  final beforeDay = filter['savedBeforeDay'] as int?;
+  return KnowledgeVectorQueryFilter(
+    sourceKinds: filter['sourceKinds'] == null
+        ? const <KnowledgeSourceKind>[]
+        : _strings(filter['sourceKinds'])
+            .map(KnowledgeSourceKind.values.byName),
+    sourceIds: filter['sourceIds'] == null
+        ? const <String>[]
+        : _strings(filter['sourceIds']),
+    tags: filter['tags'] == null ? const <String>[] : _strings(filter['tags']),
+    topics: filter['topics'] == null
+        ? const <String>[]
+        : _strings(filter['topics']),
+    savedFrom: fromDay == null ? null : DateTime.utc(2026, 8, fromDay),
+    savedBefore: beforeDay == null ? null : DateTime.utc(2026, 8, beforeDay),
+  );
+}
+
+final class _KnowledgeSearchReplayProvider
+    implements KnowledgeEmbeddingProvider {
+  var queryCalls = 0;
+
+  @override
+  Future<List<EmbeddingVector>> embed({
+    required EmbeddingProfile profile,
+    required List<KnowledgeChunk> chunks,
+  }) async =>
+      chunks
+          .map(
+            (chunk) => EmbeddingVector(
+              chunkId: chunk.id,
+              values: _knowledgeSearchReplayVector(chunk.text),
+            ),
+          )
+          .toList(growable: false);
+
+  @override
+  Future<List<double>> embedQuery({
+    required EmbeddingProfile profile,
+    required String query,
+  }) async {
+    queryCalls += 1;
+    return _knowledgeSearchReplayVector(query);
+  }
+}
+
+List<double> _knowledgeSearchReplayVector(String text) {
+  final value = text.toLowerCase();
+  if (value.contains('solar') ||
+      value.contains('wind') ||
+      value.contains('renewable')) {
+    return const <double>[1, 0, 0, 0];
+  }
+  if (value.contains('pasta') ||
+      value.contains('bread') ||
+      value.contains('cooking') ||
+      value.contains('baking')) {
+    return const <double>[0, 1, 0, 0];
+  }
+  if (value.contains('security') ||
+      value.contains('credentials') ||
+      value.contains('zero trust')) {
+    return const <double>[0, 0, 1, 0];
+  }
+  if (value.contains('bond') ||
+      value.contains('portfolio') ||
+      value.contains('markets')) {
+    return const <double>[0, 0, 0, 1];
+  }
+  return const <double>[0.5, 0.5, 0.5, 0.5];
 }

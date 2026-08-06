@@ -1,0 +1,20 @@
+{
+  "documents": [
+    { "id": "solar", "kind": "article", "body": "Solar panels generate renewable electricity from sunlight.", "tags": ["favorite"], "topics": ["climate"], "day": 1 },
+    { "id": "wind", "kind": "webClip", "body": "Wind turbines generate renewable electricity from moving air.", "tags": ["favorite"], "topics": ["climate"], "day": 2 },
+    { "id": "pasta", "kind": "manual", "body": "Pasta cooking uses salted water and tomato sauce.", "tags": ["recipe"], "topics": ["food"], "day": 3 },
+    { "id": "bread", "kind": "webClip", "body": "Sourdough bread baking relies on fermentation and flour.", "tags": ["recipe"], "topics": ["food"], "day": 4 },
+    { "id": "credentials", "kind": "article", "body": "Security teams rotate credentials and patch systems.", "tags": ["work"], "topics": ["security"], "day": 5 },
+    { "id": "zero-trust", "kind": "webClip", "body": "Zero trust security verifies every access request.", "tags": ["work"], "topics": ["security"], "day": 6 },
+    { "id": "bonds", "kind": "article", "body": "Bond prices react to interest rates and inflation.", "tags": ["finance"], "topics": ["markets"], "day": 7 },
+    { "id": "portfolio", "kind": "manual", "body": "Portfolio diversification balances stocks and bonds.", "tags": ["finance"], "topics": ["markets"], "day": 8 }
+  ],
+  "cases": [
+    { "id": "energy-query", "mode": "query", "query": "renewable electricity", "limit": 2, "relevant": ["solar", "wind"] },
+    { "id": "food-query", "mode": "query", "query": "cooking and baking recipe", "limit": 2, "relevant": ["pasta", "bread"] },
+    { "id": "security-query", "mode": "query", "query": "security access credentials", "limit": 2, "relevant": ["credentials", "zero-trust"] },
+    { "id": "finance-query", "mode": "query", "query": "bonds and portfolio markets", "limit": 2, "relevant": ["bonds", "portfolio"] },
+    { "id": "filtered-energy", "mode": "query", "query": "renewable electricity", "limit": 1, "relevant": ["wind"], "filter": { "sourceKinds": ["webClip"], "tags": ["favorite"], "topics": ["climate"], "savedFromDay": 2, "savedBeforeDay": 3 } },
+    { "id": "similar-energy", "mode": "similar", "itemId": "solar", "limit": 1, "relevant": ["wind"] }
+  ]
+}
