@@ -107,6 +107,17 @@ void main() {
     expect(messages, contains('necessary fact coverage'));
     expect(messages, contains('forbidden claim hit rate'));
   });
+
+  test('managed gateway replay covers provider resilience contracts', () async {
+    final report =
+        await HarnessEvals(_workspaceRoot()).evaluateManagedAiGatewayReplay();
+
+    expect(report.isSuccess, isTrue);
+    expect(report.total, 4);
+    expect(report.metrics['providerCalls'], 7);
+    expect(report.metrics['acceptedCostMicros'], 750);
+    expect(report.metrics['privateContentInDiagnostics'], isFalse);
+  });
 }
 
 Directory _workspaceRoot() {
