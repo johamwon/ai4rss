@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "river.cloud-governance-replay.v1",
+  "cases": [
+    {"id": "rolling-cost-anomaly", "kind": "costAnomaly"},
+    {"id": "selective-remote-kill", "kind": "selectiveKill"},
+    {"id": "forged-snapshot", "kind": "forgedSnapshot"},
+    {"id": "local-core-fallback", "kind": "localFallback"}
+  ]
+}

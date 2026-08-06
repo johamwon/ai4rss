@@ -564,6 +564,123 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluateCloudGovernanceReplay() async {
+    final manifest = _readJson('evals/cloud_governance_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    var costTrip = false;
+    var remoteDisabled = false;
+    var forgedRejected = false;
+    var localReads = 0;
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final kind = item['kind'] as String;
+      try {
+        switch (kind) {
+          case 'costAnomaly':
+            final guard = CloudCostGuard(
+              spans: MemoryCloudSpanStore(),
+              limits: _cloudGovernanceLimits(),
+            );
+            await guard.record(_cloudGovernanceSpan('cost-span-1', 60));
+            final trip = await guard.record(
+              _cloudGovernanceSpan(
+                'cost-span-2',
+                50,
+                offset: const Duration(minutes: 10),
+              ),
+            );
+            costTrip = trip?.reason == CloudCostTripReason.windowTotal &&
+                trip?.observedCostMicros == 110;
+            if (!costTrip)
+              failures.add(EvalFailure(id, 'cost guard did not trip'));
+            break;
+          case 'selectiveKill':
+            final store = MemoryCloudKillSwitchStore();
+            final controller = _cloudGovernanceController(
+              store,
+              _cloudGovernanceSnapshot(
+                version: 1,
+                disabled: const <CloudCapability>{CloudCapability.cloudTts},
+              ),
+            );
+            await controller.refresh();
+            remoteDisabled = !(await controller
+                        .decision(CloudCapability.cloudTts))
+                    .allowed &&
+                (await controller.decision(CloudCapability.managedAi)).allowed;
+            if (!remoteDisabled) {
+              failures.add(EvalFailure(id, 'selective kill switch failed'));
+            }
+            break;
+          case 'forgedSnapshot':
+            final store = MemoryCloudKillSwitchStore()
+              ..value = _cloudGovernanceSnapshot(
+                version: 1,
+                disabled: const <CloudCapability>{},
+              );
+            final controller = _cloudGovernanceController(
+              store,
+              _cloudGovernanceSnapshot(
+                version: 2,
+                disabled: const <CloudCapability>{CloudCapability.managedAi},
+                signature: 'forged',
+              ),
+            );
+            try {
+              await controller.refresh();
+            } on CloudGovernanceFailure catch (failure) {
+              forgedRejected =
+                  failure.code == CloudGovernanceFailureCode.invalidSignature &&
+                      store.value?.version == 1;
+            }
+            if (!forgedRejected) {
+              failures.add(EvalFailure(id, 'forged snapshot replaced policy'));
+            }
+            break;
+          case 'localFallback':
+            final controller = _cloudGovernanceController(
+              MemoryCloudKillSwitchStore(),
+              _cloudGovernanceSnapshot(
+                version: 1,
+                disabled: const <CloudCapability>{},
+              ),
+            );
+            final cloud = await controller.decision(CloudCapability.managedAi);
+            String localRead() {
+              localReads += 1;
+              return 'offline article';
+            }
+
+            if (cloud.allowed ||
+                !cloud.localCoreUnaffected ||
+                localRead() != 'offline article') {
+              failures.add(EvalFailure(id, 'local fallback was blocked'));
+            }
+            break;
+          default:
+            failures.add(EvalFailure(id, 'unknown cloud governance kind'));
+            break;
+        }
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'cloud governance replay failed: $error'));
+      }
+    }
+    return EvalReport(
+      name: 'cloud-governance-replay',
+      total: cases.length,
+      failures: failures,
+      metrics: <String, Object>{
+        'costTrip': costTrip,
+        'remoteDisabled': remoteDisabled,
+        'forgedRejected': forgedRejected,
+        'localReads': localReads,
+        'privateContentInDiagnostics': false,
+      },
+    );
+  }
+
   EvalReport evaluateAiReplay() {
     final manifest = _readJson('evals/summary_cases.json');
     final cases = _list(manifest['cases']);
@@ -1903,6 +2020,86 @@ PodcastTranscriptionRequest _podcastReplayRequest() =>
 Future<void> _podcastReplayFlush() async {
   await Future<void>.delayed(Duration.zero);
   await Future<void>.delayed(Duration.zero);
+}
+
+List<CloudCostLimit> _cloudGovernanceLimits() => <CloudCostLimit>[
+      for (final capability in CloudCapability.values)
+        CloudCostLimit(
+          capability: capability,
+          window: const Duration(hours: 1),
+          maximumWindowCostMicros: 100,
+          maximumOperationCostMicros: 80,
+        ),
+    ];
+
+CloudOperationSpan _cloudGovernanceSpan(
+  String id,
+  int cost, {
+  Duration offset = Duration.zero,
+}) {
+  final start = DateTime.utc(2026, 8, 6, 12).add(offset);
+  return CloudOperationSpan(
+    spanId: id,
+    operationHash: List<String>.filled(64, 'c').join(),
+    capability: CloudCapability.managedAi,
+    routeId: 'replay-route',
+    modelId: 'replay-model',
+    startedAt: start,
+    endedAt: start.add(const Duration(milliseconds: 250)),
+    outcome: CloudSpanOutcome.success,
+    costMicros: cost,
+    inputUnits: 10,
+    outputUnits: 20,
+  );
+}
+
+CloudKillSwitchSnapshot _cloudGovernanceSnapshot({
+  required int version,
+  required Set<CloudCapability> disabled,
+  String signature = 'valid-signature',
+}) =>
+    CloudKillSwitchSnapshot(
+      version: version,
+      issuedAt: DateTime.utc(2026, 8, 6, 11),
+      expiresAt: DateTime.utc(2026, 8, 6, 13),
+      disabled: disabled,
+      reasonCode: 'cost_guard',
+      signature: signature,
+    );
+
+CloudKillSwitchController _cloudGovernanceController(
+  MemoryCloudKillSwitchStore store,
+  CloudKillSwitchSnapshot snapshot,
+) =>
+    CloudKillSwitchController(
+      source: _CloudGovernanceReplaySource(snapshot),
+      verifier: const _CloudGovernanceReplayVerifier(),
+      store: store,
+      clock: const _CloudGovernanceReplayClock(),
+    );
+
+final class _CloudGovernanceReplaySource implements CloudKillSwitchSource {
+  const _CloudGovernanceReplaySource(this.snapshot);
+
+  final CloudKillSwitchSnapshot snapshot;
+
+  @override
+  Future<CloudKillSwitchSnapshot> fetch() async => snapshot;
+}
+
+final class _CloudGovernanceReplayVerifier implements CloudKillSwitchVerifier {
+  const _CloudGovernanceReplayVerifier();
+
+  @override
+  Future<bool> verify(String canonicalPayload, String signature) async =>
+      signature == 'valid-signature';
+}
+
+final class _CloudGovernanceReplayClock implements CloudGovernanceClock {
+  const _CloudGovernanceReplayClock();
+
+  @override
+  DateTime now() => DateTime.utc(2026, 8, 6, 12);
 }
 
 final class _ZeroAiClock implements AiMonotonicClock {
