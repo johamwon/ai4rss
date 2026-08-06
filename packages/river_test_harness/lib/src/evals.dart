@@ -1371,6 +1371,117 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluateUsageLedgerReplay() async {
+    final manifest = _readJson('evals/usage_ledger_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    var committedUnits = 0;
+    var refundedUnits = 0;
+    var rejectedReservations = 0;
+    var notices = 0;
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final kind = item['kind'] as String;
+      final ledger = _replayUsageLedger();
+      try {
+        switch (kind) {
+          case 'retry':
+            await _replayReserve(ledger, '$id-operation', 3);
+            await _replayReserve(ledger, '$id-operation', 3);
+            await ledger.settle(
+              operationId: '$id-operation',
+              producedUsableResult: true,
+              at: _usageReplayNow.add(const Duration(seconds: 1)),
+            );
+            await ledger.settle(
+              operationId: '$id-operation',
+              producedUsableResult: true,
+              at: _usageReplayNow.add(const Duration(seconds: 2)),
+            );
+            final snapshot = await ledger.snapshot('grant-replay');
+            committedUnits += snapshot.used;
+            if (snapshot.used != 3) {
+              failures.add(EvalFailure(id, 'retry charged more than once'));
+            }
+          case 'failed':
+            await _replayReserve(ledger, '$id-operation', 4);
+            await ledger.settle(
+              operationId: '$id-operation',
+              producedUsableResult: false,
+              at: _usageReplayNow.add(const Duration(seconds: 1)),
+            );
+            if ((await ledger.snapshot('grant-replay')).used != 0) {
+              failures.add(EvalFailure(id, 'failed result consumed usage'));
+            }
+          case 'refund':
+            await _replayReserve(ledger, '$id-operation', 5);
+            await ledger.settle(
+              operationId: '$id-operation',
+              producedUsableResult: true,
+              at: _usageReplayNow.add(const Duration(seconds: 1)),
+            );
+            await ledger.refund(
+              operationId: '$id-operation',
+              at: _usageReplayNow.add(const Duration(seconds: 2)),
+            );
+            await ledger.refund(
+              operationId: '$id-operation',
+              at: _usageReplayNow.add(const Duration(seconds: 3)),
+            );
+            final snapshot = await ledger.snapshot('grant-replay');
+            refundedUnits += 5;
+            if (snapshot.used != 0) {
+              failures.add(EvalFailure(id, 'refund did not restore usage'));
+            }
+          case 'concurrent':
+            final results = await Future.wait<Object>(
+              <Future<UsageLedgerEntry>>[
+                _replayReserve(ledger, '$id-a', 6),
+                _replayReserve(ledger, '$id-b', 6),
+              ].map((future) async {
+                try {
+                  return await future;
+                } on Object catch (error) {
+                  return error;
+                }
+              }),
+            );
+            rejectedReservations +=
+                results.whereType<UsageLedgerFailure>().length;
+            if (results.whereType<UsageLedgerEntry>().length != 1 ||
+                rejectedReservations != 1) {
+              failures.add(EvalFailure(id, 'concurrency overdrew the grant'));
+            }
+          case 'thresholds':
+            await _replayCommit(ledger, '$id-a', 8);
+            await _replayCommit(ledger, '$id-b', 2);
+            final snapshot = await ledger.snapshot('grant-replay');
+            notices += snapshot.notices.length;
+            if (snapshot.notices.length != 2) {
+              failures.add(EvalFailure(id, 'threshold notices were not exact'));
+            }
+          default:
+            failures.add(EvalFailure(id, 'unknown replay kind $kind'));
+        }
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'usage replay failed: $error'));
+      }
+    }
+
+    return EvalReport(
+      name: 'usage-ledger-replay',
+      total: cases.length,
+      failures: failures,
+      metrics: <String, Object>{
+        'committedUnits': committedUnits,
+        'refundedUnits': refundedUnits,
+        'rejectedReservations': rejectedReservations,
+        'thresholdNotices': notices,
+      },
+    );
+  }
+
   EvalReport evaluateRanking() {
     final manifest = _readJson('evals/ranking_sessions.json');
     final cases = _list(manifest['cases']);
@@ -2571,4 +2682,45 @@ final class _CommerceReplayClock implements EntitlementClock {
 
   @override
   DateTime now() => value;
+}
+
+final _usageReplayNow = DateTime.utc(2026, 8, 6, 12);
+const _usageReplayHash =
+    'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+
+UsageLedger _replayUsageLedger() => UsageLedger(<UsageGrant>[
+      UsageGrant(
+        grantId: 'grant-replay',
+        capability: EntitlementKey.managedAi,
+        limit: 10,
+        validFrom: DateTime.utc(2026, 8, 1),
+        validUntil: DateTime.utc(2026, 9, 1),
+      ),
+    ]);
+
+Future<UsageLedgerEntry> _replayReserve(
+  UsageLedger ledger,
+  String operationId,
+  int units,
+) =>
+    ledger.reserve(
+      operationId: operationId,
+      requestHash: _usageReplayHash,
+      grantId: 'grant-replay',
+      capability: EntitlementKey.managedAi,
+      units: units,
+      at: _usageReplayNow,
+    );
+
+Future<void> _replayCommit(
+  UsageLedger ledger,
+  String operationId,
+  int units,
+) async {
+  await _replayReserve(ledger, operationId, units);
+  await ledger.settle(
+    operationId: operationId,
+    producedUsableResult: true,
+    at: _usageReplayNow.add(const Duration(seconds: 1)),
+  );
 }
