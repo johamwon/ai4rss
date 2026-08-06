@@ -69,3 +69,5 @@ AI 摘要黄金集的每个样例必须声明语言、内容类型、风险等�
 永久 Free 回归不得只断言权益枚举；必须在未登录、试用结束和 Pro 降级三种状态分别真实执行微信全文静态提取、离线正文复用、系统 TTS 分段、Podcast 可播放源解析、本地知识对象生成和完整 Markdown ZIP 导出。18 个“状态×能力”检查必须全部通过且网络调用为零。支付、账户、云服务或高级知识功能的变更不得删除、跳过、改为 Mock 成功或缩减这一组；平台真机测试是补充证据，不能替代该确定性 Fast Lane。
 
 GitHub Actions 的工作流映射、产物保留和未签名发布边界见 `docs/CI_CD.md`。
+
+Knowledge vector changes must preserve deterministic, versioned chunk IDs and bounded Unicode-safe chunking. The embedding profile must identify model, revision, dimensions, and execution location; changing the content hash, profile, or chunker version requires a complete atomic replacement, while unchanged input must not call the Provider. Concurrent identical builds coalesce, conflicting mutations fail closed, deletion removes the complete document, corrupt indexes rebuild from canonical knowledge content, and invalid Provider output must leave the previous index untouched. Fast Lane replays build/skip, model upgrade, content change, deletion, and corruption recovery without network access. Cloud index implementations remain behind the same port and cannot weaken these contracts.
