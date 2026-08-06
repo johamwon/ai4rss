@@ -2035,6 +2035,109 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluateImaPortableReplay() async {
+    final manifest = _readJson('evals/ima_portable_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    var markdownPackages = 0;
+    var zipPackages = 0;
+    var explicitDismissals = 0;
+    var publicEntries = 0;
+    var unsafeEntriesRejected = 0;
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final kind = item['kind'] as String;
+      final transfer = _ImaReplayTransfer();
+      final external = _ImaReplayExternalUri();
+      final interop = ImaPortableInterop(
+        transfer: transfer,
+        externalUri: external,
+      );
+      try {
+        switch (kind) {
+          case 'singleMarkdown':
+            final package = await interop.prepare(<KnowledgeItem>[
+              _portableReplayItem(id, 'Portable private body.'),
+            ]);
+            if (package.mediaType != 'text/markdown' ||
+                !package.fileName.endsWith('.md')) {
+              failures.add(EvalFailure(id, 'single export was not Markdown'));
+            } else {
+              markdownPackages += 1;
+            }
+          case 'multiZip':
+            final package = await interop.prepare(<KnowledgeItem>[
+              _portableReplayItem('$id-a', 'First portable body.'),
+              _portableReplayItem('$id-b', 'Second portable body.'),
+            ]);
+            if (package.mediaType != 'application/zip' ||
+                package.fileName != 'river-knowledge-2.zip') {
+              failures.add(EvalFailure(id, 'multi export was not ZIP'));
+            } else {
+              zipPackages += 1;
+            }
+          case 'shareDismissed':
+            transfer.shareOutcome = ImaPortableOutcome.dismissed;
+            final result = await interop.share(<KnowledgeItem>[
+              _portableReplayItem(id, 'Dismissed private body.'),
+            ]);
+            if (result.outcome != ImaPortableOutcome.dismissed) {
+              failures.add(EvalFailure(id, 'dismissal was not preserved'));
+            } else if (result.diagnostic.toJson().toString().contains(
+                  'Dismissed private body',
+                )) {
+              failures.add(EvalFailure(id, 'diagnostic leaked body'));
+            } else {
+              explicitDismissals += 1;
+            }
+          case 'publicEntry':
+            final result = await interop.openPublicEntry();
+            if (result.outcome != ImaPortableOutcome.completed ||
+                external.opened != Uri.parse('https://ima.qq.com/')) {
+              failures.add(EvalFailure(id, 'public entry was not opened'));
+            } else {
+              publicEntries += 1;
+            }
+          case 'privateApiRejected':
+            if (interop.usesNativePrivateApi) {
+              failures.add(EvalFailure(id, 'private API was enabled'));
+              continue;
+            }
+            try {
+              ImaPortableInterop(
+                transfer: transfer,
+                externalUri: external,
+                publicEntryUri: Uri.parse('ima://private/import'),
+              );
+              failures.add(EvalFailure(id, 'private URI was accepted'));
+            } on ArgumentError {
+              unsafeEntriesRejected += 1;
+            }
+          default:
+            failures.add(EvalFailure(id, 'unknown IMA replay kind'));
+        }
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'IMA portable replay failed: $error'));
+      }
+    }
+
+    return EvalReport(
+      name: 'ima-portable-replay',
+      total: cases.length,
+      failures: failures,
+      metrics: <String, Object>{
+        'markdownPackages': markdownPackages,
+        'zipPackages': zipPackages,
+        'explicitDismissals': explicitDismissals,
+        'publicEntries': publicEntries,
+        'unsafeEntriesRejected': unsafeEntriesRejected,
+        'nativePrivateApi': false,
+        'privateContentInDiagnostics': false,
+      },
+    );
+  }
+
   EvalReport evaluateRanking() {
     final manifest = _readJson('evals/ranking_sessions.json');
     final cases = _list(manifest['cases']);
@@ -3810,5 +3913,30 @@ final class _PortableReplayWebDav implements WebDavTransport {
         values.remove(key);
         return WebDavResponse(statusCode: 204);
     }
+  }
+}
+
+final class _ImaReplayTransfer implements ImaPortableTransferGateway {
+  ImaPortableOutcome shareOutcome = ImaPortableOutcome.completed;
+
+  @override
+  Future<ImaPortableOutcome> save(ImaPortablePackage package) async =>
+      ImaPortableOutcome.completed;
+
+  @override
+  Future<ImaPortableOutcome> share(
+    ImaPortablePackage package, {
+    ShareAnchor? anchor,
+  }) async =>
+      shareOutcome;
+}
+
+final class _ImaReplayExternalUri implements ExternalUriGateway {
+  Uri? opened;
+
+  @override
+  Future<ExternalUriOpenOutcome> open(Uri uri) async {
+    opened = uri;
+    return ExternalUriOpenOutcome.opened;
   }
 }

@@ -52,6 +52,7 @@
 - INTEL-002：完成供应商无关的语义查询 Embedding 与向量检索端口；内存/本地实现使用余弦相似度、模型 Profile 隔离、有界候选和稳定并列排序。搜索按知识条目聚合最多三个最佳段落，返回 Chunk ID、原文偏移、文本和分数；相似文章使用原条目向量质心且排除自身，不产生额外查询 Embedding。来源类型、来源 ID、标签、主题、保存起止时间和排除条目过滤在向量打分前组合执行；可过滤元数据变化即使正文哈希不变也会触发重建。六类黄金查询 Recall@K/Precision@K 均为 1.00，硬门槛均为 0.90。
 - INTEL-003：完成证据优先的知识问答契约。问题先经过语义检索和最低相似度门禁，无候选证据时直接返回证据不足且回答 Provider 调用为零；Provider 可显式拒答。回答最多 12 条有界陈述，每条必须引用 1～5 个本次请求证据 Chunk，未知、重复、缺失、超量引用以及“拒答同时带陈述”全部失败关闭。最终引用由客户端从可信搜索证据物化，包含知识条目 ID、标题、原文、Chunk ID 和精确起止偏移，Provider 不能伪造引用正文。诊断仅报告问题长度、语言和证据数量，不含问题或正文。五类固定 Replay 全部通过。
 - INTEL-004：复用现有 Notion 内容哈希与外部映射实现增量跳过/更新，新增供应商无关 `KnowledgeDocumentStore` 和 WebDAV Transport 端口。Obsidian 连接器将规范 Markdown 原子写入受限目录，重复创建按字节幂等，标题变化保留稳定路径，revision 冲突显式且可重试；路径穿越失败关闭。WebDAV 默认仅 HTTPS，创建使用 `If-None-Match: *`，更新和删除使用 ETag `If-Match`，并将认证、冲突、限流、容量、离线和超时映射为稳定错误。诊断不含正文、凭据、响应体或完整目标 URI；五类固定 Replay 全部通过。
+- INTEL-005：完成 Android/iOS/Windows 共用的 IMA 用户辅助互操作。单条知识生成规范 UTF-8 Markdown，多条或资源包生成确定性 ZIP；系统分享携带单个内存文件及安全文件名，文件保存使用平台选择器，“打开 ima”只允许固定 `https://ima.qq.com/` 公开入口。包大小上限 200 MiB，取消与不可用分离，平台异常安全降级，本地知识不受影响。实现显式声明不使用原生私有 API，并拒绝私有 Scheme、凭据、查询、片段、非官方主机和私有路径；诊断只含操作、结果、条目数和字节数。五类固定 Replay 全部通过。
 - AI-006：AI 摘要黄金集从单一中文产品样例扩展为中英双语、产品/金融/健康/法律/新闻/研究/教程/安全八类合成文章，其中金融、健康、法律和安全为高风险样例。每条必要事实同时绑定源证据和允许表达，每条禁用声明使用稳定 ID 与表达变体；Harness 实际读取源 Fixture 并校验元数据。Fast Lane 聚合输出必要事实覆盖率、禁用声明命中率、语言/类型分布和高风险数量，硬门槛为覆盖率 ≥90%、禁用声明命中率 0、至少 8 个样例及 4 个高风险样例；负向测试证明漏事实和危险断言会阻断门禁。
 - PREF-001：定义 `river.reading-event` v1 行为信封及展示、打开、有效阅读、完成、收藏、保存到知识和负反馈七类稳定 wire name；事件包含调用方提供的不可变 ID、文章 ID、UTC 时间和有界进度，不含正文、标题、笔记或 AI 输出。未知 Schema/未来版本、非法类型和事件专属载荷错误均失败关闭。领域仓库返回 inserted/duplicate，复用事件主键与唯一事件键实现顺序及并发重放幂等；同 ID 不同内容显式冲突且不覆盖原始证据。
 - PREF-002：纯 Dart 阅读会话状态机通过注入 Clock 与 IdGenerator 统一三端计时；仅在阅读页可见且处于前台或可见分屏时累计，后台、锁屏、页面不可见和 60 秒无交互后的时间全部排除。最大滚动深度单调保留，默认同时满足 30 秒有效阅读与 90% 深度才产生一次完成事件，直接跳到文末不会误判。增量 flush 只上报新增整秒，长会话按行为 Schema 单事件上限切分；倒退时钟和非法状态失败关闭。
@@ -101,7 +102,7 @@
 1. TTS-004 真机验收：Android/iOS 锁屏、来电/其他音频中断、蓝牙和进程后台矩阵。
 2. 阶段 7 POD-002：完成 Android/iOS/Windows 三端真实网络切换、系统清理文件、磁盘满和长音频播放验收。
 3. 阶段 7 POD-004/005 真机验收：完成章节跳转、文字稿外部打开、后台连续播放、锁屏切换队列项和页面往返矩阵。
-4. 阶段 14 INTEL-005：实现 IMA 分享、文件导出和公开 Deep Link；不接入私有接口。
+4. 阶段 14 INTEL-006：实现播客转录问答、每日音频简报和可选对谈式音频。
 
 ## 最近验证
 
@@ -109,18 +110,18 @@
 - `river_feed`：40 个测试通过，新增 Podcasting 2.0 命名空间、Chapters、Transcript、伪命名空间/不安全资源拒绝及 JSON Chapters 时间轴覆盖；继续覆盖 Podcast 策略、RSS 节目/分集模型、enclosure 安全筛选、iTunes 元数据、稳定 GUID、条件刷新、搜索、RSS/Atom/JSON Feed、发现、文章刷新、OPML 与 HTTP 边界。
 - `river_domain`：33 个测试通过，新增本地排序实验分组、观测和聚合一致性边界；继续覆盖自动摘要策略、有界来源/主题偏好控制、七类阅读事件 v1 wire 往返、未来版本拒绝、事件专属载荷边界、稳定幂等键、AI 产物身份、连接器、知识对象、来源引用、DOM/文本双锚点、跨来源队列、音频、后台刷新与核心模型。
 - `river_data`：126 个测试通过，新增 Drift v18 稳定实验分组、并发精确聚合、禁用/错组拒绝、显式时间、清空、v17→v18 迁移和中断恢复；继续覆盖自动摘要并发日额度、偏好控制、阅读事件顺序/并发幂等、AI 产物、知识导出耐久队列、来源并发去重、外部映射、全部历史迁移、高亮/笔记、Podcasting 2.0、统一队列、网络/磁盘/租约恢复、同步与 10,000 篇文章 P95 <500ms 自动门槛。
-- `river_knowledge`：55 个测试通过，新增 Obsidian 幂等原子写入、稳定路径、revision 冲突、路径约束，以及 WebDAV ETag 条件写入、重复创建、限流和离线映射；继续覆盖知识问答、语义搜索、组合过滤、相似文章、模型隔离、版本化分块、原子替换、删除屏障、并发与损坏恢复、Notion 和 Markdown 导出。
+- `river_knowledge`：62 个测试通过，新增 IMA 确定性 Markdown/ZIP、包大小、分享/保存结果、平台异常降级、公开入口白名单和私有 URI 拒绝；继续覆盖 Obsidian/WebDAV、知识问答、语义搜索、组合过滤、相似文章、模型隔离、版本化分块、原子替换、删除屏障、并发与损坏恢复、Notion 和 Markdown 导出。
 - `river_ai`：76 个测试通过，新增能力/模型精确成本聚合、Span 幂等冲突、单次/窗口熔断、选择性远程关闭、伪造/回滚/突变/过期快照、组合 Gate、显式复位和本地降级隐私；继续覆盖播客转录、可信托管路由、限流/超时/熔断/质量回退、短文/长文缓存、来源引用、费用预检、五类 BYOK 和严格摘要 Schema。
 - `river_commerce`：22 个测试通过，新增重试精确结算、证据冲突、失败/取消释放、重复返还、并发防透支、80%/100% 单次提醒、能力和周期边界；继续覆盖永久 Free 矩阵、访客访问、选择性 Pro 授权、规范载荷与脱敏、账户绑定、伪造、回滚/突变、未来/过期、离线缓存、在线刷新、试用降级、损坏缓存和 Free 提权拒绝。
-- `river_test_harness`：21 组共 131 项检查通过，新增便携连接器 5 项 Replay：Obsidian 幂等/冲突、WebDAV 条件写入/限流/离线重试，诊断无私有内容；继续覆盖知识问答、知识搜索黄金集、向量生命周期、永久 Free、商业/云治理、音频、排序、提取及 AI Replay。
+- `river_test_harness`：22 组共 136 项检查通过，新增 IMA 5 项 Replay：单 Markdown、多条 ZIP、显式取消、公开入口和私有 API/URI 拒绝，诊断无私有内容；继续覆盖便携连接器、知识问答、知识搜索黄金集、向量生命周期、永久 Free、商业/云治理、音频、排序、提取及 AI Replay。
 - `river_preferences`：35 个测试通过，新增稳定分组、来源多样性、样本/置信区间门禁、聚合导出隐私和默认关闭；继续覆盖真实排序贡献解释、主来源封顶、探索配额、强负反馈、主题屏蔽、固定候选多因子解释、1,000 候选/信号属性、画像、重复点击封顶、阅读状态机及模型版本。
-- `river_app`：106 个测试通过，新增时间排序控制组与曝光排除、真实阅读会话聚合、自动摘要命中/延迟/调用/成本和本地实验隐私 UI；继续覆盖高匹配自动摘要、Wi-Fi/日额度、智能排序、精确“为什么推荐”、行为采集隐私、AI 摘要确认/恢复、文章→高亮/笔记→知识保存、响应式知识库、Markdown/Notion、同步、全局迷你播放器、收听队列、播客、阅读器、后台媒体、Windows SMTC 与跨尺寸 Golden。
+- `river_app`：107 个测试通过，新增 IMA 用户辅助分享与公开入口交互；继续覆盖时间排序实验、高匹配自动摘要、Wi-Fi/日额度、智能排序、精确“为什么推荐”、行为采集隐私、AI 摘要确认/恢复、文章→高亮/笔记→知识保存、响应式知识库、Markdown/Notion、同步、全局迷你播放器、收听队列、播客、阅读器、后台媒体、Windows SMTC 与跨尺寸 Golden。
 - `river_design_system`：2 个测试通过，浅色与深色高对比主题的关键文字组合均达到 WCAG AA 4.5:1。
 - `river_audio`：43 个测试通过，新增云 TTS 精确计费、离线缓存、同键合并、取消晚返回、正文/声音变化、网络权益、无效响应、损坏恢复、LRU 清理和诊断隐私；继续覆盖 Podcast 章节跳转、统一持久队列、节目倍速、文章/Podcast 类型路由、两小时长文预算、有界预取、焦点、系统媒体命令、中断恢复、进度写入、定时暂停与跨语言分句。
 - `river_sync`：75 个测试通过，新增密文服务多租户隔离、授权、原子配额、限流、备份校验、灾演恢复、删除和不可读管理员指标；继续覆盖账号体验、字段/语义合并、幂等重复、墓碑压缩、双设备分页、AES/X25519/HKDF、恢复和设备生命周期。
 - `river_extract`：42 个测试通过，新增公网 IP 固定、IPv4/IPv6 特殊范围、混合 DNS、连接地址复验、重定向 DNS 变化、HTTPS 降级、单次/累计大小、总超时扣减、媒体/编码、响应头注入、恶意 HTML 和诊断隐私覆盖；继续验证完整 Feed 零网页请求、摘要静态下载和失败后平台回退编排。
-- `river_platform`：56 个测试通过，新增权益快照安全缓存往返/清除、损坏保留、失败后串行化和真实 Ed25519 验签；继续覆盖跨平台链路、长文检查点持久化、完整 BYOK、Notion Token、Markdown 单文件/ZIP 系统保存、真实 HTTP Range/If-Range 续传、Podcast 播放/下载、安全仓库、系统音频会话、系统 TTS、外部原文、链路状态、后台调度及动态渲染契约。
-- Harness：fixtures 23/23、feeds 3/3、extraction 7/7、cloud extraction replay 5/5、cloud TTS replay 5/5、podcast transcription replay 5/5、cloud governance replay 4/4、commerce entitlement replay 6/6、usage ledger replay 5/5、free product replay 18/18、knowledge vector replay 5/5、knowledge search replay 6/6（Recall@K/Precision@K 1.00、证据 10/10）、knowledge question replay 5/5（回答 1、零 Provider 拒答 1、Provider 拒答 1、非法输出拒绝 2、诊断私有内容 0）、portable connector replay 5/5（Obsidian 幂等/冲突、WebDAV 条件写入/限流/离线，诊断私有内容 0）、AI replay 8/8、AI provider replay 5/5、AI long replay 1/1、AI cache replay 1/1、managed AI gateway replay 4/4、ranking 7/7、ranking experiment replay 3/3。
+- `river_platform`：59 个测试通过，新增 IMA 内存文件分享、文件名/媒体类型、锚点、取消/不可用/异常和文件保存扩展名映射；继续覆盖跨平台链路、长文检查点持久化、完整 BYOK、Notion Token、Markdown 单文件/ZIP 系统保存、真实 HTTP Range/If-Range 续传、Podcast 播放/下载、安全仓库、系统音频会话、系统 TTS、外部原文、链路状态、后台调度及动态渲染契约。
+- Harness：fixtures 23/23、feeds 3/3、extraction 7/7、cloud extraction replay 5/5、cloud TTS replay 5/5、podcast transcription replay 5/5、cloud governance replay 4/4、commerce entitlement replay 6/6、usage ledger replay 5/5、free product replay 18/18、knowledge vector replay 5/5、knowledge search replay 6/6（Recall@K/Precision@K 1.00、证据 10/10）、knowledge question replay 5/5（回答 1、零 Provider 拒答 1、Provider 拒答 1、非法输出拒绝 2、诊断私有内容 0）、portable connector replay 5/5（Obsidian 幂等/冲突、WebDAV 条件写入/限流/离线，诊断私有内容 0）、IMA portable replay 5/5（Markdown/ZIP/取消/公开入口/私有 URI 拒绝，私有 API false，诊断私有内容 0）、AI replay 8/8、AI provider replay 5/5、AI long replay 1/1、AI cache replay 1/1、managed AI gateway replay 4/4、ranking 7/7、ranking experiment replay 3/3。
 - 本机 Windows Debug 构建通过；原生命令行测试 1/1、隐藏启动 Smoke 与真实 SMTC MethodChannel Integration Test 均通过。Windows 统一启用 `/utf-8` 并保留 `/WX`，避免非英文系统代码页造成第三方插件误失败。
 - Windows 真实 DPAPI 安全仓库 Integration Test 1/1 通过，测试会写入、读回并清理会话、X25519 私钥和账户数据密钥；已加入 Merge/Nightly CI。
 - Windows 真实 Notion Token 安全仓库 Integration Test 1/1 通过，测试会写入、读回并清理 OAuth access/refresh Token；已加入 Merge/Nightly CI。
