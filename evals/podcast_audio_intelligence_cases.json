@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {"id": "podcast-qa-grounded", "kind": "groundedQuestion"},
+    {"id": "podcast-qa-no-evidence", "kind": "noEvidence"},
+    {"id": "podcast-qa-forged-citation", "kind": "forgedCitation"},
+    {"id": "audio-brief-dialogue", "kind": "dialogueBrief"},
+    {"id": "audio-brief-safety", "kind": "safetyBlocked"},
+    {"id": "audio-brief-cancelled", "kind": "cancelledLate"}
+  ]
+}
