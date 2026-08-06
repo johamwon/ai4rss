@@ -15,6 +15,18 @@ void main() {
     expect(report.metrics['forgedSnapshotsRejected'], 1);
     expect(report.metrics['uiProductIdentifierReferences'], 0);
   });
+
+  test('usage replay is idempotent and emits exact thresholds', () async {
+    final report =
+        await HarnessEvals(_workspaceRoot()).evaluateUsageLedgerReplay();
+
+    expect(report.isSuccess, isTrue);
+    expect(report.total, 5);
+    expect(report.metrics['committedUnits'], 3);
+    expect(report.metrics['refundedUnits'], 5);
+    expect(report.metrics['rejectedReservations'], 1);
+    expect(report.metrics['thresholdNotices'], 2);
+  });
 }
 
 Directory _workspaceRoot() {
