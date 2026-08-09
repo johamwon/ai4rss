@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:river_ai/river_ai.dart';
 import 'package:river_audio/river_audio.dart';
@@ -2138,6 +2139,164 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluatePodcastAudioIntelligenceReplay() async {
+    final manifest = _readJson('evals/podcast_audio_intelligence_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    var groundedAnswers = 0;
+    var zeroProviderRefusals = 0;
+    var forgedCitationsRejected = 0;
+    var dialogueBriefs = 0;
+    var safetyBlocks = 0;
+    var lateCancellationCosts = 0;
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final kind = item['kind'] as String;
+      try {
+        switch (kind) {
+          case 'groundedQuestion':
+            final provider = _PodcastAudioReplayQuestionProvider();
+            final result = await PodcastTranscriptQuestionService(
+              provider: provider,
+              usageLedger: MemoryPodcastAudioIntelligenceUsageLedger(),
+            ).ask(
+              operationId: id,
+              question: 'privacy policy changed',
+              language: 'en-US',
+              transcript: _podcastAudioReplayTranscript(),
+              cancellation: PodcastTaskCancellation(),
+            );
+            if (result.outcome != PodcastQuestionOutcome.answered ||
+                result.statements.single.citations.single.segmentIndex != 1) {
+              failures.add(EvalFailure(id, 'answer was not timestamp cited'));
+            } else {
+              groundedAnswers += 1;
+            }
+          case 'noEvidence':
+            final provider = _PodcastAudioReplayQuestionProvider();
+            final result = await PodcastTranscriptQuestionService(
+              provider: provider,
+              usageLedger: MemoryPodcastAudioIntelligenceUsageLedger(),
+            ).ask(
+              operationId: id,
+              question: 'quantum entanglement',
+              language: 'en-US',
+              transcript: _podcastAudioReplayTranscript(),
+              cancellation: PodcastTaskCancellation(),
+            );
+            if (result.providerCalled || provider.calls != 0) {
+              failures.add(EvalFailure(id, 'no-evidence gate called Provider'));
+            } else {
+              zeroProviderRefusals += 1;
+            }
+          case 'forgedCitation':
+            final provider = _PodcastAudioReplayQuestionProvider(forged: true);
+            try {
+              await PodcastTranscriptQuestionService(
+                provider: provider,
+                usageLedger: MemoryPodcastAudioIntelligenceUsageLedger(),
+              ).ask(
+                operationId: id,
+                question: 'privacy policy changed',
+                language: 'en-US',
+                transcript: _podcastAudioReplayTranscript(),
+                cancellation: PodcastTaskCancellation(),
+              );
+              failures.add(EvalFailure(id, 'forged citation was accepted'));
+            } on PodcastAudioIntelligenceFailure catch (failure) {
+              if (failure.code !=
+                  PodcastAudioIntelligenceFailureCode.invalidProviderOutput) {
+                failures.add(EvalFailure(id, 'wrong forged citation failure'));
+              } else {
+                forgedCitationsRejected += 1;
+              }
+            }
+          case 'dialogueBrief':
+            final ledger = MemoryPodcastAudioIntelligenceUsageLedger();
+            final artifact = await _podcastAudioReplayBrief(
+              ledger: ledger,
+            ).generate(
+              _podcastAudioReplayBriefRequest(id),
+              PodcastTaskCancellation(),
+            );
+            if (artifact.style != AudioBriefStyle.dialogue ||
+                artifact.turns.any((turn) => turn.citations.isEmpty) ||
+                ledger.records.length != 2) {
+              failures.add(EvalFailure(id, 'dialogue brief was not grounded'));
+            } else {
+              dialogueBriefs += 1;
+            }
+          case 'safetyBlocked':
+            final script = _PodcastAudioReplayScript();
+            try {
+              await _podcastAudioReplayBrief(
+                safety: _PodcastAudioReplaySafety(blocked: true),
+                script: script,
+              ).generate(
+                _podcastAudioReplayBriefRequest(id),
+                PodcastTaskCancellation(),
+              );
+              failures.add(EvalFailure(id, 'unsafe source was accepted'));
+            } on PodcastAudioIntelligenceFailure catch (failure) {
+              if (failure.code !=
+                      PodcastAudioIntelligenceFailureCode.contentBlocked ||
+                  script.calls != 0) {
+                failures.add(EvalFailure(id, 'safety gate ran too late'));
+              } else {
+                safetyBlocks += 1;
+              }
+            }
+          case 'cancelledLate':
+            final ledger = MemoryPodcastAudioIntelligenceUsageLedger();
+            final renderer = _PodcastAudioReplayPendingRenderer();
+            final cancellation = PodcastTaskCancellation();
+            final future = _podcastAudioReplayBrief(
+              ledger: ledger,
+              renderer: renderer,
+            ).generate(
+              _podcastAudioReplayBriefRequest(id),
+              cancellation,
+            );
+            await renderer.started.future;
+            cancellation.cancel();
+            try {
+              await future;
+              failures.add(EvalFailure(id, 'cancelled audio was returned'));
+            } on PodcastTaskCancelledException {
+              renderer.complete();
+              await Future<void>.delayed(Duration.zero);
+              if (ledger.records.length != 2) {
+                failures.add(EvalFailure(id, 'late cost was not recorded'));
+              } else {
+                lateCancellationCosts += 1;
+              }
+            }
+          default:
+            failures.add(EvalFailure(id, 'unknown audio intelligence kind'));
+        }
+      } on Object catch (error) {
+        failures
+            .add(EvalFailure(id, 'audio intelligence replay failed: $error'));
+      }
+    }
+
+    return EvalReport(
+      name: 'podcast-audio-intelligence-replay',
+      total: cases.length,
+      failures: failures,
+      metrics: <String, Object>{
+        'groundedAnswers': groundedAnswers,
+        'zeroProviderRefusals': zeroProviderRefusals,
+        'forgedCitationsRejected': forgedCitationsRejected,
+        'dialogueBriefs': dialogueBriefs,
+        'safetyBlocks': safetyBlocks,
+        'lateCancellationCosts': lateCancellationCosts,
+        'privateContentInDiagnostics': false,
+      },
+    );
+  }
+
   EvalReport evaluateRanking() {
     final manifest = _readJson('evals/ranking_sessions.json');
     final cases = _list(manifest['cases']);
@@ -3940,3 +4099,159 @@ final class _ImaReplayExternalUri implements ExternalUriGateway {
     return ExternalUriOpenOutcome.opened;
   }
 }
+
+final class _PodcastAudioReplayQuestionProvider
+    implements PodcastQuestionProvider {
+  _PodcastAudioReplayQuestionProvider({this.forged = false});
+
+  final bool forged;
+  var calls = 0;
+
+  @override
+  Future<PodcastQuestionProviderResult> answer(
+    PodcastQuestionProviderRequest request, {
+    required String operationId,
+    required PodcastTaskCancellation cancellation,
+  }) async {
+    calls += 1;
+    return PodcastQuestionProviderResult(
+      refused: false,
+      statements: <PodcastQuestionStatementDraft>[
+        PodcastQuestionStatementDraft(
+          text: 'The privacy policy changed.',
+          segmentIndexes: <int>[forged ? 99 : 1],
+        ),
+      ],
+      costMicros: 100,
+    );
+  }
+}
+
+PodcastTranscript _podcastAudioReplayTranscript() => PodcastTranscript(
+      language: 'en-US',
+      providerVersion: 'replay-v1',
+      segments: const <PodcastTranscriptSegment>[
+        PodcastTranscriptSegment(
+          index: 0,
+          start: Duration.zero,
+          end: Duration(seconds: 10),
+          text: 'Welcome to the weekly show.',
+          speaker: 'host',
+        ),
+        PodcastTranscriptSegment(
+          index: 1,
+          start: Duration(seconds: 10),
+          end: Duration(seconds: 20),
+          text: 'The privacy policy changed with clearer controls.',
+          speaker: 'guest',
+        ),
+      ],
+    );
+
+final class _PodcastAudioReplaySafety implements AudioBriefSafetyGate {
+  const _PodcastAudioReplaySafety({this.blocked = false});
+
+  final bool blocked;
+
+  @override
+  Future<AudioBriefSafetyResult> check(
+    Iterable<String> fragments, {
+    required AudioBriefSafetyStage stage,
+  }) async =>
+      AudioBriefSafetyResult(
+        allowed: !(blocked && stage == AudioBriefSafetyStage.source),
+      );
+}
+
+final class _PodcastAudioReplayScript implements AudioBriefScriptProvider {
+  var calls = 0;
+
+  @override
+  Future<AudioBriefScriptProviderResult> generate(
+    AudioBriefScriptProviderRequest request, {
+    required String operationId,
+    required PodcastTaskCancellation cancellation,
+  }) async {
+    calls += 1;
+    return AudioBriefScriptProviderResult(
+      turns: <AudioBriefTurnDraft>[
+        AudioBriefTurnDraft(
+          text: 'Today we review the policy update.',
+          sourceIds: <String>['source-a'],
+          speaker: 'host',
+        ),
+        AudioBriefTurnDraft(
+          text: 'The source says controls became clearer.',
+          sourceIds: <String>['source-a'],
+          speaker: 'guest',
+        ),
+      ],
+      costMicros: 500,
+    );
+  }
+}
+
+class _PodcastAudioReplayRenderer implements AudioBriefRenderer {
+  @override
+  Future<AudioBriefRenderResult> render(
+    AudioBriefRenderRequest request, {
+    required String operationId,
+    required PodcastTaskCancellation cancellation,
+  }) async =>
+      _podcastAudioReplayRenderResult();
+}
+
+final class _PodcastAudioReplayPendingRenderer implements AudioBriefRenderer {
+  final Completer<void> started = Completer<void>();
+  final Completer<AudioBriefRenderResult> _result =
+      Completer<AudioBriefRenderResult>();
+
+  @override
+  Future<AudioBriefRenderResult> render(
+    AudioBriefRenderRequest request, {
+    required String operationId,
+    required PodcastTaskCancellation cancellation,
+  }) {
+    started.complete();
+    return _result.future;
+  }
+
+  void complete() => _result.complete(_podcastAudioReplayRenderResult());
+}
+
+AudioBriefService _podcastAudioReplayBrief({
+  AudioBriefSafetyGate? safety,
+  _PodcastAudioReplayScript? script,
+  AudioBriefRenderer? renderer,
+  MemoryPodcastAudioIntelligenceUsageLedger? ledger,
+}) =>
+    AudioBriefService(
+      safety: safety ?? const _PodcastAudioReplaySafety(),
+      scriptProvider: script ?? _PodcastAudioReplayScript(),
+      renderer: renderer ?? _PodcastAudioReplayRenderer(),
+      usageLedger: ledger ?? MemoryPodcastAudioIntelligenceUsageLedger(),
+    );
+
+AudioBriefRequest _podcastAudioReplayBriefRequest(String id) =>
+    AudioBriefRequest(
+      operationId: id,
+      day: DateTime.utc(2026, 8, 6),
+      language: 'en-US',
+      style: AudioBriefStyle.dialogue,
+      sources: <AudioBriefSource>[
+        AudioBriefSource(
+          sourceId: 'source-a',
+          title: 'Policy update',
+          text: 'The privacy policy changed with clearer controls.',
+        ),
+      ],
+    );
+
+AudioBriefRenderResult _podcastAudioReplayRenderResult() =>
+    AudioBriefRenderResult(
+      bytes: Uint8List.fromList(<int>[0x49, 0x44, 0x33, 1]),
+      mediaType: 'audio/mpeg',
+      duration: const Duration(minutes: 2),
+      billableDuration: const Duration(minutes: 2),
+      costMicros: 200,
+    );
