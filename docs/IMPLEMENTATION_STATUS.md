@@ -96,6 +96,7 @@
 ## 部分完成
 
 - FND-001：Android/iOS/Windows Runner 已生成且三端 Debug CI 构建通过；仍需 Android、iOS 和 Windows 真实设备/系统验收。
+- REL-001/005/006/007 核心：新增可执行发布审计，自动核对版本、锁文件、生产依赖、可选远程服务边界、三端 Draft Release、校验和、敏感文件忽略规则、数据处理与安全说明；Release 保存 JSON 证据和 Dart 依赖清单。`candidate` 允许生成内部包，`store` 对模板 ID、Debug Signing、签名/账号/法务和真机证据失败关闭；延期支付不阻塞永久免费产品发布。
 
 ## 下一批
 
