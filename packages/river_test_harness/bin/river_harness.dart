@@ -24,6 +24,7 @@ Future<void> main(List<String> arguments) async {
         ..add(await evals.evaluateFreeProductReplay())
         ..add(await evals.evaluateKnowledgeVectorReplay())
         ..add(await evals.evaluateKnowledgeSearchReplay())
+        ..add(await evals.evaluateKnowledgeQuestionReplay())
         ..add(evals.evaluateAiReplay())
         ..add(await evals.evaluateAiProviderReplay())
         ..add(await evals.evaluateAiLongReplay())
@@ -64,7 +65,8 @@ Future<void> main(List<String> arguments) async {
     case 'knowledge':
       reports
         ..add(await evals.evaluateKnowledgeVectorReplay())
-        ..add(await evals.evaluateKnowledgeSearchReplay());
+        ..add(await evals.evaluateKnowledgeSearchReplay())
+        ..add(await evals.evaluateKnowledgeQuestionReplay());
       break;
     case 'ai':
       reports
