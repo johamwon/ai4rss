@@ -1,0 +1,9 @@
+{
+  "cases": [
+    { "id": "connector-obsidian-idempotent", "kind": "obsidianIdempotent" },
+    { "id": "connector-obsidian-conflict", "kind": "obsidianConflict" },
+    { "id": "connector-webdav-conditional", "kind": "webdavConditional" },
+    { "id": "connector-webdav-rate-limit", "kind": "webdavRateLimit" },
+    { "id": "connector-webdav-offline", "kind": "webdavOffline" }
+  ]
+}

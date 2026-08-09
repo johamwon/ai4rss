@@ -25,6 +25,7 @@ Future<void> main(List<String> arguments) async {
         ..add(await evals.evaluateKnowledgeVectorReplay())
         ..add(await evals.evaluateKnowledgeSearchReplay())
         ..add(await evals.evaluateKnowledgeQuestionReplay())
+        ..add(await evals.evaluatePortableConnectorReplay())
         ..add(evals.evaluateAiReplay())
         ..add(await evals.evaluateAiProviderReplay())
         ..add(await evals.evaluateAiLongReplay())
@@ -67,6 +68,10 @@ Future<void> main(List<String> arguments) async {
         ..add(await evals.evaluateKnowledgeVectorReplay())
         ..add(await evals.evaluateKnowledgeSearchReplay())
         ..add(await evals.evaluateKnowledgeQuestionReplay());
+      reports.add(await evals.evaluatePortableConnectorReplay());
+      break;
+    case 'connector':
+      reports.add(await evals.evaluatePortableConnectorReplay());
       break;
     case 'ai':
       reports
@@ -84,7 +89,7 @@ Future<void> main(List<String> arguments) async {
     default:
       stderr.writeln(
         'Usage: river_harness '
-        '[check|fixture|feed|extract|tts|transcribe|governance|commerce|free|knowledge|ai|rank]',
+        '[check|fixture|feed|extract|tts|transcribe|governance|commerce|free|knowledge|connector|ai|rank]',
       );
       exitCode = 64;
       return;
