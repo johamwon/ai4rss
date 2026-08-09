@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:river_ai/river_ai.dart';
 import 'package:river_audio/river_audio.dart';
+import 'package:river_byok/river_byok.dart';
 import 'package:river_data/river_data.dart' hide AudioItem, AudioQueueEntry;
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
@@ -45,6 +46,8 @@ final class AppDependencies {
     KnowledgeConnector? notionConnector,
     AiHttpTransport? aiTransport,
     AiByokConfigurationVault? aiConfigurations,
+    ByokHttpTransport? byokTransport,
+    ByokMediaConfigurationVault? mediaConfigurations,
     AiLongSummaryCheckpointStore? aiSummaryCheckpoints,
     ArticleSummaryExperience? articleSummaries,
     ReadingBehaviorRepository? readingBehaviorRepository,
@@ -67,6 +70,11 @@ final class AppDependencies {
         backgroundRefresh =
             backgroundRefresh ?? PlatformBackgroundRefreshScheduler(),
         aiTransport = aiTransport ?? PackageHttpAiTransport(),
+        byokTransport = byokTransport ?? PackageByokHttpTransport(),
+        aiConfigurations = aiConfigurations ??
+            PlatformSecureAiByokConfigurationVault.standard(),
+        mediaConfigurations = mediaConfigurations ??
+            PlatformSecureByokMediaConfigurationVault.standard(),
         _database = database {
     jobs = PersistentJobQueue(database);
     feeds = DriftFeedRepository(database);
@@ -146,8 +154,7 @@ final class AppDependencies {
     );
     this.articleSummaries = articleSummaries ??
         ByokArticleSummaryExperience(
-          configurations: aiConfigurations ??
-              PlatformSecureAiByokConfigurationVault.standard(),
+          configurations: this.aiConfigurations,
           artifacts: DriftAiArtifactRepository(database),
           checkpoints:
               aiSummaryCheckpoints ?? PlatformAiLongSummaryCheckpointStore(),
@@ -299,6 +306,9 @@ final class AppDependencies {
   final PodcastTransferBackend podcastTransfer;
   final HttpPort http;
   final AiHttpTransport aiTransport;
+  final ByokHttpTransport byokTransport;
+  final AiByokConfigurationVault aiConfigurations;
+  final ByokMediaConfigurationVault mediaConfigurations;
   final bool automaticRefreshEnabled;
   final bool readingBehaviorIntroductionEnabled;
   final OpmlFileGateway opmlFiles;
@@ -354,6 +364,10 @@ final class AppDependencies {
     final aiHttp = aiTransport;
     if (aiHttp is PackageHttpAiTransport) {
       aiHttp.close();
+    }
+    final byokHttp = byokTransport;
+    if (byokHttp is PackageByokHttpTransport) {
+      byokHttp.close();
     }
     await _database.close();
   }

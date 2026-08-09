@@ -20,6 +20,13 @@
   idempotent and identity collisions fail closed.
 - Logs never contain article bodies, credentials or provider keys.
 
+Direct BYOK provider changes must replay AI, TTS and transcription connection
+contracts without real network access. Tests must prove capability-scoped secure
+storage, credential redaction, redirect refusal, bounded binary responses, audio
+signature validation, podcast byte/media/SHA-256 matching, multipart structure,
+cancellation and stable failure mapping. Live credentials never enter fixtures or
+CI; live latency, voice quality and transcription accuracy belong to Nightly only.
+
 ## Initial gates
 
 | Gate | Threshold |

@@ -12,6 +12,8 @@ dependencies:
     path: ../../packages/river_ai
   river_audio:
     path: ../../packages/river_audio
+  river_byok:
+    path: ../../packages/river_byok
   river_commerce:
     path: ../../packages/river_commerce
   river_design_system:

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:river_byok/river_byok.dart';
 import 'package:river_data/river_data.dart';
 import 'package:river_design_system/river_design_system.dart';
 import 'package:river_domain/river_domain.dart';
@@ -13,6 +14,7 @@ import '../audio/global_mini_player.dart';
 import '../knowledge/knowledge_library_page.dart';
 import '../podcast/podcast_library_page.dart';
 import '../preferences/reading_behavior_privacy_page.dart';
+import '../settings/byok_provider_settings_page.dart';
 import '../sync/sync_account_page.dart';
 import 'app_dependencies.dart';
 import 'article_list.dart';
@@ -555,6 +557,21 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
     );
   }
 
+  Future<void> _openByokProviders() async {
+    final dependencies = RiverDependenciesScope.of(context);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => ByokProviderSettingsPage(
+          aiVault: dependencies.aiConfigurations,
+          mediaVault: dependencies.mediaConfigurations,
+          connections: ByokProviderConnectionService(
+            transport: dependencies.byokTransport,
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _run(Future<String?> Function() operation) async {
     setState(() => _busy = true);
     try {
@@ -781,6 +798,11 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
                         onPressed: () => unawaited(_openPodcasts()),
                         icon: const Icon(Icons.podcasts_outlined),
                         tooltip: '播客',
+                      ),
+                      IconButton(
+                        onPressed: () => unawaited(_openByokProviders()),
+                        icon: const Icon(Icons.key_outlined),
+                        tooltip: 'AI 与音频供应商',
                       ),
                       IconButton(
                         onPressed: () =>

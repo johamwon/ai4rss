@@ -35,6 +35,7 @@ Future<void> main(List<String> arguments) async {
     'packages/river_ai',
     'packages/river_preferences',
     'packages/river_audio',
+    'packages/river_byok',
     'packages/river_knowledge',
     'packages/river_sync',
     'packages/river_commerce',

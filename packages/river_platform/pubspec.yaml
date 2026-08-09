@@ -27,6 +27,8 @@ dependencies:
   path_provider: 2.1.6
   river_ai:
     path: ../river_ai
+  river_byok:
+    path: ../river_byok
   river_commerce:
     path: ../river_commerce
   river_domain:

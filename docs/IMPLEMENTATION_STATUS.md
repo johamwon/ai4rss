@@ -58,6 +58,7 @@
 - INTEL-006：完成供应商无关的播客转录问答与每日音频简报编排。问答先做确定性转录证据筛选，无证据时零 Provider 调用；每条陈述必须引用本次发送的 1～5 个 Segment，最终引用由 River 物化精确起止时间、说话人和原文，伪造/重复/缺失引用失败关闭。每日简报绑定 UTC 日期、语言、样式、来源哈希和总成本预算，默认 narration，可选严格交替 host/guest 对谈；每个 Turn 必须引用可信来源。源内容和脚本双安全门禁，脚本/音频按剩余预算分阶段计费，非法输出和取消后的晚返回仍记录已发生成本；成功重试不重复调用。六类固定 Replay 全部通过。
 - INTEL-007：完成 FreshRSS Google Reader API 与 Miniflux `/v1` 的供应商无关账户同步。账户仅接受无凭据 HTTPS 基址，凭据和完整 URI 不进入诊断；拉取统一返回完整订阅、有界阅读/收藏状态对账和单调游标，FreshRSS 重查有限窗口，Miniflux 以 `changed_after` 增量，状态写回有界。相同规范 Feed URL 跨账户复用一个本地来源，但保留账户级远端映射和状态；旧状态不能覆盖新状态，游标回退失败关闭，移除账户仅在最后一个映射消失后清理本地来源。六类固定 Replay 全部通过。
 - AI-006：AI 摘要黄金集从单一中文产品样例扩展为中英双语、产品/金融/健康/法律/新闻/研究/教程/安全八类合成文章，其中金融、健康、法律和安全为高风险样例。每条必要事实同时绑定源证据和允许表达，每条禁用声明使用稳定 ID 与表达变体；Harness 实际读取源 Fixture 并校验元数据。Fast Lane 聚合输出必要事实覆盖率、禁用声明命中率、语言/类型分布和高风险数量，硬门槛为覆盖率 ≥90%、禁用声明命中率 0、至少 8 个样例及 4 个高风险样例；负向测试证明漏事实和危险断言会阻断门禁。
+- BYOK-001：三端新增统一“AI 与音频供应商”入口，用户可分别填写 AI、云 TTS 和播客转录的 OpenAI-compatible HTTPS API、模型、Key 与 TTS 音色。Key 仅保存在系统安全仓库且客户端直连供应商，不进入 River 云端、普通数据库或日志。连接检查、TTS 二进制签名、播客 multipart、媒体 SHA-256、能力隔离和稳定失败映射均有确定性测试；BYOK 成本由供应商直接向用户结算，River 用量台账记零成本。
 - PREF-001：定义 `river.reading-event` v1 行为信封及展示、打开、有效阅读、完成、收藏、保存到知识和负反馈七类稳定 wire name；事件包含调用方提供的不可变 ID、文章 ID、UTC 时间和有界进度，不含正文、标题、笔记或 AI 输出。未知 Schema/未来版本、非法类型和事件专属载荷错误均失败关闭。领域仓库返回 inserted/duplicate，复用事件主键与唯一事件键实现顺序及并发重放幂等；同 ID 不同内容显式冲突且不覆盖原始证据。
 - PREF-002：纯 Dart 阅读会话状态机通过注入 Clock 与 IdGenerator 统一三端计时；仅在阅读页可见且处于前台或可见分屏时累计，后台、锁屏、页面不可见和 60 秒无交互后的时间全部排除。最大滚动深度单调保留，默认同时满足 30 秒有效阅读与 90% 深度才产生一次完成事件，直接跳到文末不会误判。增量 flush 只上报新增整秒，长会话按行为 Schema 单事件上限切分；倒退时钟和非法状态失败关闭。
 - PREF-003：行为事件仅写本地，v15 持久化采集开关与 1～3650 天保留期；关闭后仓库事务性返回 captureDisabled 且不新增记录。保留清理严格保留边界事件，完整清空启用 SQLite secure_delete 并截断 WAL。`river.reading-event-export` v1 只导出设置和按时间/ID 排序的行为信封，不关联标题、URL、正文、笔记或 AI 输出；v14→v15 及建表中断恢复均保留禁用选择。
@@ -115,12 +116,13 @@
 - `river_commerce`：22 个测试通过，新增重试精确结算、证据冲突、失败/取消释放、重复返还、并发防透支、80%/100% 单次提醒、能力和周期边界；继续覆盖永久 Free 矩阵、访客访问、选择性 Pro 授权、规范载荷与脱敏、账户绑定、伪造、回滚/突变、未来/过期、离线缓存、在线刷新、试用降级、损坏缓存和 Free 提权拒绝。
 - `river_test_harness`：24 组共 288 项检查通过，新增 100 项 Feed 兼容与 40 项微信静态正文结构门禁；继续覆盖 Feed Server Account、播客音频智能、IMA、便携连接器、知识问答、知识搜索黄金集、向量生命周期、永久 Free、商业/云治理、音频、排序、提取及 AI Replay。
 - `river_preferences`：35 个测试通过，新增稳定分组、来源多样性、样本/置信区间门禁、聚合导出隐私和默认关闭；继续覆盖真实排序贡献解释、主来源封顶、探索配额、强负反馈、主题屏蔽、固定候选多因子解释、1,000 候选/信号属性、画像、重复点击封顶、阅读状态机及模型版本。
-- `river_app`：107 个测试通过，新增 IMA 用户辅助分享与公开入口交互；继续覆盖时间排序实验、高匹配自动摘要、Wi-Fi/日额度、智能排序、精确“为什么推荐”、行为采集隐私、AI 摘要确认/恢复、文章→高亮/笔记→知识保存、响应式知识库、Markdown/Notion、同步、全局迷你播放器、收听队列、播客、阅读器、后台媒体、Windows SMTC 与跨尺寸 Golden。
+- `river_app`：108 个测试通过，新增 AI/TTS/播客 BYOK 配置、保存、连接检查与凭据状态交互；继续覆盖 IMA 用户辅助分享、时间排序实验、高匹配自动摘要、Wi-Fi/日额度、智能排序、行为采集隐私、AI 摘要确认/恢复、文章→知识保存、Markdown/Notion、同步、统一音频、播客、阅读器与跨尺寸 Golden。
 - `river_design_system`：2 个测试通过，浅色与深色高对比主题的关键文字组合均达到 WCAG AA 4.5:1。
 - `river_audio`：43 个测试通过，新增云 TTS 精确计费、离线缓存、同键合并、取消晚返回、正文/声音变化、网络权益、无效响应、损坏恢复、LRU 清理和诊断隐私；继续覆盖 Podcast 章节跳转、统一持久队列、节目倍速、文章/Podcast 类型路由、两小时长文预算、有界预取、焦点、系统媒体命令、中断恢复、进度写入、定时暂停与跨语言分句。
 - `river_sync`：75 个测试通过，新增密文服务多租户隔离、授权、原子配额、限流、备份校验、灾演恢复、删除和不可读管理员指标；继续覆盖账号体验、字段/语义合并、幂等重复、墓碑压缩、双设备分页、AES/X25519/HKDF、恢复和设备生命周期。
 - `river_extract`：45 个测试通过，新增 HTTPS 图片代理策略、`srcset` 重写、非公网资源拒绝和缓存版本隔离；继续覆盖公网 IP 固定、IPv4/IPv6 特殊范围、混合 DNS、连接地址复验、重定向 DNS 变化、HTTPS 降级、大小/超时/媒体/编码边界、恶意 HTML、完整 Feed 零网页请求和平台回退编排。
-- `river_platform`：59 个测试通过，新增 IMA 内存文件分享、文件名/媒体类型、锚点、取消/不可用/异常和文件保存扩展名映射；继续覆盖跨平台链路、长文检查点持久化、完整 BYOK、Notion Token、Markdown 单文件/ZIP 系统保存、真实 HTTP Range/If-Range 续传、Podcast 播放/下载、安全仓库、系统音频会话、系统 TTS、外部原文、链路状态、后台调度及动态渲染契约。
+- `river_platform`：61 个测试通过，新增 TTS/播客转录 BYOK 安全仓库的能力隔离、损坏失败关闭与独立删除；继续覆盖 IMA、跨平台链路、长文检查点、AI BYOK、Notion Token、Markdown 保存、Podcast 播放/下载、安全仓库、系统音频会话、系统 TTS、后台调度及动态渲染契约。
+- `river_byok`：8 个测试通过，覆盖 AI/媒体 `/models` 连接检查、配置边界、凭据脱敏、OpenAI-compatible TTS、音频签名、播客 multipart、媒体 SHA-256、稳定失败映射和取消前零媒体读取。
 - Harness：fixtures 23/23、feeds 103/103（兼容率 100%，门槛 99%）、extraction 47/47（微信静态结构兼容率 100%，门槛 95%）、cloud extraction replay 5/5、cloud TTS replay 5/5、podcast transcription replay 5/5、podcast audio intelligence replay 6/6、feed server account replay 6/6（FreshRSS/Miniflux/重复源/游标/状态/移除各 1，凭据诊断泄漏 0）、cloud governance replay 4/4、commerce entitlement replay 6/6、usage ledger replay 5/5、free product replay 18/18、knowledge vector replay 5/5、knowledge search replay 6/6（Recall@K/Precision@K 1.00、证据 10/10）、knowledge question replay 5/5、portable connector replay 5/5、IMA portable replay 5/5、AI replay 8/8、AI provider replay 5/5、AI long replay 1/1、AI cache replay 1/1、managed AI gateway replay 4/4、ranking 7/7、ranking experiment replay 3/3。
 - 本机 Windows Debug 构建通过；原生命令行测试 1/1、隐藏启动 Smoke 与真实 SMTC MethodChannel Integration Test 均通过。Windows 统一启用 `/utf-8` 并保留 `/WX`，避免非英文系统代码页造成第三方插件误失败。
 - Windows 真实 DPAPI 安全仓库 Integration Test 1/1 通过，测试会写入、读回并清理会话、X25519 私钥和账户数据密钥；已加入 Merge/Nightly CI。
