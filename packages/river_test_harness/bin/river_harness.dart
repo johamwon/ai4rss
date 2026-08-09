@@ -20,6 +20,7 @@ Future<void> main(List<String> arguments) async {
         ..add(await evals.evaluatePodcastTranscriptionReplay())
         ..add(await evals.evaluateCloudGovernanceReplay())
         ..add(await evals.evaluateCommerceEntitlementReplay())
+        ..add(await evals.evaluateUsageLedgerReplay())
         ..add(evals.evaluateAiReplay())
         ..add(await evals.evaluateAiProviderReplay())
         ..add(await evals.evaluateAiLongReplay())
@@ -49,7 +50,9 @@ Future<void> main(List<String> arguments) async {
       reports.add(await evals.evaluateCloudGovernanceReplay());
       break;
     case 'commerce':
-      reports.add(await evals.evaluateCommerceEntitlementReplay());
+      reports
+        ..add(await evals.evaluateCommerceEntitlementReplay())
+        ..add(await evals.evaluateUsageLedgerReplay());
       break;
     case 'ai':
       reports

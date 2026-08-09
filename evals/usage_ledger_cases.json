@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {"id": "idempotent-retry", "kind": "retry"},
+    {"id": "failed-result", "kind": "failed"},
+    {"id": "duplicate-refund", "kind": "refund"},
+    {"id": "concurrent-reservation", "kind": "concurrent"},
+    {"id": "threshold-notices", "kind": "thresholds"}
+  ]
+}
