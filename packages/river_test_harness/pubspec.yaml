@@ -18,6 +18,8 @@ dependencies:
     path: ../river_extract
   river_feed:
     path: ../river_feed
+  river_knowledge:
+    path: ../river_knowledge
   river_preferences:
     path: ../river_preferences
   river_sync:
