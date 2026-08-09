@@ -8,6 +8,8 @@ environment:
 dependencies:
   river_ai:
     path: ../river_ai
+  river_audio:
+    path: ../river_audio
   river_domain:
     path: ../river_domain
   river_extract:
