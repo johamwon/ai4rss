@@ -2,6 +2,7 @@ library;
 
 export 'src/ai_http.dart';
 export 'src/byok_configuration.dart';
+export 'src/cloud_governance.dart';
 export 'src/long_summary.dart';
 export 'src/managed_ai_gateway.dart';
 export 'src/openai_compatible_provider.dart';
