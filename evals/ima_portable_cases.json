@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {"id": "ima-single-markdown", "kind": "singleMarkdown"},
+    {"id": "ima-multi-zip", "kind": "multiZip"},
+    {"id": "ima-share-dismissed", "kind": "shareDismissed"},
+    {"id": "ima-public-entry", "kind": "publicEntry"},
+    {"id": "ima-private-api-rejected", "kind": "privateApiRejected"}
+  ]
+}

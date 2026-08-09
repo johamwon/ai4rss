@@ -6,6 +6,7 @@ export 'src/ai_long_summary_checkpoint_store.dart';
 export 'src/background_refresh_scheduler.dart';
 export 'src/dynamic_page_renderer.dart';
 export 'src/external_uri_gateway.dart';
+export 'src/ima_portable_gateway.dart';
 export 'src/knowledge_markdown_file_gateway.dart';
 export 'src/network_monitor.dart';
 export 'src/opml_file_gateway.dart';

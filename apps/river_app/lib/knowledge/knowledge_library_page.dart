@@ -12,6 +12,7 @@ final class KnowledgeLibraryPage extends StatefulWidget {
     required this.repository,
     required this.files,
     required this.externalUri,
+    this.imaInterop,
     this.imageFetcher,
     this.exportManager,
     this.notionWorkspace,
@@ -22,6 +23,7 @@ final class KnowledgeLibraryPage extends StatefulWidget {
   final KnowledgeMarkdownFileGateway files;
   final KnowledgeImageFetcher? imageFetcher;
   final ExternalUriGateway externalUri;
+  final ImaPortableInterop? imaInterop;
   final KnowledgeExportManager? exportManager;
   final NotionWorkspaceExperience? notionWorkspace;
 
@@ -107,6 +109,7 @@ final class _KnowledgeLibraryPageState extends State<KnowledgeLibraryPage> {
                           files: widget.files,
                           imageFetcher: widget.imageFetcher,
                           externalUri: widget.externalUri,
+                          imaInterop: widget.imaInterop,
                           exportManager: widget.exportManager,
                           notionWorkspace: widget.notionWorkspace,
                           onConfigureNotion: _openNotion,
@@ -148,6 +151,7 @@ final class _KnowledgeLibraryPageState extends State<KnowledgeLibraryPage> {
             files: widget.files,
             imageFetcher: widget.imageFetcher,
             externalUri: widget.externalUri,
+            imaInterop: widget.imaInterop,
             exportManager: widget.exportManager,
             notionWorkspace: widget.notionWorkspace,
             onConfigureNotion: _openNotion,
@@ -255,6 +259,7 @@ final class KnowledgeDetailPane extends StatelessWidget {
     required this.repository,
     required this.files,
     required this.externalUri,
+    this.imaInterop,
     this.imageFetcher,
     this.exportManager,
     this.notionWorkspace,
@@ -267,6 +272,7 @@ final class KnowledgeDetailPane extends StatelessWidget {
   final KnowledgeMarkdownFileGateway files;
   final KnowledgeImageFetcher? imageFetcher;
   final ExternalUriGateway externalUri;
+  final ImaPortableInterop? imaInterop;
   final KnowledgeExportManager? exportManager;
   final NotionWorkspaceExperience? notionWorkspace;
   final Future<void> Function()? onConfigureNotion;
@@ -313,6 +319,13 @@ final class KnowledgeDetailPane extends StatelessWidget {
                   icon: const Icon(Icons.download_outlined),
                   label: const Text('导出 Markdown'),
                 ),
+                if (imaInterop != null)
+                  FilledButton.tonalIcon(
+                    onPressed: () =>
+                        unawaited(_showImaActions(context, current)),
+                    icon: const Icon(Icons.send_outlined),
+                    label: const Text('发送到 ima'),
+                  ),
               ],
             ),
             const SizedBox(height: 20),
@@ -443,7 +456,59 @@ final class KnowledgeDetailPane extends StatelessWidget {
       if (context.mounted) _message(context, '导出失败，本地知识内容未受影响');
     }
   }
+
+  Future<void> _showImaActions(
+    BuildContext context,
+    KnowledgeItem current,
+  ) async {
+    final interop = imaInterop;
+    if (interop == null) return;
+    final action = await showModalBottomSheet<_ImaAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            const ListTile(
+              title: Text('发送到 ima'),
+              subtitle: Text('仅使用系统分享、标准文件和 ima 公共入口'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.share_outlined),
+              title: const Text('通过系统分享发送文件'),
+              subtitle: const Text('选择系统分享面板中的 ima'),
+              onTap: () => Navigator.pop(context, _ImaAction.share),
+            ),
+            ListTile(
+              leading: const Icon(Icons.open_in_new),
+              title: const Text('打开 ima'),
+              subtitle: const Text('打开公开入口后手动导入 Markdown/ZIP'),
+              onTap: () => Navigator.pop(context, _ImaAction.openPublicEntry),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!context.mounted || action == null) return;
+    final result = switch (action) {
+      _ImaAction.share => await interop.share(<KnowledgeItem>[current]),
+      _ImaAction.openPublicEntry => await interop.openPublicEntry(),
+    };
+    if (!context.mounted) return;
+    final message = switch ((action, result.outcome)) {
+      (_, ImaPortableOutcome.dismissed) => '已取消，River 本地知识未受影响',
+      (_ImaAction.share, ImaPortableOutcome.completed) =>
+        '文件已交给系统分享，请在目标中选择 ima',
+      (_ImaAction.openPublicEntry, ImaPortableOutcome.completed) =>
+        '已打开 ima，可手动导入 River 文件',
+      (_, ImaPortableOutcome.unavailable) => '当前无法使用，请先导出 Markdown 再到 ima 手动导入',
+    };
+    _message(context, message);
+  }
 }
+
+enum _ImaAction { share, openPublicEntry }
 
 final class _NotionExportCard extends StatelessWidget {
   const _NotionExportCard({

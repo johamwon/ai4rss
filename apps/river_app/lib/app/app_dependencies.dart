@@ -41,6 +41,7 @@ final class AppDependencies {
     OpmlFileGateway? opmlFiles,
     KnowledgeMarkdownFileGateway? knowledgeFiles,
     KnowledgeImageFetcher? knowledgeImages,
+    this.imaInterop,
     KnowledgeConnector? notionConnector,
     AiHttpTransport? aiTransport,
     AiByokConfigurationVault? aiConfigurations,
@@ -264,6 +265,10 @@ final class AppDependencies {
       podcastTransfer: IoPodcastTransferBackend(),
       http: http,
       database: database,
+      imaInterop: ImaPortableInterop(
+        transfer: PlatformImaPortableTransferGateway(),
+        externalUri: externalUri,
+      ),
       readingBehaviorIntroductionEnabled: true,
       notionConnector: notionConnector,
       notionWorkspace: notionWorkspace,
@@ -290,6 +295,7 @@ final class AppDependencies {
   final OpmlFileGateway opmlFiles;
   final KnowledgeMarkdownFileGateway knowledgeFiles;
   final KnowledgeImageFetcher knowledgeImages;
+  final ImaPortableInterop? imaInterop;
   final NotionWorkspaceExperience? notionWorkspace;
   final SyncAccountExperience? syncAccount;
   late final PersistentJobQueue jobs;

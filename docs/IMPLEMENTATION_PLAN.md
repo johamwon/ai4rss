@@ -297,6 +297,8 @@ Milestone C退出门槛：阶段11～13全部通过；三端购买、恢复、�
 
 > 2026-08-06：INTEL-004 已完成。现有 Notion 内容哈希和外部映射继续承担增量更新；新增供应商无关的文档存储与 WebDAV Transport 端口。Obsidian 使用受限目录、原子写入、稳定文件路径和 revision 冲突保护；WebDAV 默认只允许 HTTPS，创建使用 `If-None-Match`，更新/删除使用 ETag `If-Match`。固定 Replay 覆盖幂等、冲突、条件写入、限流、断网重试和诊断隐私。
 
+> 2026-08-06：INTEL-005 已完成。IMA 互操作只复用标准 Markdown/ZIP、系统分享、文件保存和固定公开 HTTPS 入口，不使用 Token、Cookie、私有 API 或未公开 Scheme。单条知识输出 Markdown，多条或带资源输出确定性 ZIP，包大小限制 200 MiB；分享取消、不可用和打开失败显式降级且不影响 River 本地知识。固定 Replay 覆盖单/多文件、取消、公开入口和私有 URI 拒绝。
+
 Milestone D退出门槛：知识问答必须显示可验证引用；连接器故障不影响内部知识对象；AI音频成本和质量达到上线门槛。
 
 ## 18. 阶段15：正式发布加固

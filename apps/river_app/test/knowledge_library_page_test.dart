@@ -125,6 +125,49 @@ void main() {
     await tester.pump();
     expect(external.lastUri, Uri.parse('https://notion.so/page-1'));
   });
+
+  testWidgets('IMA interop is explicit user-assisted sharing and public entry',
+      (tester) async {
+    final repository = MemoryKnowledgeRepository();
+    final transfer = _ImaTransfer();
+    final external = FakeExternalUriGateway();
+    addTearDown(repository.close);
+    final item = await repository.saveItem(_item());
+    final interop = ImaPortableInterop(
+      transfer: transfer,
+      externalUri: external,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: KnowledgeDetailPane(
+            item: item,
+            repository: repository,
+            files: _Files(),
+            externalUri: external,
+            imaInterop: interop,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('发送到 ima'));
+    await tester.pumpAndSettle();
+    expect(find.text('仅使用系统分享、标准文件和 ima 公共入口'), findsOneWidget);
+    await tester.tap(find.text('通过系统分享发送文件'));
+    await tester.pumpAndSettle();
+    expect(transfer.shared, isNotNull);
+    expect(transfer.shared!.mediaType, 'text/markdown');
+    expect(find.textContaining('文件已交给系统分享'), findsOneWidget);
+
+    await tester.tap(find.text('发送到 ima'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('打开 ima'));
+    await tester.pumpAndSettle();
+    expect(external.lastUri, Uri.parse('https://ima.qq.com/'));
+  });
 }
 
 final class _Files implements KnowledgeMarkdownFileGateway {
@@ -135,6 +178,23 @@ final class _Files implements KnowledgeMarkdownFileGateway {
   Future<bool> save(KnowledgeMarkdownExportBundle bundle) async {
     bundles.add(bundle);
     return true;
+  }
+}
+
+final class _ImaTransfer implements ImaPortableTransferGateway {
+  ImaPortablePackage? shared;
+
+  @override
+  Future<ImaPortableOutcome> save(ImaPortablePackage package) async =>
+      ImaPortableOutcome.completed;
+
+  @override
+  Future<ImaPortableOutcome> share(
+    ImaPortablePackage package, {
+    ShareAnchor? anchor,
+  }) async {
+    shared = package;
+    return ImaPortableOutcome.completed;
   }
 }
 

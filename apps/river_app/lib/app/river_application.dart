@@ -531,6 +531,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           files: dependencies.knowledgeFiles,
           imageFetcher: dependencies.knowledgeImages,
           externalUri: dependencies.externalUri,
+          imaInterop: dependencies.imaInterop,
           exportManager: dependencies.knowledgeExports,
           notionWorkspace: dependencies.notionWorkspace,
         ),
