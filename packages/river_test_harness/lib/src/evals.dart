@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -608,6 +609,111 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluateManagedAiGatewayReplay() async {
+    final manifest = _readJson('evals/managed_ai_gateway_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    var totalProviderCalls = 0;
+    var totalCostMicros = 0;
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final kind = item['kind'] as String;
+      final primary = _ManagedGatewayReplayProvider(
+        id: 'primary-provider',
+        fail: kind == 'providerFailure',
+        invalidOutput: kind == 'qualityFallback',
+      );
+      final fallback = _ManagedGatewayReplayProvider(
+        id: 'fallback-provider',
+      );
+      final gateway = ManagedAiGateway(
+        routes: ManagedAiRoutingTable(<ManagedAiRoutingRule>[
+          ManagedAiRoutingRule(
+            plan: ManagedAiPlan.free,
+            capability: ManagedAiCapability.articleSummary,
+            targets: <ManagedAiRouteTarget>[
+              _managedGatewayTarget('primary.route', primary.id),
+              _managedGatewayTarget('fallback.route', fallback.id),
+            ],
+          ),
+        ]),
+        upstreams: StaticManagedAiUpstreamRegistry(<String, AiProvider>{
+          'primary.route': primary,
+          'fallback.route': fallback,
+        }),
+        outputValidator: const ArticleSummaryManagedAiOutputValidator(),
+        clock: const _ManagedGatewayReplayClock(),
+        timeoutGuard: _ManagedGatewayReplayTimeoutGuard(
+          timeOutFirst: kind == 'timeout',
+        ),
+      );
+      final prompt = articleSummaryPromptV1.render(<String, String>{
+        'articleId': id,
+        'title': 'Deterministic managed AI replay',
+        'content': 'Synthetic replay content with no private user data.',
+        'language': 'zh-CN',
+      });
+      final request = ManagedAiGatewayRequest(
+        operationId: id,
+        capability: ManagedAiCapability.articleSummary,
+        prompt: prompt,
+        responseSchema: ArticleSummarySchema.jsonSchema,
+        outputLanguage: 'zh-CN',
+        timeout: const Duration(seconds: 5),
+      );
+      final principal = ManagedAiPrincipal(
+        accountKey: 'replay-account',
+        plan: ManagedAiPlan.free,
+      );
+
+      try {
+        final responses = kind == 'duplicate'
+            ? await Future.wait(<Future<ManagedAiGatewayResponse>>[
+                gateway.complete(principal: principal, request: request),
+                gateway.complete(principal: principal, request: request),
+              ])
+            : <ManagedAiGatewayResponse>[
+                await gateway.complete(
+                  principal: principal,
+                  request: request,
+                ),
+              ];
+        final response = responses.first;
+        if (responses.any((value) => !identical(value, response))) {
+          failures.add(EvalFailure(id, 'duplicate result was not coalesced'));
+        }
+        if (response.routeId != item['expectedRoute']) {
+          failures.add(
+            EvalFailure(
+              id,
+              'expected route ${item['expectedRoute']}, got ${response.routeId}',
+            ),
+          );
+        }
+        if (primary.requests.length != item['expectedPrimaryCalls'] ||
+            fallback.requests.length != item['expectedFallbackCalls']) {
+          failures.add(EvalFailure(id, 'provider call count was not bounded'));
+        }
+        totalProviderCalls +=
+            primary.requests.length + fallback.requests.length;
+        totalCostMicros += response.totalCostMicros;
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'managed gateway replay failed: $error'));
+      }
+    }
+    return EvalReport(
+      name: 'managed-ai-gateway-replay',
+      total: cases.length,
+      failures: failures,
+      metrics: <String, Object>{
+        'providerCalls': totalProviderCalls,
+        'acceptedCostMicros': totalCostMicros,
+        'privateContentInDiagnostics': false,
+      },
+    );
+  }
+
   EvalReport evaluateRanking() {
     final manifest = _readJson('evals/ranking_sessions.json');
     final cases = _list(manifest['cases']);
@@ -1202,6 +1308,87 @@ final class _CacheReplayProvider implements AiProvider {
     );
   }
 }
+
+final class _ManagedGatewayReplayProvider implements AiProvider {
+  _ManagedGatewayReplayProvider({
+    required this.id,
+    this.fail = false,
+    this.invalidOutput = false,
+  });
+
+  @override
+  final String id;
+  final bool fail;
+  final bool invalidOutput;
+  final List<AiProviderRequest> requests = <AiProviderRequest>[];
+
+  @override
+  Future<AiProviderResponse> complete(AiProviderRequest request) async {
+    requests.add(request);
+    if (fail) {
+      throw AiProviderFailure(
+        code: AiProviderFailureCode.unavailable,
+        retryable: true,
+      );
+    }
+    return AiProviderResponse(
+      output: invalidOutput ? '{"invalid":true}' : _managedSummaryOutput(),
+      model: request.model,
+      usage: AiTokenUsage(inputTokens: 100, outputTokens: 25),
+      elapsed: const Duration(milliseconds: 10),
+    );
+  }
+}
+
+final class _ManagedGatewayReplayClock implements ManagedAiGatewayClock {
+  const _ManagedGatewayReplayClock();
+
+  @override
+  Duration elapsed() => Duration.zero;
+
+  @override
+  DateTime now() => DateTime.utc(2026, 8, 6, 12);
+}
+
+final class _ManagedGatewayReplayTimeoutGuard implements ManagedAiTimeoutGuard {
+  _ManagedGatewayReplayTimeoutGuard({required this.timeOutFirst});
+
+  final bool timeOutFirst;
+  var _calls = 0;
+
+  @override
+  Future<T> within<T>(Future<T> future, Duration timeout) async {
+    _calls += 1;
+    if (timeOutFirst && _calls == 1) {
+      throw TimeoutException('synthetic managed AI timeout');
+    }
+    return future;
+  }
+}
+
+ManagedAiRouteTarget _managedGatewayTarget(
+  String routeId,
+  String providerId,
+) =>
+    ManagedAiRouteTarget(
+      routeId: routeId,
+      providerId: providerId,
+      model: '$providerId-model',
+      inputMicrosPerMillionTokens: 1000000,
+      outputMicrosPerMillionTokens: 2000000,
+      timeout: const Duration(seconds: 5),
+    );
+
+String _managedSummaryOutput() => jsonEncode(<String, Object?>{
+      'schemaVersion': ArticleSummarySchema.name,
+      'oneLine': '托管 AI 路由返回了合格摘要。',
+      'keyPoints': <String>['路由确定', '故障有界', '结果可校验'],
+      'whyItMatters': '服务故障不会破坏客户端的本地阅读能力。',
+      'topics': <String>['AI'],
+      'entities': <String>['River'],
+      'estimatedReadingMinutes': 2,
+      'language': 'zh-CN',
+    });
 
 final class _ReplayArtifactRepository implements AiArtifactRepository {
   final Map<String, AiArtifact> _values = <String, AiArtifact>{};

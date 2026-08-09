@@ -19,6 +19,7 @@ Future<void> main(List<String> arguments) async {
         ..add(await evals.evaluateAiProviderReplay())
         ..add(await evals.evaluateAiLongReplay())
         ..add(await evals.evaluateAiCacheReplay())
+        ..add(await evals.evaluateManagedAiGatewayReplay())
         ..add(evals.evaluateRanking())
         ..add(await evals.evaluateRankingExperiment());
       break;
@@ -36,7 +37,8 @@ Future<void> main(List<String> arguments) async {
         ..add(evals.evaluateAiReplay())
         ..add(await evals.evaluateAiProviderReplay())
         ..add(await evals.evaluateAiLongReplay())
-        ..add(await evals.evaluateAiCacheReplay());
+        ..add(await evals.evaluateAiCacheReplay())
+        ..add(await evals.evaluateManagedAiGatewayReplay());
       break;
     case 'rank':
       reports
