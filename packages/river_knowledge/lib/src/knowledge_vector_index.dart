@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:river_domain/river_domain.dart';
@@ -159,6 +160,11 @@ abstract interface class KnowledgeEmbeddingProvider {
     required EmbeddingProfile profile,
     required List<KnowledgeChunk> chunks,
   });
+
+  Future<List<double>> embedQuery({
+    required EmbeddingProfile profile,
+    required String query,
+  });
 }
 
 final class KnowledgeVectorRecord {
@@ -177,18 +183,89 @@ final class KnowledgeVectorDocument {
   KnowledgeVectorDocument({
     required this.itemId,
     required this.contentHash,
+    required this.sourceKind,
+    required this.sourceId,
+    required this.title,
+    required this.savedAt,
+    required this.updatedAt,
+    Iterable<String> tags = const <String>[],
+    Iterable<String> topics = const <String>[],
     required this.profileIdentity,
     required this.chunkerVersion,
     required Iterable<KnowledgeVectorRecord> records,
     required this.indexedAt,
-  }) : records = List<KnowledgeVectorRecord>.unmodifiable(records);
+  })  : tags = Set<String>.unmodifiable(tags),
+        topics = Set<String>.unmodifiable(topics),
+        records = List<KnowledgeVectorRecord>.unmodifiable(records);
 
   final String itemId;
   final String contentHash;
+  final KnowledgeSourceKind sourceKind;
+  final String sourceId;
+  final String title;
+  final DateTime savedAt;
+  final DateTime updatedAt;
+  final Set<String> tags;
+  final Set<String> topics;
   final String profileIdentity;
   final int chunkerVersion;
   final List<KnowledgeVectorRecord> records;
   final DateTime indexedAt;
+}
+
+final class KnowledgeVectorQueryFilter {
+  KnowledgeVectorQueryFilter({
+    Iterable<KnowledgeSourceKind> sourceKinds = const <KnowledgeSourceKind>[],
+    Iterable<String> sourceIds = const <String>[],
+    Iterable<String> tags = const <String>[],
+    Iterable<String> topics = const <String>[],
+    Iterable<String> excludedItemIds = const <String>[],
+    this.savedFrom,
+    this.savedBefore,
+  })  : sourceKinds = Set<KnowledgeSourceKind>.unmodifiable(sourceKinds),
+        sourceIds = _boundedFilterValues(sourceIds, 'sourceIds'),
+        tags = _boundedFilterValues(tags, 'tags'),
+        topics = _boundedFilterValues(topics, 'topics'),
+        excludedItemIds =
+            _boundedFilterValues(excludedItemIds, 'excludedItemIds') {
+    if (this.sourceKinds.length > KnowledgeSourceKind.values.length ||
+        (savedFrom != null && !savedFrom!.isUtc) ||
+        (savedBefore != null && !savedBefore!.isUtc) ||
+        (savedFrom != null &&
+            savedBefore != null &&
+            !savedFrom!.isBefore(savedBefore!))) {
+      throw ArgumentError('Invalid knowledge vector query filter');
+    }
+  }
+
+  final Set<KnowledgeSourceKind> sourceKinds;
+  final Set<String> sourceIds;
+  final Set<String> tags;
+  final Set<String> topics;
+  final Set<String> excludedItemIds;
+  final DateTime? savedFrom;
+  final DateTime? savedBefore;
+
+  bool allows(KnowledgeVectorDocument document) =>
+      (sourceKinds.isEmpty || sourceKinds.contains(document.sourceKind)) &&
+      (sourceIds.isEmpty || sourceIds.contains(document.sourceId)) &&
+      (tags.isEmpty || document.tags.any(tags.contains)) &&
+      (topics.isEmpty || document.topics.any(topics.contains)) &&
+      !excludedItemIds.contains(document.itemId) &&
+      (savedFrom == null || !document.savedAt.isBefore(savedFrom!)) &&
+      (savedBefore == null || document.savedAt.isBefore(savedBefore!));
+}
+
+final class KnowledgeVectorMatch {
+  const KnowledgeVectorMatch({
+    required this.document,
+    required this.record,
+    required this.score,
+  });
+
+  final KnowledgeVectorDocument document;
+  final KnowledgeVectorRecord record;
+  final double score;
 }
 
 abstract interface class KnowledgeVectorIndex {
@@ -196,6 +273,13 @@ abstract interface class KnowledgeVectorIndex {
   Future<void> replaceDocument(KnowledgeVectorDocument document);
   Future<void> deleteDocument(String itemId);
   Future<void> clearProfile(String profileIdentity);
+  Future<List<KnowledgeVectorMatch>> searchRecords({
+    required String profileIdentity,
+    required List<double> vector,
+    required KnowledgeVectorQueryFilter filter,
+    required int limit,
+    required double minimumScore,
+  });
 }
 
 final class MemoryKnowledgeVectorIndex implements KnowledgeVectorIndex {
@@ -222,6 +306,54 @@ final class MemoryKnowledgeVectorIndex implements KnowledgeVectorIndex {
   @override
   Future<void> replaceDocument(KnowledgeVectorDocument document) async {
     _documents[document.itemId] = document;
+  }
+
+  @override
+  Future<List<KnowledgeVectorMatch>> searchRecords({
+    required String profileIdentity,
+    required List<double> vector,
+    required KnowledgeVectorQueryFilter filter,
+    required int limit,
+    required double minimumScore,
+  }) async {
+    if (vector.length < 2 ||
+        vector.length > 4096 ||
+        vector.any((value) => !value.isFinite) ||
+        limit < 1 ||
+        limit > 10000 ||
+        !minimumScore.isFinite ||
+        minimumScore < -1 ||
+        minimumScore > 1) {
+      throw ArgumentError('Invalid vector search request');
+    }
+    final matches = <KnowledgeVectorMatch>[];
+    for (final document in _documents.values) {
+      if (document.profileIdentity != profileIdentity ||
+          !filter.allows(document)) {
+        continue;
+      }
+      for (final record in document.records) {
+        if (record.vector.length != vector.length) continue;
+        final score = _cosineSimilarity(vector, record.vector);
+        if (score >= minimumScore) {
+          matches.add(
+            KnowledgeVectorMatch(
+              document: document,
+              record: record,
+              score: score,
+            ),
+          );
+        }
+      }
+    }
+    matches.sort((left, right) {
+      final score = right.score.compareTo(left.score);
+      if (score != 0) return score;
+      final item = left.document.itemId.compareTo(right.document.itemId);
+      if (item != 0) return item;
+      return left.record.chunk.ordinal.compareTo(right.record.chunk.ordinal);
+    });
+    return List<KnowledgeVectorMatch>.unmodifiable(matches.take(limit));
   }
 }
 
@@ -298,8 +430,8 @@ final class KnowledgeVectorIndexer {
         VectorIndexFailureCode.concurrentMutation,
       );
     }
-    final fingerprint =
-        '${item.contentHash}|${profile.identity}|${chunker.version}';
+    final fingerprint = '${item.contentHash}|${_metadataIdentity(item)}|'
+        '${profile.identity}|${chunker.version}';
     final current = _inFlight[item.id];
     if (current != null) {
       if (current.fingerprint != fingerprint) {
@@ -360,6 +492,7 @@ final class KnowledgeVectorIndexer {
     }
     if (existing != null &&
         existing.contentHash == item.contentHash &&
+        _metadataMatches(existing, item) &&
         existing.profileIdentity == profile.identity &&
         existing.chunkerVersion == chunker.version) {
       return KnowledgeIndexBuildResult(
@@ -403,6 +536,13 @@ final class KnowledgeVectorIndexer {
     final document = KnowledgeVectorDocument(
       itemId: item.id,
       contentHash: item.contentHash,
+      sourceKind: item.source.kind,
+      sourceId: item.source.sourceId,
+      title: item.title,
+      savedAt: item.savedAt.toUtc(),
+      updatedAt: item.updatedAt.toUtc(),
+      tags: item.tags,
+      topics: item.topics,
       profileIdentity: profile.identity,
       chunkerVersion: chunker.version,
       records: records,
@@ -427,6 +567,11 @@ final class KnowledgeVectorIndexer {
     final chunkIds = <String>{};
     if (document.itemId.isEmpty ||
         !_contentHash.hasMatch(document.contentHash) ||
+        document.sourceId.trim().isEmpty ||
+        document.title.trim().isEmpty ||
+        !document.savedAt.isUtc ||
+        !document.updatedAt.isUtc ||
+        document.updatedAt.isBefore(document.savedAt) ||
         document.profileIdentity.isEmpty ||
         document.chunkerVersion < 1 ||
         document.records.length > 2048 ||
@@ -455,6 +600,33 @@ final class KnowledgeVectorIndexer {
     if (!value.isUtc) throw StateError('Knowledge index clock must return UTC');
     return value;
   }
+
+  String _metadataIdentity(KnowledgeItem item) {
+    final tags = item.tags.toList()..sort();
+    final topics = item.topics.toList()..sort();
+    return sha256
+        .convert(
+          utf8.encode(
+            '${item.source.kind.name}\n${item.source.sourceId}\n${item.title}\n'
+            '${item.savedAt.toUtc().microsecondsSinceEpoch}\n'
+            '${item.updatedAt.toUtc().microsecondsSinceEpoch}\n'
+            '${tags.join('\u0000')}\n${topics.join('\u0000')}',
+          ),
+        )
+        .toString();
+  }
+
+  bool _metadataMatches(
+    KnowledgeVectorDocument document,
+    KnowledgeItem item,
+  ) =>
+      document.sourceKind == item.source.kind &&
+      document.sourceId == item.source.sourceId &&
+      document.title == item.title &&
+      document.savedAt == item.savedAt.toUtc() &&
+      document.updatedAt == item.updatedAt.toUtc() &&
+      _sameStrings(document.tags, item.tags) &&
+      _sameStrings(document.topics, item.topics);
 }
 
 final class _InFlightIndexBuild {
@@ -503,3 +675,35 @@ bool _isLowSurrogate(int value) => value >= 0xdc00 && value <= 0xdfff;
 final _safeId = RegExp(r'^[A-Za-z0-9._:/-]{1,200}$');
 final _hash = RegExp(r'^[a-f0-9]{64}$');
 final _contentHash = RegExp(r'^sha256:[a-f0-9]{64}$');
+
+Set<String> _boundedFilterValues(Iterable<String> values, String name) {
+  final result = <String>{};
+  for (final value in values) {
+    final normalized = value.trim();
+    if (normalized.isEmpty ||
+        normalized.length > 256 ||
+        result.length >= 1000) {
+      throw ArgumentError.value(value, name);
+    }
+    result.add(normalized);
+  }
+  return Set<String>.unmodifiable(result);
+}
+
+double _cosineSimilarity(List<double> left, List<double> right) {
+  var dot = 0.0;
+  var leftNorm = 0.0;
+  var rightNorm = 0.0;
+  for (var index = 0; index < left.length; index += 1) {
+    dot += left[index] * right[index];
+    leftNorm += left[index] * left[index];
+    rightNorm += right[index] * right[index];
+  }
+  if (leftNorm == 0 || rightNorm == 0) return -1;
+  return (dot / (sqrt(leftNorm) * sqrt(rightNorm))).clamp(-1, 1);
+}
+
+bool _sameStrings(Set<String> left, Iterable<String> right) {
+  final values = right.toSet();
+  return left.length == values.length && left.containsAll(values);
+}
