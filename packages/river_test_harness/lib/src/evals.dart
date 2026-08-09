@@ -2139,6 +2139,230 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluateFeedServerAccountReplay() async {
+    final manifest = _readJson('evals/feed_server_account_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    var freshPulls = 0;
+    var minifluxPulls = 0;
+    var duplicateSources = 0;
+    var monotonicCursors = 0;
+    var stateUpdates = 0;
+    var safeRemovals = 0;
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final kind = item['kind'] as String;
+      try {
+        switch (kind) {
+          case 'freshPull':
+            final http = _FeedAccountReplayHttp(<FeedServerHttpResponse>[
+              _feedAccountReplayJson(<String, Object>{
+                'subscriptions': <Object>[
+                  <String, Object>{
+                    'id': 'feed/https://news.example/feed.xml',
+                    'title': 'News',
+                  },
+                ],
+              }),
+              _feedAccountReplayJson(<String, Object>{
+                'items': <Object>[
+                  <String, Object>{
+                    'id': 'fresh-entry',
+                    'timestampUsec': '10',
+                    'categories': <String>[
+                      'user/-/state/com.google/read',
+                    ],
+                    'origin': <String, Object>{
+                      'streamId': 'feed/https://news.example/feed.xml',
+                    },
+                  },
+                ],
+              }),
+            ]);
+            final result = await FreshRssGoogleReaderAdapter(http).pull(
+              _feedAccountReplayAccount('fresh', FeedServerKind.freshRss),
+              cursor: 0,
+            );
+            if (result.subscriptions.length != 1 ||
+                result.entryStates.single.read != true ||
+                http.requests.any((request) => request.uri.scheme != 'https')) {
+              failures.add(EvalFailure(id, 'FreshRSS contract mismatch'));
+            } else {
+              freshPulls += 1;
+            }
+          case 'minifluxPull':
+            final http = _FeedAccountReplayHttp(<FeedServerHttpResponse>[
+              _feedAccountReplayJson(<Object>[
+                <String, Object>{
+                  'id': 42,
+                  'feed_url': 'https://news.example/feed.xml',
+                  'title': 'News',
+                },
+              ]),
+              _feedAccountReplayJson(<String, Object>{
+                'entries': <Object>[
+                  <String, Object>{
+                    'id': 88,
+                    'status': 'unread',
+                    'starred': true,
+                    'changed_at': '2026-08-06T00:00:00Z',
+                    'feed': <String, Object>{'id': 42},
+                  },
+                ],
+              }),
+            ]);
+            final result = await MinifluxAdapter(http).pull(
+              _feedAccountReplayAccount('mini', FeedServerKind.miniflux),
+              cursor: 0,
+            );
+            if (result.nextCursor !=
+                    DateTime.utc(2026, 8, 6).microsecondsSinceEpoch ||
+                !result.entryStates.single.starred ||
+                http.requests.first.headers['X-Auth-Token'] != 'token') {
+              failures.add(EvalFailure(id, 'Miniflux contract mismatch'));
+            } else {
+              minifluxPulls += 1;
+            }
+          case 'duplicateSource':
+            final repository = InMemoryFeedAccountMappingRepository(
+              _FeedAccountReplayIds(),
+            );
+            await repository.applyPull(
+              accountId: 'fresh',
+              subscriptions: <RemoteFeedSubscription>[
+                _feedAccountReplaySubscription('fresh-feed'),
+              ],
+              entryStates: const <RemoteEntryState>[],
+              previousCursor: 0,
+              nextCursor: 1,
+            );
+            final result = await repository.applyPull(
+              accountId: 'mini',
+              subscriptions: <RemoteFeedSubscription>[
+                _feedAccountReplaySubscription('42'),
+              ],
+              entryStates: const <RemoteEntryState>[],
+              previousCursor: 0,
+              nextCursor: 1,
+            );
+            if (repository.sources.length != 1 ||
+                repository.mappings.length != 2 ||
+                result.reusedSources != 1) {
+              failures.add(EvalFailure(id, 'duplicate source was not reused'));
+            } else {
+              duplicateSources += 1;
+            }
+          case 'cursor':
+            final repository = InMemoryFeedAccountMappingRepository(
+              _FeedAccountReplayIds(),
+            );
+            await repository.applyPull(
+              accountId: 'mini',
+              subscriptions: <RemoteFeedSubscription>[
+                _feedAccountReplaySubscription('42'),
+              ],
+              entryStates: const <RemoteEntryState>[],
+              previousCursor: 0,
+              nextCursor: 20,
+            );
+            try {
+              await repository.applyPull(
+                accountId: 'mini',
+                subscriptions: <RemoteFeedSubscription>[
+                  _feedAccountReplaySubscription('42'),
+                ],
+                entryStates: const <RemoteEntryState>[],
+                previousCursor: 20,
+                nextCursor: 19,
+              );
+              failures.add(EvalFailure(id, 'cursor regression was accepted'));
+            } on FeedServerException catch (failure) {
+              if (failure.code != FeedServerFailureCode.cursorRegression) {
+                failures.add(EvalFailure(id, 'wrong cursor failure'));
+              } else {
+                monotonicCursors += 1;
+              }
+            }
+          case 'stateSync':
+            final repository = InMemoryFeedAccountMappingRepository(
+              _FeedAccountReplayIds(),
+            );
+            await repository.applyPull(
+              accountId: 'mini',
+              subscriptions: <RemoteFeedSubscription>[
+                _feedAccountReplaySubscription('42'),
+              ],
+              entryStates: <RemoteEntryState>[
+                _feedAccountReplayState('42', read: true, changedAt: 20),
+              ],
+              previousCursor: 0,
+              nextCursor: 20,
+            );
+            await repository.applyPull(
+              accountId: 'mini',
+              subscriptions: <RemoteFeedSubscription>[
+                _feedAccountReplaySubscription('42'),
+              ],
+              entryStates: <RemoteEntryState>[
+                _feedAccountReplayState('42', read: false, changedAt: 10),
+              ],
+              previousCursor: 20,
+              nextCursor: 21,
+            );
+            if (!repository.entryStates.single.read) {
+              failures.add(EvalFailure(id, 'stale state replaced newer state'));
+            } else {
+              stateUpdates += 1;
+            }
+          case 'removeAccount':
+            final repository = InMemoryFeedAccountMappingRepository(
+              _FeedAccountReplayIds(),
+            );
+            for (final accountId in <String>['fresh', 'mini']) {
+              await repository.applyPull(
+                accountId: accountId,
+                subscriptions: <RemoteFeedSubscription>[
+                  _feedAccountReplaySubscription('$accountId-feed'),
+                ],
+                entryStates: const <RemoteEntryState>[],
+                previousCursor: 0,
+                nextCursor: 1,
+              );
+            }
+            final first = await repository.removeAccount('fresh');
+            final last = await repository.removeAccount('mini');
+            if (first.removedOrphanSources != 0 ||
+                last.removedOrphanSources != 1 ||
+                repository.sources.isNotEmpty) {
+              failures.add(EvalFailure(id, 'shared source removal was unsafe'));
+            } else {
+              safeRemovals += 1;
+            }
+          default:
+            failures.add(EvalFailure(id, 'unknown feed account replay kind'));
+        }
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'feed account replay failed: $error'));
+      }
+    }
+
+    return EvalReport(
+      name: 'feed-server-account-replay',
+      total: cases.length,
+      failures: failures,
+      metrics: <String, Object>{
+        'freshPulls': freshPulls,
+        'minifluxPulls': minifluxPulls,
+        'duplicateSources': duplicateSources,
+        'monotonicCursors': monotonicCursors,
+        'stateUpdates': stateUpdates,
+        'safeRemovals': safeRemovals,
+        'credentialInDiagnostics': false,
+      },
+    );
+  }
+
   Future<EvalReport> evaluatePodcastAudioIntelligenceReplay() async {
     final manifest = _readJson('evals/podcast_audio_intelligence_cases.json');
     final cases = _list(manifest['cases']);
@@ -4099,6 +4323,64 @@ final class _ImaReplayExternalUri implements ExternalUriGateway {
     return ExternalUriOpenOutcome.opened;
   }
 }
+
+final class _FeedAccountReplayHttp implements FeedServerHttpPort {
+  _FeedAccountReplayHttp(this.responses);
+
+  final List<FeedServerHttpResponse> responses;
+  final List<FeedServerHttpRequest> requests = <FeedServerHttpRequest>[];
+
+  @override
+  Future<FeedServerHttpResponse> send(FeedServerHttpRequest request) async {
+    requests.add(request);
+    if (responses.isEmpty) throw StateError('No replay response.');
+    return responses.removeAt(0);
+  }
+}
+
+final class _FeedAccountReplayIds implements FeedSourceIdGenerator {
+  var value = 0;
+
+  @override
+  String next() => 'replay-source-${++value}';
+}
+
+FeedServerAccount _feedAccountReplayAccount(
+  String id,
+  FeedServerKind kind,
+) =>
+    FeedServerAccount(
+      id: id,
+      kind: kind,
+      baseUri: Uri.parse('https://reader.example'),
+      credential: FeedServerCredential('token'),
+    );
+
+FeedServerHttpResponse _feedAccountReplayJson(Object value) =>
+    FeedServerHttpResponse(
+      statusCode: 200,
+      body: utf8.encode(jsonEncode(value)),
+    );
+
+RemoteFeedSubscription _feedAccountReplaySubscription(String remoteId) =>
+    RemoteFeedSubscription(
+      remoteId: remoteId,
+      feedUrl: Uri.parse('https://NEWS.example:443/feed.xml'),
+      title: 'News',
+    );
+
+RemoteEntryState _feedAccountReplayState(
+  String remoteFeedId, {
+  required bool read,
+  required int changedAt,
+}) =>
+    RemoteEntryState(
+      remoteEntryId: 'entry',
+      remoteFeedId: remoteFeedId,
+      read: read,
+      starred: false,
+      changedAtMicros: changedAt,
+    );
 
 final class _PodcastAudioReplayQuestionProvider
     implements PodcastQuestionProvider {
