@@ -39,6 +39,21 @@ jobs:
       - name: Run deterministic release gate
         run: dart run tool/ci.dart fast
 
+      - name: Capture release readiness and dependency inventory
+        shell: bash
+        run: |
+          mkdir -p build/release-evidence
+          dart run tool/release_audit.dart --mode=candidate --output=build/release-evidence/release-readiness.json
+          dart pub deps --json > build/release-evidence/dart-dependencies.json
+
+      - name: Upload release evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-evidence
+          path: build/release-evidence/*
+          if-no-files-found: error
+          retention-days: 30
+
   build:
     name: Package ${{ matrix.target }}
     needs: validate

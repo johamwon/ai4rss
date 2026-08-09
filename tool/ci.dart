@@ -69,6 +69,10 @@ Future<void> main(List<String> arguments) async {
       'check',
     ],
   );
+  await _run(
+    'dart',
+    <String>['run', 'tool/release_audit.dart', '--mode=candidate'],
+  );
 }
 
 List<String> _formatTargets() {

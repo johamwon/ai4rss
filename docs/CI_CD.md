@@ -15,7 +15,9 @@ Windows 开发机需要使用非默认 Flutter 入口时，可以设置 `RIVER_F
 
 1. 合并并确认 `Merge` 与最近一次 `Nightly` 通过。
 2. 创建符合语义化版本的标签，例如 `v0.1.0`，或从 Actions 手动输入该标签。
-3. `Release` 会创建草稿 GitHub Release；负责人检查产物与校验和后再决定是否发布。
+3. `Release` 会创建草稿 GitHub Release，并附带 `release-readiness.json`、Dart 依赖清单和 SHA-256 校验和；负责人检查全部证据后再决定是否发布。
+
+内部候选包运行 `dart run tool/release_audit.dart --mode=candidate`；正式商店准备运行 `--mode=store`，任何模板标识、调试签名、真机/账号/法务待办都会使商店门禁失败。延期支付不阻塞永久免费产品发布，但付费入口必须保持关闭。详细证据矩阵见 `docs/RELEASE_READINESS.md`。
 
 当前发布产物用于内部验证：Android 仍使用模板 Debug Signing，iOS 明确为无签名包，Windows 尚未代码签名。商店/TestFlight/MSIX 自动发布必须等正式应用 ID、证书、密钥托管和平台账号就绪后再启用。任何签名材料都不得提交到仓库。
 
