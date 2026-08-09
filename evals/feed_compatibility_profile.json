@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "minimumSuccessRate": 0.99,
+  "families": [
+    {"kind": "rss", "count": 40},
+    {"kind": "rdf", "count": 20},
+    {"kind": "atom", "count": 25},
+    {"kind": "jsonFeed", "count": 15}
+  ]
+}

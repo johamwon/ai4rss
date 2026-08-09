@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:river_domain/river_domain.dart';
@@ -35,6 +36,76 @@ void main() {
       expect(
         result.imageUrls.single,
         Uri.parse('https://example.test/articles/images/river.png'),
+      );
+    });
+
+    test('rewrites HTTPS images through an encoded bounded proxy reference',
+        () {
+      final policy = HttpsImageProxyPolicy(
+        proxyBaseUri: Uri.parse('https://resources.river.example/proxy'),
+      );
+      final result = sanitizeHtmlFragment(
+        '<p><img src="/private/image.jpg" '
+        'srcset="/private/small.jpg 1x, https://cdn.example/large.jpg 2x"></p>',
+        baseUri: Uri.parse('https://publisher.example/article'),
+        resourcePolicy: policy,
+      );
+
+      expect(result.resources, hasLength(3));
+      expect(result.imageUrls, hasLength(3));
+      expect(
+        result.imageUrls.every(
+          (uri) =>
+              uri.host == 'resources.river.example' &&
+              uri.path.startsWith('/proxy/v1/images/'),
+        ),
+        isTrue,
+      );
+      expect(result.html, isNot(contains('publisher.example')));
+      expect(result.html, isNot(contains('cdn.example')));
+      final encoded = result.imageUrls.first.pathSegments.last;
+      final padding = '=' * ((4 - encoded.length % 4) % 4);
+      expect(
+        utf8.decode(base64Url.decode('$encoded$padding')),
+        'https://publisher.example/private/image.jpg',
+      );
+    });
+
+    test('proxy policy blocks insecure and local images', () {
+      final result = sanitizeHtmlFragment(
+        '<img src="http://public.example/image.jpg">'
+        '<img src="https://127.0.0.1/private.jpg">'
+        '<img src="https://100.64.0.1/carrier-private.jpg">'
+        '<img src="https://198.51.100.3/documentation.jpg">'
+        '<img src="https://cdn.example/image.jpg">',
+        resourcePolicy: HttpsImageProxyPolicy(
+          proxyBaseUri: Uri.parse('https://resources.river.example'),
+        ),
+      );
+
+      expect(result.resources, hasLength(1));
+      expect(result.html, isNot(contains('http://public.example')));
+      expect(result.html, isNot(contains('127.0.0.1')));
+      expect(result.html, isNot(contains('100.64.0.1')));
+      expect(result.html, isNot(contains('198.51.100.3')));
+    });
+
+    test('proxy configuration is HTTPS-only and changes extractor versions',
+        () {
+      expect(
+        () => HttpsImageProxyPolicy(
+          proxyBaseUri: Uri.parse('http://resources.river.example'),
+        ),
+        throwsArgumentError,
+      );
+      final extractor = LayeredFullTextExtractor.withResourcePolicy(
+        HttpsImageProxyPolicy(
+          proxyBaseUri: Uri.parse('https://resources.river.example'),
+        ),
+      );
+      expect(
+        extractor.extractorVersions.values,
+        everyElement('2-proxy-v1'),
       );
     });
   });

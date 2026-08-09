@@ -200,10 +200,19 @@ final class AppDependencies {
     await database.verifyReady();
     final http = BoundedHttpPort.standard();
     const clock = SystemClock();
+    const resourceProxyUrl = String.fromEnvironment(
+      'RIVER_RESOURCE_PROXY_URL',
+    );
+    final resourcePolicy = resourceProxyUrl.isEmpty
+        ? const DirectSanitizedResourcePolicy()
+        : HttpsImageProxyPolicy(proxyBaseUri: Uri.parse(resourceProxyUrl));
     final layeredExtractor = backgroundExecution
-        ? const LayeredFullTextExtractor()
+        ? resourceProxyUrl.isEmpty
+            ? const LayeredFullTextExtractor()
+            : LayeredFullTextExtractor.withResourcePolicy(resourcePolicy)
         : LayeredFullTextExtractor.withDynamicPageRenderer(
             InAppWebViewDynamicPageRenderer(),
+            resourcePolicy: resourcePolicy,
           );
     final audio = backgroundExecution
         ? const UnavailableAudioEngine()

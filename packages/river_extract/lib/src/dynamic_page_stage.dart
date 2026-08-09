@@ -19,7 +19,8 @@ final class DynamicPageExtractionStage implements ExtractionStage {
   String get id => extractorId;
 
   @override
-  String get version => extractorVersion;
+  String get version =>
+      readability.version == '1' ? extractorVersion : '2-proxy-v1';
 
   @override
   Future<StageExtractionResult> extract(ExtractionRequest request) async {

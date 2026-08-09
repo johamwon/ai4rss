@@ -11,17 +11,20 @@ final class ReadabilityExtractionStage implements ExtractionStage {
     this.parser = const ReadabilityParser(),
     this.maxInputCharacters = 5 * 1024 * 1024,
     this.maxElements = 20000,
+    this.resourcePolicy = const DirectSanitizedResourcePolicy(),
   });
 
   final ReadabilityParser parser;
   final int maxInputCharacters;
   final int maxElements;
+  final SanitizedResourcePolicy resourcePolicy;
 
   @override
   String get id => 'readability';
 
   @override
-  String get version => '1';
+  String get version =>
+      resourcePolicy is DirectSanitizedResourcePolicy ? '1' : '2-proxy-v1';
 
   @override
   StageExtractionResult extract(ExtractionRequest request) {
@@ -77,6 +80,7 @@ final class ReadabilityExtractionStage implements ExtractionStage {
     final sanitized = sanitizeHtmlFragment(
       selection.content.innerHtml,
       baseUri: request.sourceUri,
+      resourcePolicy: resourcePolicy,
     );
     if (sanitized.plainText.isEmpty) {
       return const StageExtractionFailure(

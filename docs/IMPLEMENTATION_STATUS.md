@@ -1,6 +1,6 @@
 # River 实施状态
 
-更新时间：2026-08-06
+更新时间：2026-08-09
 
 ## 已完成
 
@@ -9,8 +9,8 @@
 - DATA-001：Drift/SQLite v18 本地数据库及 FTS5 索引、外键、唯一键和级联规则；v2～v5 依次增加 Feed 正文、阅读设置、全文索引和音频断点，v6～v7 增加同步副本/冲突历史，v8 分离 Podcast 节目、分集和下载状态，v9 将下载文件绑定到来源 URL，v10 增加文章与 Podcast 共用的持久播放队列，v11 保存 Podcasting 2.0 章节与文字稿引用，v12 增加文章高亮与笔记锚点，v13 增加统一知识来源与外部映射，v14 增加已校验 AI 产物缓存，v15 增加本地行为采集与保留设置，v16 增加来源/主题调整和屏蔽覆盖层，v17 增加自动摘要策略与按本地日原子预留的用量账本，v18 增加本地排序实验稳定分组与按天聚合指标，并保留旧版本升级兼容。
 - DATA-003：v0、v1、v2、v3、v4、v9、v10、v11、v12、v13、v14、v15、v16 与 v17 Fixture 及 N-2 升级演练已完成；覆盖全部前代 Fixture→v18、各阶段迁移中断后的幂等恢复、v14→v15、v15→v16、v16→v17、v17→v18、偏好禁用选择保留、自动摘要策略保留、实验分组表建表中断恢复及当前 v18 打开。
 - DATA-004：持久任务队列，支持幂等入队、租约、失败重试和中断恢复。
-- FEED-001 核心：受限 HTTP(S)、超时、手动重定向、循环检测、响应体上限、User-Agent、编码、ETag 与 Last-Modified 条件请求。
-- FEED-002 核心：RSS 2.0、Atom、JSON Feed 统一模型和固定离线语料。
+- FEED-001：受限 HTTP(S) 支持超时、手动重定向、循环检测、解压后响应体上限、User-Agent、ETag/Last-Modified 条件请求及跨域重定向头隔离。生产解析每跳 DNS，拒绝空/过多/混合/私网/环回/链路本地/保留地址，并固定通过验证的公网 IP 建连、保留 TLS 主机名以关闭 DNS rebinding 窗口；流式解压 gzip/deflate 并拒绝未知编码，支持 UTF-8、Latin、GBK/GB2312、Big5 和 Windows-1251/1252 等常见字符集，GB18030 等未精确实现的声明失败关闭。
+- FEED-002：RSS 2.0、RSS 1.0/RDF、Atom、JSON Feed 统一模型；补齐命名空间别名、Dublin Core、Content Module、`xml:base`、Atom XHTML/作者继承和不安全 URI 丢弃。100 个标准/生态结构最小化固定用例达到 100%，高于 PRD 99% 门槛。
 - FEED-003：支持直接 Feed、HTML `<link rel="alternate">`、Content-Type 与同源常见路径发现，可去重并选择多个候选源。
 - FEED-004：文件夹创建、改名、折叠、删除和来源移动，以及暂停、恢复、删除与规范化 URL 去重。
 - FEED-005：OPML 文件导入导出、嵌套文件夹往返、事务写入、重复/非法项报告和输入安全上限。
@@ -20,6 +20,8 @@
 - EXT-001：统一正文提取请求、规范化成功结果、稳定失败码、阶段尝试记录、Extractor 版本和质量评分。
 - EXT-002：Feed 全文可信度判定，可区分完整正文、短摘要、显式截断和空内容，并在可信时停止后续提取。
 - EXT-003 核心：纯 Dart Readability 候选评分、链接密度、正文兄弟合并、中文标点、多栏噪声清理、元数据归一化与输入规模上限。
+- EXT-004：微信公众号静态适配器支持 `#js_content`、标题/作者/发布时间/Canonical URL、懒加载图片、媒体占位和关注组件清理；结构缺失时依次回退 Readability 和动态 WebView。40 个最小化结构变体通过率 100%，高于 95% 门槛。
+- EXT-005：统一 HTML Sanitizer 清理可执行节点、事件属性、内联样式和危险协议。可配置 HTTPS 图片代理策略将安全来源重写为固定代理域的 URL-safe 编码路径，拒绝 HTTP、本地地址、凭据、非默认端口和超长来源，并通过版本变化使旧提取缓存失效；未配置代理时保留现有直连兼容。
 - EXT-006：SQLite 正文缓存、SHA-256 内容哈希、ETag/Last-Modified 与规则版本失效、显式重解析、同 URL 请求合并、全局/同源并发限制及离线旧缓存回退。
 - EXT-007：Android WebView、WKWebView 与 WebView2 共用动态渲染回退契约；限制协议、导航次数、超时和 HTML 大小，渲染结果重新进入 Readability 与 Sanitizer。三端 Debug 构建和 Windows 动态页面 Smoke Test 已进入 CI。
 - EXT-008：全文失败后保留 Feed/缓存内容并提供显式继续阅读、强制重解析、外部浏览器打开原文和用户触发的问题报告；无回退内容时显示稳定恢复态。原文适配器仅允许无凭据 HTTP(S)，报告只包含公开失败码和提取阶段元数据，不发送正文、笔记或内部错误。
@@ -94,10 +96,6 @@
 ## 部分完成
 
 - FND-001：Android/iOS/Windows Runner 已生成且三端 Debug CI 构建通过；仍需 Android、iOS 和 Windows 真实设备/系统验收。
-- FEED-001：需要增加 gzip/deflate、更多非 UTF-8 编码和 DNS/私网安全策略测试。
-- FEED-002：需要引入更大公开兼容语料并达到 PRD 规定的 99% 成功率，补强 RSS 1.0/RDF 扩展字段。
-- EXT-004：微信公众号静态适配器已支持 `#js_content`、标题/作者/发布时间/Canonical URL、懒加载图片、媒体占位和关注组件清理；结构缺失时可依次回退 Readability 和动态 WebView。仍需扩大语料达到 95% 门槛。
-- EXT-005：统一 HTML Sanitizer 已清理可执行节点、事件属性、内联样式和危险协议；资源代理策略尚未实现。
 
 ## 下一批
 
@@ -108,21 +106,21 @@
 ## 最近验证
 
 - Fast Lane：通过，静态分析 0 问题。
-- `river_feed`：49 个测试通过，新增 FreshRSS/Miniflux 账户校验、公开 API 契约、鉴权/限流/非法响应映射、多账户重复来源、单调游标、状态新旧顺序与安全移除；继续覆盖 Podcasting 2.0、Podcast 策略、RSS 节目/分集模型、条件刷新、搜索、RSS/Atom/JSON Feed、发现、文章刷新、OPML 与 HTTP 边界。
+- `river_feed`：56 个测试通过，新增 gzip/deflate 解压后限额、传统字符集、DNS 私网拦截、跨域条件头隔离、RSS 1.0/RDF、命名空间别名、`xml:base`、Atom XHTML 和解析限额；继续覆盖 FreshRSS/Miniflux、多账户状态、Podcasting 2.0、RSS/Atom/JSON Feed、发现、文章刷新、OPML 与 HTTP 边界。
 - `river_domain`：33 个测试通过，新增本地排序实验分组、观测和聚合一致性边界；继续覆盖自动摘要策略、有界来源/主题偏好控制、七类阅读事件 v1 wire 往返、未来版本拒绝、事件专属载荷边界、稳定幂等键、AI 产物身份、连接器、知识对象、来源引用、DOM/文本双锚点、跨来源队列、音频、后台刷新与核心模型。
 - `river_data`：126 个测试通过，新增 Drift v18 稳定实验分组、并发精确聚合、禁用/错组拒绝、显式时间、清空、v17→v18 迁移和中断恢复；继续覆盖自动摘要并发日额度、偏好控制、阅读事件顺序/并发幂等、AI 产物、知识导出耐久队列、来源并发去重、外部映射、全部历史迁移、高亮/笔记、Podcasting 2.0、统一队列、网络/磁盘/租约恢复、同步与 10,000 篇文章 P95 <500ms 自动门槛。
 - `river_knowledge`：62 个测试通过，新增 IMA 确定性 Markdown/ZIP、包大小、分享/保存结果、平台异常降级、公开入口白名单和私有 URI 拒绝；继续覆盖 Obsidian/WebDAV、知识问答、语义搜索、组合过滤、相似文章、模型隔离、版本化分块、原子替换、删除屏障、并发与损坏恢复、Notion 和 Markdown 导出。
 - `river_ai`：87 个测试通过，新增播客时间轴引用问答、零 Provider 拒答、伪造引用拒绝、单人/对谈简报、成功幂等复用、源/脚本安全门禁、剩余成本预算、取消晚返回计费和证据冲突；继续覆盖播客转录、能力/模型精确成本聚合、Span 幂等冲突、可信托管路由、限流/超时/熔断/质量回退、短文/长文缓存、来源引用、费用预检、五类 BYOK 和严格摘要 Schema。
 - `river_commerce`：22 个测试通过，新增重试精确结算、证据冲突、失败/取消释放、重复返还、并发防透支、80%/100% 单次提醒、能力和周期边界；继续覆盖永久 Free 矩阵、访客访问、选择性 Pro 授权、规范载荷与脱敏、账户绑定、伪造、回滚/突变、未来/过期、离线缓存、在线刷新、试用降级、损坏缓存和 Free 提权拒绝。
-- `river_test_harness`：24 组共 148 项检查通过，新增 Feed Server Account 6 项 Replay：FreshRSS、Miniflux、重复来源、单调游标、状态顺序和账户移除；继续覆盖播客音频智能、IMA、便携连接器、知识问答、知识搜索黄金集、向量生命周期、永久 Free、商业/云治理、音频、排序、提取及 AI Replay。
+- `river_test_harness`：24 组共 288 项检查通过，新增 100 项 Feed 兼容与 40 项微信静态正文结构门禁；继续覆盖 Feed Server Account、播客音频智能、IMA、便携连接器、知识问答、知识搜索黄金集、向量生命周期、永久 Free、商业/云治理、音频、排序、提取及 AI Replay。
 - `river_preferences`：35 个测试通过，新增稳定分组、来源多样性、样本/置信区间门禁、聚合导出隐私和默认关闭；继续覆盖真实排序贡献解释、主来源封顶、探索配额、强负反馈、主题屏蔽、固定候选多因子解释、1,000 候选/信号属性、画像、重复点击封顶、阅读状态机及模型版本。
 - `river_app`：107 个测试通过，新增 IMA 用户辅助分享与公开入口交互；继续覆盖时间排序实验、高匹配自动摘要、Wi-Fi/日额度、智能排序、精确“为什么推荐”、行为采集隐私、AI 摘要确认/恢复、文章→高亮/笔记→知识保存、响应式知识库、Markdown/Notion、同步、全局迷你播放器、收听队列、播客、阅读器、后台媒体、Windows SMTC 与跨尺寸 Golden。
 - `river_design_system`：2 个测试通过，浅色与深色高对比主题的关键文字组合均达到 WCAG AA 4.5:1。
 - `river_audio`：43 个测试通过，新增云 TTS 精确计费、离线缓存、同键合并、取消晚返回、正文/声音变化、网络权益、无效响应、损坏恢复、LRU 清理和诊断隐私；继续覆盖 Podcast 章节跳转、统一持久队列、节目倍速、文章/Podcast 类型路由、两小时长文预算、有界预取、焦点、系统媒体命令、中断恢复、进度写入、定时暂停与跨语言分句。
 - `river_sync`：75 个测试通过，新增密文服务多租户隔离、授权、原子配额、限流、备份校验、灾演恢复、删除和不可读管理员指标；继续覆盖账号体验、字段/语义合并、幂等重复、墓碑压缩、双设备分页、AES/X25519/HKDF、恢复和设备生命周期。
-- `river_extract`：42 个测试通过，新增公网 IP 固定、IPv4/IPv6 特殊范围、混合 DNS、连接地址复验、重定向 DNS 变化、HTTPS 降级、单次/累计大小、总超时扣减、媒体/编码、响应头注入、恶意 HTML 和诊断隐私覆盖；继续验证完整 Feed 零网页请求、摘要静态下载和失败后平台回退编排。
+- `river_extract`：45 个测试通过，新增 HTTPS 图片代理策略、`srcset` 重写、非公网资源拒绝和缓存版本隔离；继续覆盖公网 IP 固定、IPv4/IPv6 特殊范围、混合 DNS、连接地址复验、重定向 DNS 变化、HTTPS 降级、大小/超时/媒体/编码边界、恶意 HTML、完整 Feed 零网页请求和平台回退编排。
 - `river_platform`：59 个测试通过，新增 IMA 内存文件分享、文件名/媒体类型、锚点、取消/不可用/异常和文件保存扩展名映射；继续覆盖跨平台链路、长文检查点持久化、完整 BYOK、Notion Token、Markdown 单文件/ZIP 系统保存、真实 HTTP Range/If-Range 续传、Podcast 播放/下载、安全仓库、系统音频会话、系统 TTS、外部原文、链路状态、后台调度及动态渲染契约。
-- Harness：fixtures 23/23、feeds 3/3、extraction 7/7、cloud extraction replay 5/5、cloud TTS replay 5/5、podcast transcription replay 5/5、podcast audio intelligence replay 6/6、feed server account replay 6/6（FreshRSS/Miniflux/重复源/游标/状态/移除各 1，凭据诊断泄漏 0）、cloud governance replay 4/4、commerce entitlement replay 6/6、usage ledger replay 5/5、free product replay 18/18、knowledge vector replay 5/5、knowledge search replay 6/6（Recall@K/Precision@K 1.00、证据 10/10）、knowledge question replay 5/5、portable connector replay 5/5、IMA portable replay 5/5、AI replay 8/8、AI provider replay 5/5、AI long replay 1/1、AI cache replay 1/1、managed AI gateway replay 4/4、ranking 7/7、ranking experiment replay 3/3。
+- Harness：fixtures 23/23、feeds 103/103（兼容率 100%，门槛 99%）、extraction 47/47（微信静态结构兼容率 100%，门槛 95%）、cloud extraction replay 5/5、cloud TTS replay 5/5、podcast transcription replay 5/5、podcast audio intelligence replay 6/6、feed server account replay 6/6（FreshRSS/Miniflux/重复源/游标/状态/移除各 1，凭据诊断泄漏 0）、cloud governance replay 4/4、commerce entitlement replay 6/6、usage ledger replay 5/5、free product replay 18/18、knowledge vector replay 5/5、knowledge search replay 6/6（Recall@K/Precision@K 1.00、证据 10/10）、knowledge question replay 5/5、portable connector replay 5/5、IMA portable replay 5/5、AI replay 8/8、AI provider replay 5/5、AI long replay 1/1、AI cache replay 1/1、managed AI gateway replay 4/4、ranking 7/7、ranking experiment replay 3/3。
 - 本机 Windows Debug 构建通过；原生命令行测试 1/1、隐藏启动 Smoke 与真实 SMTC MethodChannel Integration Test 均通过。Windows 统一启用 `/utf-8` 并保留 `/WX`，避免非英文系统代码页造成第三方插件误失败。
 - Windows 真实 DPAPI 安全仓库 Integration Test 1/1 通过，测试会写入、读回并清理会话、X25519 私钥和账户数据密钥；已加入 Merge/Nightly CI。
 - Windows 真实 Notion Token 安全仓库 Integration Test 1/1 通过，测试会写入、读回并清理 OAuth access/refresh Token；已加入 Merge/Nightly CI。

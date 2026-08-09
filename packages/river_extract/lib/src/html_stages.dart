@@ -9,16 +9,19 @@ final class WeChatStaticExtractionStage implements ExtractionStage {
   const WeChatStaticExtractionStage({
     this.maxInputCharacters = 5 * 1024 * 1024,
     this.maxElements = 20000,
+    this.resourcePolicy = const DirectSanitizedResourcePolicy(),
   });
 
   final int maxInputCharacters;
   final int maxElements;
+  final SanitizedResourcePolicy resourcePolicy;
 
   @override
   String get id => 'wechat-static';
 
   @override
-  String get version => '1';
+  String get version =>
+      resourcePolicy is DirectSanitizedResourcePolicy ? '1' : '2-proxy-v1';
 
   @override
   StageExtractionResult extract(ExtractionRequest request) {
@@ -75,6 +78,7 @@ final class WeChatStaticExtractionStage implements ExtractionStage {
     final sanitized = sanitizeHtmlFragment(
       body.innerHtml,
       baseUri: request.sourceUri,
+      resourcePolicy: resourcePolicy,
     );
     if (sanitized.plainText.isEmpty) {
       return const StageExtractionFailure(

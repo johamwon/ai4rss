@@ -4,6 +4,7 @@ import 'package:river_domain/river_domain.dart';
 
 import 'dynamic_page_stage.dart';
 import 'feed_content.dart';
+import 'html_sanitizer.dart';
 import 'html_stages.dart';
 import 'readability_stage.dart';
 
@@ -109,19 +110,45 @@ final class LayeredFullTextExtractor implements FullTextExtractor {
       : _pipeline = _staticPipeline,
         extractorVersions = currentExtractorVersions;
 
-  LayeredFullTextExtractor.withDynamicPageRenderer(
-    DynamicPageRenderer renderer,
+  LayeredFullTextExtractor.withResourcePolicy(
+    SanitizedResourcePolicy resourcePolicy,
   )   : _pipeline = ExtractionPipeline(
           stages: <ExtractionStage>[
-            ..._staticStages,
-            DynamicPageExtractionStage(renderer: renderer),
+            FeedContentExtractionStage(
+              assessor: FeedContentAssessor(resourcePolicy: resourcePolicy),
+            ),
+            WeChatStaticExtractionStage(resourcePolicy: resourcePolicy),
+            ReadabilityExtractionStage(resourcePolicy: resourcePolicy),
+          ],
+        ),
+        extractorVersions = _versionsFor(resourcePolicy);
+
+  LayeredFullTextExtractor.withDynamicPageRenderer(
+    DynamicPageRenderer renderer, {
+    SanitizedResourcePolicy resourcePolicy =
+        const DirectSanitizedResourcePolicy(),
+  })  : _pipeline = ExtractionPipeline(
+          stages: <ExtractionStage>[
+            FeedContentExtractionStage(
+              assessor: FeedContentAssessor(resourcePolicy: resourcePolicy),
+            ),
+            WeChatStaticExtractionStage(resourcePolicy: resourcePolicy),
+            ReadabilityExtractionStage(resourcePolicy: resourcePolicy),
+            DynamicPageExtractionStage(
+              renderer: renderer,
+              readability: ReadabilityExtractionStage(
+                resourcePolicy: resourcePolicy,
+              ),
+            ),
           ],
         ),
         extractorVersions = Map<String, String>.unmodifiable(
           <String, String>{
-            ...currentExtractorVersions,
+            ..._versionsFor(resourcePolicy),
             DynamicPageExtractionStage.extractorId:
-                DynamicPageExtractionStage.extractorVersion,
+                resourcePolicy is DirectSanitizedResourcePolicy
+                    ? DynamicPageExtractionStage.extractorVersion
+                    : '2-proxy-v1',
           },
         );
 
@@ -143,6 +170,18 @@ final class LayeredFullTextExtractor implements FullTextExtractor {
 
   final ExtractionPipeline _pipeline;
   final Map<String, String> extractorVersions;
+
+  static Map<String, String> _versionsFor(
+    SanitizedResourcePolicy resourcePolicy,
+  ) {
+    final staticVersion =
+        resourcePolicy is DirectSanitizedResourcePolicy ? '1' : '2-proxy-v1';
+    return Map<String, String>.unmodifiable(<String, String>{
+      'feed-full-content': staticVersion,
+      'wechat-static': staticVersion,
+      'readability': staticVersion,
+    });
+  }
 
   @override
   Future<ExtractionResult> extract(ExtractionRequest request) =>

@@ -93,6 +93,7 @@ final class HarnessEvals {
     final cases = _list(manifest['cases']);
     final failures = <EvalFailure>[];
     const extractor = LayeredFullTextExtractor();
+    var wechatCompatibilityPassed = 0;
 
     for (final item in cases) {
       final id = item['id'] as String;
@@ -166,10 +167,55 @@ final class HarnessEvals {
         }
       }
     }
+    final wechatProfile = _readJson('evals/wechat_static_profile.json');
+    final wechatCaseCount = wechatProfile['caseCount'] as int;
+    final wechatMinimumRate =
+        (wechatProfile['minimumSuccessRate'] as num).toDouble();
+    if (wechatCaseCount < 1 || wechatCaseCount > 1000) {
+      throw StateError('Invalid WeChat compatibility case count.');
+    }
+    for (var index = 0; index < wechatCaseCount; index += 1) {
+      final suffix = index.toString().padLeft(3, '0');
+      final id = 'wechat-compat-$suffix';
+      final result = await extractor.extract(
+        ExtractionRequest(
+          sourceUri: Uri.parse(
+            index.isEven
+                ? 'https://mp.weixin.qq.com/s/$suffix'
+                : 'https://sub.mp.weixin.qq.com/s/$suffix',
+          ),
+          pageHtml: _wechatCompatibilityDocument(index, suffix),
+        ),
+      );
+      if (result is! ExtractionSuccess ||
+          result.article.extractor != 'wechat-static' ||
+          !result.article.plainText.contains('兼容性正文 $suffix') ||
+          result.article.html.contains('mpprofile') ||
+          result.article.html.contains('<iframe')) {
+        failures.add(EvalFailure(id, 'WeChat compatibility shape mismatch'));
+      } else {
+        wechatCompatibilityPassed += 1;
+      }
+    }
+    final wechatCompatibilityRate = wechatCompatibilityPassed / wechatCaseCount;
+    if (wechatCompatibilityRate < wechatMinimumRate) {
+      failures.add(
+        EvalFailure(
+          'wechat-compatibility-gate',
+          'success rate $wechatCompatibilityRate is below $wechatMinimumRate',
+        ),
+      );
+    }
     return EvalReport(
       name: 'extraction',
-      total: cases.length,
+      total: cases.length + wechatCaseCount,
       failures: failures,
+      metrics: <String, Object>{
+        'wechatCompatibilityCases': wechatCaseCount,
+        'wechatCompatibilityPassed': wechatCompatibilityPassed,
+        'wechatCompatibilitySuccessRate': wechatCompatibilityRate,
+        'wechatMinimumSuccessRate': wechatMinimumRate,
+      },
     );
   }
 
@@ -2872,6 +2918,9 @@ final class HarnessEvals {
   EvalReport evaluateFeeds() {
     final manifest = _readJson('evals/feed_manifest.json');
     final cases = _list(manifest['cases']);
+    final compatibility = _feedCompatibilityCases(
+      _readJson('evals/feed_compatibility_profile.json'),
+    );
     final failures = <EvalFailure>[];
     for (final item in cases) {
       final id = item['id'] as String;
@@ -2903,7 +2952,50 @@ final class HarnessEvals {
         failures.add(EvalFailure(id, error.toString()));
       }
     }
-    return EvalReport(name: 'feeds', total: cases.length, failures: failures);
+    var compatibilityPassed = 0;
+    for (final item in compatibility) {
+      try {
+        final feed = const FeedParser().parse(
+          item.document,
+          sourceUri: Uri.parse('https://feeds.example.test/base/feed.xml'),
+        );
+        if (feed.kind != item.kind ||
+            feed.title != item.title ||
+            feed.items.length != item.itemCount ||
+            feed.items.any((entry) => entry.id.trim().isEmpty)) {
+          failures.add(EvalFailure(item.id, 'compatibility shape mismatch'));
+        } else {
+          compatibilityPassed += 1;
+        }
+      } on Object catch (error) {
+        failures
+            .add(EvalFailure(item.id, 'compatibility parse failed: $error'));
+      }
+    }
+    final compatibilityRate = compatibility.isEmpty
+        ? 0.0
+        : compatibilityPassed / compatibility.length;
+    final profile = _readJson('evals/feed_compatibility_profile.json');
+    final minimumRate = (profile['minimumSuccessRate'] as num).toDouble();
+    if (compatibilityRate < minimumRate) {
+      failures.add(
+        EvalFailure(
+          'feed-compatibility-gate',
+          'success rate $compatibilityRate is below $minimumRate',
+        ),
+      );
+    }
+    return EvalReport(
+      name: 'feeds',
+      total: cases.length + compatibility.length,
+      failures: failures,
+      metrics: <String, Object>{
+        'compatibilityCases': compatibility.length,
+        'compatibilityPassed': compatibilityPassed,
+        'compatibilitySuccessRate': compatibilityRate,
+        'minimumSuccessRate': minimumRate,
+      },
+    );
   }
 
   Map<String, Object?> _readJson(String relativePath) {
@@ -2913,6 +3005,137 @@ final class HarnessEvals {
   String _path(String relativePath) {
     return '${workspaceRoot.path}${Platform.pathSeparator}${relativePath.replaceAll('/', Platform.pathSeparator)}';
   }
+}
+
+final class _FeedCompatibilityCase {
+  const _FeedCompatibilityCase({
+    required this.id,
+    required this.document,
+    required this.kind,
+    required this.title,
+    required this.itemCount,
+  });
+
+  final String id;
+  final String document;
+  final FeedDocumentKind kind;
+  final String title;
+  final int itemCount;
+}
+
+String _wechatCompatibilityDocument(int index, String suffix) {
+  final lazyAttribute = switch (index % 3) {
+    0 => 'data-src',
+    1 => 'data-original',
+    _ => 'src',
+  };
+  final media = switch (index % 4) {
+    0 => '<mpvoice></mpvoice>',
+    1 => '<mp-common-mpaudio></mp-common-mpaudio>',
+    2 => '<video></video>',
+    _ => '<iframe src="https://media.example.test/embed"></iframe>',
+  };
+  return '''<!doctype html><html><head>
+<meta property="og:title" content="WeChat compatibility $suffix">
+<meta name="author" content="River Fixture Lab">
+<link rel="canonical" href="https://mp.weixin.qq.com/s/$suffix">
+</head><body><h1 id="activity-name">WeChat compatibility $suffix</h1>
+<div id="js_content"><p>兼容性正文 $suffix：这是一段经过最小化处理的合成长文，用于验证微信公众号静态正文结构、中文标点、懒加载图片以及媒体占位行为。</p>
+<p>第二段继续提供足够的可读内容，确保质量判断不会依赖跟踪脚本、广告、关注组件或用户身份信息。</p>
+<img $lazyAttribute="https://images.example.test/$suffix.jpg" alt="fixture">
+$media<mpprofile>Follow private profile</mpprofile><div class="reward_area">Reward</div>
+</div></body></html>''';
+}
+
+List<_FeedCompatibilityCase> _feedCompatibilityCases(
+  Map<String, Object?> profile,
+) {
+  final result = <_FeedCompatibilityCase>[];
+  for (final family in _list(profile['families'])) {
+    final kind = family['kind'] as String;
+    final count = family['count'] as int;
+    if (count < 1 || count > 1000) {
+      throw StateError('Invalid feed compatibility family count.');
+    }
+    for (var index = 0; index < count; index += 1) {
+      final suffix = index.toString().padLeft(3, '0');
+      final title = 'Compatibility $kind $suffix';
+      switch (kind) {
+        case 'rss':
+          result.add(
+            _FeedCompatibilityCase(
+              id: 'compat-rss-$suffix',
+              kind: FeedDocumentKind.rss,
+              title: title,
+              itemCount: 2,
+              document: '''<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:c="http://purl.org/rss/1.0/modules/content/" xmlns:d="http://purl.org/dc/elements/1.1/">
+<channel><title>$title</title><link>https://feeds.example.test/$suffix/</link><description>Compatibility</description>
+<item><guid isPermaLink="false">rss-$suffix-a</guid><title>First</title><link>one</link><d:creator>Author</d:creator><pubDate>Thu, 06 Aug 2026 10:00:00 +0800</pubDate><c:encoded><![CDATA[<p>Full one</p>]]></c:encoded></item>
+<item><guid>rss-$suffix-b</guid><title>Second</title><link>two</link></item></channel></rss>''',
+            ),
+          );
+        case 'rdf':
+          result.add(
+            _FeedCompatibilityCase(
+              id: 'compat-rdf-$suffix',
+              kind: FeedDocumentKind.rss,
+              title: title,
+              itemCount: 1,
+              document:
+                  '''<r:RDF xmlns:r="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns="http://purl.org/rss/1.0/" xmlns:d="http://purl.org/dc/elements/1.1/" xml:base="https://feeds.example.test/rdf/">
+<channel r:about="https://feeds.example.test/rdf.xml"><title>$title</title><link>./</link><description>Compatibility</description></channel>
+<item r:about="https://feeds.example.test/item/$suffix"><title>RDF item</title><link>$suffix</link><d:date>2026-08-06T02:00:00Z</d:date></item></r:RDF>''',
+            ),
+          );
+        case 'atom':
+          result.add(
+            _FeedCompatibilityCase(
+              id: 'compat-atom-$suffix',
+              kind: FeedDocumentKind.atom,
+              title: title,
+              itemCount: 2,
+              document:
+                  '''<feed xmlns="http://www.w3.org/2005/Atom" xml:base="https://feeds.example.test/atom/"><title>$title</title><author><name>Feed Author</name></author><link rel="self" href="$suffix.xml" />
+<entry><id>atom-$suffix-a</id><title>First</title><link href="a"/><updated>2026-08-06T02:00:00Z</updated><content type="html">&lt;p&gt;One&lt;/p&gt;</content></entry>
+<entry><id>atom-$suffix-b</id><title>Second</title><link href="b"/><content type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml"><p>Two</p></div></content></entry></feed>''',
+            ),
+          );
+        case 'jsonFeed':
+          result.add(
+            _FeedCompatibilityCase(
+              id: 'compat-json-$suffix',
+              kind: FeedDocumentKind.jsonFeed,
+              title: title,
+              itemCount: 2,
+              document: jsonEncode(<String, Object>{
+                'version': 'https://jsonfeed.org/version/1.1',
+                'title': title,
+                'home_page_url': 'https://feeds.example.test/',
+                'items': <Object>[
+                  <String, Object>{
+                    'id': 'json-$suffix-a',
+                    'url': 'items/a',
+                    'content_html': '<p>One</p>',
+                    'authors': <Object>[
+                      <String, Object>{'name': 'Author'},
+                    ],
+                  },
+                  <String, Object>{
+                    'id': 'json-$suffix-b',
+                    'url': 'items/b',
+                    'content_text': 'Two',
+                  },
+                ],
+              }),
+            ),
+          );
+        default:
+          throw StateError('Unknown feed compatibility family: $kind');
+      }
+    }
+  }
+  return List<_FeedCompatibilityCase>.unmodifiable(result);
 }
 
 Map<String, Object?> _map(Object? value) =>
