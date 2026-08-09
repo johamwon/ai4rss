@@ -9944,6 +9944,859 @@ class BackgroundJobsCompanion extends UpdateCompanion<BackgroundJob> {
   }
 }
 
+class $AutomaticSummarySettingsRowsTable extends AutomaticSummarySettingsRows
+    with
+        TableInfo<
+          $AutomaticSummarySettingsRowsTable,
+          AutomaticSummarySettingsRow
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AutomaticSummarySettingsRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _enabledMeta = const VerificationMeta(
+    'enabled',
+  );
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+    'enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _wifiOnlyMeta = const VerificationMeta(
+    'wifiOnly',
+  );
+  @override
+  late final GeneratedColumn<bool> wifiOnly = GeneratedColumn<bool>(
+    'wifi_only',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("wifi_only" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _dailyLimitMeta = const VerificationMeta(
+    'dailyLimit',
+  );
+  @override
+  late final GeneratedColumn<int> dailyLimit = GeneratedColumn<int>(
+    'daily_limit',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(3),
+  );
+  static const VerificationMeta _minimumRankingScoreMeta =
+      const VerificationMeta('minimumRankingScore');
+  @override
+  late final GeneratedColumn<double> minimumRankingScore =
+      GeneratedColumn<double>(
+        'minimum_ranking_score',
+        aliasedName,
+        false,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(0.7),
+      );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    enabled,
+    wifiOnly,
+    dailyLimit,
+    minimumRankingScore,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'automatic_summary_settings_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AutomaticSummarySettingsRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(
+        _enabledMeta,
+        enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta),
+      );
+    }
+    if (data.containsKey('wifi_only')) {
+      context.handle(
+        _wifiOnlyMeta,
+        wifiOnly.isAcceptableOrUnknown(data['wifi_only']!, _wifiOnlyMeta),
+      );
+    }
+    if (data.containsKey('daily_limit')) {
+      context.handle(
+        _dailyLimitMeta,
+        dailyLimit.isAcceptableOrUnknown(data['daily_limit']!, _dailyLimitMeta),
+      );
+    }
+    if (data.containsKey('minimum_ranking_score')) {
+      context.handle(
+        _minimumRankingScoreMeta,
+        minimumRankingScore.isAcceptableOrUnknown(
+          data['minimum_ranking_score']!,
+          _minimumRankingScoreMeta,
+        ),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AutomaticSummarySettingsRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AutomaticSummarySettingsRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      enabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}enabled'],
+      )!,
+      wifiOnly: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}wifi_only'],
+      )!,
+      dailyLimit: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}daily_limit'],
+      )!,
+      minimumRankingScore: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}minimum_ranking_score'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AutomaticSummarySettingsRowsTable createAlias(String alias) {
+    return $AutomaticSummarySettingsRowsTable(attachedDatabase, alias);
+  }
+}
+
+class AutomaticSummarySettingsRow extends DataClass
+    implements Insertable<AutomaticSummarySettingsRow> {
+  final int id;
+  final bool enabled;
+  final bool wifiOnly;
+  final int dailyLimit;
+  final double minimumRankingScore;
+  final DateTime updatedAt;
+  const AutomaticSummarySettingsRow({
+    required this.id,
+    required this.enabled,
+    required this.wifiOnly,
+    required this.dailyLimit,
+    required this.minimumRankingScore,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['enabled'] = Variable<bool>(enabled);
+    map['wifi_only'] = Variable<bool>(wifiOnly);
+    map['daily_limit'] = Variable<int>(dailyLimit);
+    map['minimum_ranking_score'] = Variable<double>(minimumRankingScore);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AutomaticSummarySettingsRowsCompanion toCompanion(bool nullToAbsent) {
+    return AutomaticSummarySettingsRowsCompanion(
+      id: Value(id),
+      enabled: Value(enabled),
+      wifiOnly: Value(wifiOnly),
+      dailyLimit: Value(dailyLimit),
+      minimumRankingScore: Value(minimumRankingScore),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AutomaticSummarySettingsRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AutomaticSummarySettingsRow(
+      id: serializer.fromJson<int>(json['id']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      wifiOnly: serializer.fromJson<bool>(json['wifiOnly']),
+      dailyLimit: serializer.fromJson<int>(json['dailyLimit']),
+      minimumRankingScore: serializer.fromJson<double>(
+        json['minimumRankingScore'],
+      ),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'enabled': serializer.toJson<bool>(enabled),
+      'wifiOnly': serializer.toJson<bool>(wifiOnly),
+      'dailyLimit': serializer.toJson<int>(dailyLimit),
+      'minimumRankingScore': serializer.toJson<double>(minimumRankingScore),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AutomaticSummarySettingsRow copyWith({
+    int? id,
+    bool? enabled,
+    bool? wifiOnly,
+    int? dailyLimit,
+    double? minimumRankingScore,
+    DateTime? updatedAt,
+  }) => AutomaticSummarySettingsRow(
+    id: id ?? this.id,
+    enabled: enabled ?? this.enabled,
+    wifiOnly: wifiOnly ?? this.wifiOnly,
+    dailyLimit: dailyLimit ?? this.dailyLimit,
+    minimumRankingScore: minimumRankingScore ?? this.minimumRankingScore,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AutomaticSummarySettingsRow copyWithCompanion(
+    AutomaticSummarySettingsRowsCompanion data,
+  ) {
+    return AutomaticSummarySettingsRow(
+      id: data.id.present ? data.id.value : this.id,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      wifiOnly: data.wifiOnly.present ? data.wifiOnly.value : this.wifiOnly,
+      dailyLimit: data.dailyLimit.present
+          ? data.dailyLimit.value
+          : this.dailyLimit,
+      minimumRankingScore: data.minimumRankingScore.present
+          ? data.minimumRankingScore.value
+          : this.minimumRankingScore,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AutomaticSummarySettingsRow(')
+          ..write('id: $id, ')
+          ..write('enabled: $enabled, ')
+          ..write('wifiOnly: $wifiOnly, ')
+          ..write('dailyLimit: $dailyLimit, ')
+          ..write('minimumRankingScore: $minimumRankingScore, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    enabled,
+    wifiOnly,
+    dailyLimit,
+    minimumRankingScore,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AutomaticSummarySettingsRow &&
+          other.id == this.id &&
+          other.enabled == this.enabled &&
+          other.wifiOnly == this.wifiOnly &&
+          other.dailyLimit == this.dailyLimit &&
+          other.minimumRankingScore == this.minimumRankingScore &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AutomaticSummarySettingsRowsCompanion
+    extends UpdateCompanion<AutomaticSummarySettingsRow> {
+  final Value<int> id;
+  final Value<bool> enabled;
+  final Value<bool> wifiOnly;
+  final Value<int> dailyLimit;
+  final Value<double> minimumRankingScore;
+  final Value<DateTime> updatedAt;
+  const AutomaticSummarySettingsRowsCompanion({
+    this.id = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.wifiOnly = const Value.absent(),
+    this.dailyLimit = const Value.absent(),
+    this.minimumRankingScore = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  AutomaticSummarySettingsRowsCompanion.insert({
+    this.id = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.wifiOnly = const Value.absent(),
+    this.dailyLimit = const Value.absent(),
+    this.minimumRankingScore = const Value.absent(),
+    required DateTime updatedAt,
+  }) : updatedAt = Value(updatedAt);
+  static Insertable<AutomaticSummarySettingsRow> custom({
+    Expression<int>? id,
+    Expression<bool>? enabled,
+    Expression<bool>? wifiOnly,
+    Expression<int>? dailyLimit,
+    Expression<double>? minimumRankingScore,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (enabled != null) 'enabled': enabled,
+      if (wifiOnly != null) 'wifi_only': wifiOnly,
+      if (dailyLimit != null) 'daily_limit': dailyLimit,
+      if (minimumRankingScore != null)
+        'minimum_ranking_score': minimumRankingScore,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  AutomaticSummarySettingsRowsCompanion copyWith({
+    Value<int>? id,
+    Value<bool>? enabled,
+    Value<bool>? wifiOnly,
+    Value<int>? dailyLimit,
+    Value<double>? minimumRankingScore,
+    Value<DateTime>? updatedAt,
+  }) {
+    return AutomaticSummarySettingsRowsCompanion(
+      id: id ?? this.id,
+      enabled: enabled ?? this.enabled,
+      wifiOnly: wifiOnly ?? this.wifiOnly,
+      dailyLimit: dailyLimit ?? this.dailyLimit,
+      minimumRankingScore: minimumRankingScore ?? this.minimumRankingScore,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (wifiOnly.present) {
+      map['wifi_only'] = Variable<bool>(wifiOnly.value);
+    }
+    if (dailyLimit.present) {
+      map['daily_limit'] = Variable<int>(dailyLimit.value);
+    }
+    if (minimumRankingScore.present) {
+      map['minimum_ranking_score'] = Variable<double>(
+        minimumRankingScore.value,
+      );
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AutomaticSummarySettingsRowsCompanion(')
+          ..write('id: $id, ')
+          ..write('enabled: $enabled, ')
+          ..write('wifiOnly: $wifiOnly, ')
+          ..write('dailyLimit: $dailyLimit, ')
+          ..write('minimumRankingScore: $minimumRankingScore, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AutomaticSummaryUsageRowsTable extends AutomaticSummaryUsageRows
+    with TableInfo<$AutomaticSummaryUsageRowsTable, AutomaticSummaryUsageRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AutomaticSummaryUsageRowsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idempotencyKeyMeta = const VerificationMeta(
+    'idempotencyKey',
+  );
+  @override
+  late final GeneratedColumn<String> idempotencyKey = GeneratedColumn<String>(
+    'idempotency_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _articleIdMeta = const VerificationMeta(
+    'articleId',
+  );
+  @override
+  late final GeneratedColumn<String> articleId = GeneratedColumn<String>(
+    'article_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _dayKeyMeta = const VerificationMeta('dayKey');
+  @override
+  late final GeneratedColumn<String> dayKey = GeneratedColumn<String>(
+    'day_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    idempotencyKey,
+    articleId,
+    dayKey,
+    status,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'automatic_summary_usage_rows';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AutomaticSummaryUsageRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('idempotency_key')) {
+      context.handle(
+        _idempotencyKeyMeta,
+        idempotencyKey.isAcceptableOrUnknown(
+          data['idempotency_key']!,
+          _idempotencyKeyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_idempotencyKeyMeta);
+    }
+    if (data.containsKey('article_id')) {
+      context.handle(
+        _articleIdMeta,
+        articleId.isAcceptableOrUnknown(data['article_id']!, _articleIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_articleIdMeta);
+    }
+    if (data.containsKey('day_key')) {
+      context.handle(
+        _dayKeyMeta,
+        dayKey.isAcceptableOrUnknown(data['day_key']!, _dayKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dayKeyMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {idempotencyKey};
+  @override
+  AutomaticSummaryUsageRow map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AutomaticSummaryUsageRow(
+      idempotencyKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}idempotency_key'],
+      )!,
+      articleId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}article_id'],
+      )!,
+      dayKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}day_key'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AutomaticSummaryUsageRowsTable createAlias(String alias) {
+    return $AutomaticSummaryUsageRowsTable(attachedDatabase, alias);
+  }
+}
+
+class AutomaticSummaryUsageRow extends DataClass
+    implements Insertable<AutomaticSummaryUsageRow> {
+  final String idempotencyKey;
+  final String articleId;
+  final String dayKey;
+  final String status;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const AutomaticSummaryUsageRow({
+    required this.idempotencyKey,
+    required this.articleId,
+    required this.dayKey,
+    required this.status,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['idempotency_key'] = Variable<String>(idempotencyKey);
+    map['article_id'] = Variable<String>(articleId);
+    map['day_key'] = Variable<String>(dayKey);
+    map['status'] = Variable<String>(status);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  AutomaticSummaryUsageRowsCompanion toCompanion(bool nullToAbsent) {
+    return AutomaticSummaryUsageRowsCompanion(
+      idempotencyKey: Value(idempotencyKey),
+      articleId: Value(articleId),
+      dayKey: Value(dayKey),
+      status: Value(status),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory AutomaticSummaryUsageRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AutomaticSummaryUsageRow(
+      idempotencyKey: serializer.fromJson<String>(json['idempotencyKey']),
+      articleId: serializer.fromJson<String>(json['articleId']),
+      dayKey: serializer.fromJson<String>(json['dayKey']),
+      status: serializer.fromJson<String>(json['status']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'idempotencyKey': serializer.toJson<String>(idempotencyKey),
+      'articleId': serializer.toJson<String>(articleId),
+      'dayKey': serializer.toJson<String>(dayKey),
+      'status': serializer.toJson<String>(status),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  AutomaticSummaryUsageRow copyWith({
+    String? idempotencyKey,
+    String? articleId,
+    String? dayKey,
+    String? status,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => AutomaticSummaryUsageRow(
+    idempotencyKey: idempotencyKey ?? this.idempotencyKey,
+    articleId: articleId ?? this.articleId,
+    dayKey: dayKey ?? this.dayKey,
+    status: status ?? this.status,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  AutomaticSummaryUsageRow copyWithCompanion(
+    AutomaticSummaryUsageRowsCompanion data,
+  ) {
+    return AutomaticSummaryUsageRow(
+      idempotencyKey: data.idempotencyKey.present
+          ? data.idempotencyKey.value
+          : this.idempotencyKey,
+      articleId: data.articleId.present ? data.articleId.value : this.articleId,
+      dayKey: data.dayKey.present ? data.dayKey.value : this.dayKey,
+      status: data.status.present ? data.status.value : this.status,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AutomaticSummaryUsageRow(')
+          ..write('idempotencyKey: $idempotencyKey, ')
+          ..write('articleId: $articleId, ')
+          ..write('dayKey: $dayKey, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    idempotencyKey,
+    articleId,
+    dayKey,
+    status,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AutomaticSummaryUsageRow &&
+          other.idempotencyKey == this.idempotencyKey &&
+          other.articleId == this.articleId &&
+          other.dayKey == this.dayKey &&
+          other.status == this.status &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class AutomaticSummaryUsageRowsCompanion
+    extends UpdateCompanion<AutomaticSummaryUsageRow> {
+  final Value<String> idempotencyKey;
+  final Value<String> articleId;
+  final Value<String> dayKey;
+  final Value<String> status;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const AutomaticSummaryUsageRowsCompanion({
+    this.idempotencyKey = const Value.absent(),
+    this.articleId = const Value.absent(),
+    this.dayKey = const Value.absent(),
+    this.status = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AutomaticSummaryUsageRowsCompanion.insert({
+    required String idempotencyKey,
+    required String articleId,
+    required String dayKey,
+    required String status,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    this.rowid = const Value.absent(),
+  }) : idempotencyKey = Value(idempotencyKey),
+       articleId = Value(articleId),
+       dayKey = Value(dayKey),
+       status = Value(status),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<AutomaticSummaryUsageRow> custom({
+    Expression<String>? idempotencyKey,
+    Expression<String>? articleId,
+    Expression<String>? dayKey,
+    Expression<String>? status,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
+      if (articleId != null) 'article_id': articleId,
+      if (dayKey != null) 'day_key': dayKey,
+      if (status != null) 'status': status,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AutomaticSummaryUsageRowsCompanion copyWith({
+    Value<String>? idempotencyKey,
+    Value<String>? articleId,
+    Value<String>? dayKey,
+    Value<String>? status,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return AutomaticSummaryUsageRowsCompanion(
+      idempotencyKey: idempotencyKey ?? this.idempotencyKey,
+      articleId: articleId ?? this.articleId,
+      dayKey: dayKey ?? this.dayKey,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (idempotencyKey.present) {
+      map['idempotency_key'] = Variable<String>(idempotencyKey.value);
+    }
+    if (articleId.present) {
+      map['article_id'] = Variable<String>(articleId.value);
+    }
+    if (dayKey.present) {
+      map['day_key'] = Variable<String>(dayKey.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AutomaticSummaryUsageRowsCompanion(')
+          ..write('idempotencyKey: $idempotencyKey, ')
+          ..write('articleId: $articleId, ')
+          ..write('dayKey: $dayKey, ')
+          ..write('status: $status, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $SyncTombstonesTable extends SyncTombstones
     with TableInfo<$SyncTombstonesTable, SyncTombstone> {
   @override
@@ -15412,6 +16265,10 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
   late final $AudioQueueEntriesTable audioQueueEntries =
       $AudioQueueEntriesTable(this);
   late final $BackgroundJobsTable backgroundJobs = $BackgroundJobsTable(this);
+  late final $AutomaticSummarySettingsRowsTable automaticSummarySettingsRows =
+      $AutomaticSummarySettingsRowsTable(this);
+  late final $AutomaticSummaryUsageRowsTable automaticSummaryUsageRows =
+      $AutomaticSummaryUsageRowsTable(this);
   late final $SyncTombstonesTable syncTombstones = $SyncTombstonesTable(this);
   late final $SyncReplicaEntriesTable syncReplicaEntries =
       $SyncReplicaEntriesTable(this);
@@ -15448,6 +16305,8 @@ abstract class _$RiverDatabase extends GeneratedDatabase {
     audioItems,
     audioQueueEntries,
     backgroundJobs,
+    automaticSummarySettingsRows,
+    automaticSummaryUsageRows,
     syncTombstones,
     syncReplicaEntries,
     syncOutboxRows,
@@ -21847,6 +22706,482 @@ typedef $$BackgroundJobsTableProcessedTableManager =
       BackgroundJob,
       PrefetchHooks Function()
     >;
+typedef $$AutomaticSummarySettingsRowsTableCreateCompanionBuilder =
+    AutomaticSummarySettingsRowsCompanion Function({
+      Value<int> id,
+      Value<bool> enabled,
+      Value<bool> wifiOnly,
+      Value<int> dailyLimit,
+      Value<double> minimumRankingScore,
+      required DateTime updatedAt,
+    });
+typedef $$AutomaticSummarySettingsRowsTableUpdateCompanionBuilder =
+    AutomaticSummarySettingsRowsCompanion Function({
+      Value<int> id,
+      Value<bool> enabled,
+      Value<bool> wifiOnly,
+      Value<int> dailyLimit,
+      Value<double> minimumRankingScore,
+      Value<DateTime> updatedAt,
+    });
+
+class $$AutomaticSummarySettingsRowsTableFilterComposer
+    extends Composer<_$RiverDatabase, $AutomaticSummarySettingsRowsTable> {
+  $$AutomaticSummarySettingsRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get wifiOnly => $composableBuilder(
+    column: $table.wifiOnly,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dailyLimit => $composableBuilder(
+    column: $table.dailyLimit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get minimumRankingScore => $composableBuilder(
+    column: $table.minimumRankingScore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AutomaticSummarySettingsRowsTableOrderingComposer
+    extends Composer<_$RiverDatabase, $AutomaticSummarySettingsRowsTable> {
+  $$AutomaticSummarySettingsRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+    column: $table.enabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get wifiOnly => $composableBuilder(
+    column: $table.wifiOnly,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get dailyLimit => $composableBuilder(
+    column: $table.dailyLimit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get minimumRankingScore => $composableBuilder(
+    column: $table.minimumRankingScore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AutomaticSummarySettingsRowsTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $AutomaticSummarySettingsRowsTable> {
+  $$AutomaticSummarySettingsRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<bool> get wifiOnly =>
+      $composableBuilder(column: $table.wifiOnly, builder: (column) => column);
+
+  GeneratedColumn<int> get dailyLimit => $composableBuilder(
+    column: $table.dailyLimit,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get minimumRankingScore => $composableBuilder(
+    column: $table.minimumRankingScore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AutomaticSummarySettingsRowsTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $AutomaticSummarySettingsRowsTable,
+          AutomaticSummarySettingsRow,
+          $$AutomaticSummarySettingsRowsTableFilterComposer,
+          $$AutomaticSummarySettingsRowsTableOrderingComposer,
+          $$AutomaticSummarySettingsRowsTableAnnotationComposer,
+          $$AutomaticSummarySettingsRowsTableCreateCompanionBuilder,
+          $$AutomaticSummarySettingsRowsTableUpdateCompanionBuilder,
+          (
+            AutomaticSummarySettingsRow,
+            BaseReferences<
+              _$RiverDatabase,
+              $AutomaticSummarySettingsRowsTable,
+              AutomaticSummarySettingsRow
+            >,
+          ),
+          AutomaticSummarySettingsRow,
+          PrefetchHooks Function()
+        > {
+  $$AutomaticSummarySettingsRowsTableTableManager(
+    _$RiverDatabase db,
+    $AutomaticSummarySettingsRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AutomaticSummarySettingsRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$AutomaticSummarySettingsRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AutomaticSummarySettingsRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<bool> wifiOnly = const Value.absent(),
+                Value<int> dailyLimit = const Value.absent(),
+                Value<double> minimumRankingScore = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => AutomaticSummarySettingsRowsCompanion(
+                id: id,
+                enabled: enabled,
+                wifiOnly: wifiOnly,
+                dailyLimit: dailyLimit,
+                minimumRankingScore: minimumRankingScore,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<bool> enabled = const Value.absent(),
+                Value<bool> wifiOnly = const Value.absent(),
+                Value<int> dailyLimit = const Value.absent(),
+                Value<double> minimumRankingScore = const Value.absent(),
+                required DateTime updatedAt,
+              }) => AutomaticSummarySettingsRowsCompanion.insert(
+                id: id,
+                enabled: enabled,
+                wifiOnly: wifiOnly,
+                dailyLimit: dailyLimit,
+                minimumRankingScore: minimumRankingScore,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AutomaticSummarySettingsRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $AutomaticSummarySettingsRowsTable,
+      AutomaticSummarySettingsRow,
+      $$AutomaticSummarySettingsRowsTableFilterComposer,
+      $$AutomaticSummarySettingsRowsTableOrderingComposer,
+      $$AutomaticSummarySettingsRowsTableAnnotationComposer,
+      $$AutomaticSummarySettingsRowsTableCreateCompanionBuilder,
+      $$AutomaticSummarySettingsRowsTableUpdateCompanionBuilder,
+      (
+        AutomaticSummarySettingsRow,
+        BaseReferences<
+          _$RiverDatabase,
+          $AutomaticSummarySettingsRowsTable,
+          AutomaticSummarySettingsRow
+        >,
+      ),
+      AutomaticSummarySettingsRow,
+      PrefetchHooks Function()
+    >;
+typedef $$AutomaticSummaryUsageRowsTableCreateCompanionBuilder =
+    AutomaticSummaryUsageRowsCompanion Function({
+      required String idempotencyKey,
+      required String articleId,
+      required String dayKey,
+      required String status,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+      Value<int> rowid,
+    });
+typedef $$AutomaticSummaryUsageRowsTableUpdateCompanionBuilder =
+    AutomaticSummaryUsageRowsCompanion Function({
+      Value<String> idempotencyKey,
+      Value<String> articleId,
+      Value<String> dayKey,
+      Value<String> status,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$AutomaticSummaryUsageRowsTableFilterComposer
+    extends Composer<_$RiverDatabase, $AutomaticSummaryUsageRowsTable> {
+  $$AutomaticSummaryUsageRowsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get idempotencyKey => $composableBuilder(
+    column: $table.idempotencyKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get articleId => $composableBuilder(
+    column: $table.articleId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dayKey => $composableBuilder(
+    column: $table.dayKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AutomaticSummaryUsageRowsTableOrderingComposer
+    extends Composer<_$RiverDatabase, $AutomaticSummaryUsageRowsTable> {
+  $$AutomaticSummaryUsageRowsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get idempotencyKey => $composableBuilder(
+    column: $table.idempotencyKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get articleId => $composableBuilder(
+    column: $table.articleId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dayKey => $composableBuilder(
+    column: $table.dayKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AutomaticSummaryUsageRowsTableAnnotationComposer
+    extends Composer<_$RiverDatabase, $AutomaticSummaryUsageRowsTable> {
+  $$AutomaticSummaryUsageRowsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get idempotencyKey => $composableBuilder(
+    column: $table.idempotencyKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get articleId =>
+      $composableBuilder(column: $table.articleId, builder: (column) => column);
+
+  GeneratedColumn<String> get dayKey =>
+      $composableBuilder(column: $table.dayKey, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$AutomaticSummaryUsageRowsTableTableManager
+    extends
+        RootTableManager<
+          _$RiverDatabase,
+          $AutomaticSummaryUsageRowsTable,
+          AutomaticSummaryUsageRow,
+          $$AutomaticSummaryUsageRowsTableFilterComposer,
+          $$AutomaticSummaryUsageRowsTableOrderingComposer,
+          $$AutomaticSummaryUsageRowsTableAnnotationComposer,
+          $$AutomaticSummaryUsageRowsTableCreateCompanionBuilder,
+          $$AutomaticSummaryUsageRowsTableUpdateCompanionBuilder,
+          (
+            AutomaticSummaryUsageRow,
+            BaseReferences<
+              _$RiverDatabase,
+              $AutomaticSummaryUsageRowsTable,
+              AutomaticSummaryUsageRow
+            >,
+          ),
+          AutomaticSummaryUsageRow,
+          PrefetchHooks Function()
+        > {
+  $$AutomaticSummaryUsageRowsTableTableManager(
+    _$RiverDatabase db,
+    $AutomaticSummaryUsageRowsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AutomaticSummaryUsageRowsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$AutomaticSummaryUsageRowsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$AutomaticSummaryUsageRowsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> idempotencyKey = const Value.absent(),
+                Value<String> articleId = const Value.absent(),
+                Value<String> dayKey = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AutomaticSummaryUsageRowsCompanion(
+                idempotencyKey: idempotencyKey,
+                articleId: articleId,
+                dayKey: dayKey,
+                status: status,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String idempotencyKey,
+                required String articleId,
+                required String dayKey,
+                required String status,
+                required DateTime createdAt,
+                required DateTime updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AutomaticSummaryUsageRowsCompanion.insert(
+                idempotencyKey: idempotencyKey,
+                articleId: articleId,
+                dayKey: dayKey,
+                status: status,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AutomaticSummaryUsageRowsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$RiverDatabase,
+      $AutomaticSummaryUsageRowsTable,
+      AutomaticSummaryUsageRow,
+      $$AutomaticSummaryUsageRowsTableFilterComposer,
+      $$AutomaticSummaryUsageRowsTableOrderingComposer,
+      $$AutomaticSummaryUsageRowsTableAnnotationComposer,
+      $$AutomaticSummaryUsageRowsTableCreateCompanionBuilder,
+      $$AutomaticSummaryUsageRowsTableUpdateCompanionBuilder,
+      (
+        AutomaticSummaryUsageRow,
+        BaseReferences<
+          _$RiverDatabase,
+          $AutomaticSummaryUsageRowsTable,
+          AutomaticSummaryUsageRow
+        >,
+      ),
+      AutomaticSummaryUsageRow,
+      PrefetchHooks Function()
+    >;
 typedef $$SyncTombstonesTableCreateCompanionBuilder =
     SyncTombstonesCompanion Function({
       required String id,
@@ -25037,6 +26372,17 @@ class $RiverDatabaseManager {
       $$AudioQueueEntriesTableTableManager(_db, _db.audioQueueEntries);
   $$BackgroundJobsTableTableManager get backgroundJobs =>
       $$BackgroundJobsTableTableManager(_db, _db.backgroundJobs);
+  $$AutomaticSummarySettingsRowsTableTableManager
+  get automaticSummarySettingsRows =>
+      $$AutomaticSummarySettingsRowsTableTableManager(
+        _db,
+        _db.automaticSummarySettingsRows,
+      );
+  $$AutomaticSummaryUsageRowsTableTableManager get automaticSummaryUsageRows =>
+      $$AutomaticSummaryUsageRowsTableTableManager(
+        _db,
+        _db.automaticSummaryUsageRows,
+      );
   $$SyncTombstonesTableTableManager get syncTombstones =>
       $$SyncTombstonesTableTableManager(_db, _db.syncTombstones);
   $$SyncReplicaEntriesTableTableManager get syncReplicaEntries =>

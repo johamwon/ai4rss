@@ -3,6 +3,7 @@ library;
 export 'src/ai_artifacts.dart';
 export 'src/annotations.dart';
 export 'src/audio.dart';
+export 'src/automatic_summaries.dart';
 export 'src/background_refresh.dart';
 export 'src/knowledge.dart';
 export 'src/knowledge_connectors.dart';

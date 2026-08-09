@@ -159,7 +159,11 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
       _articleListController?.dispose();
       _articleListController = ArticleListController(
         load: (query) => dependencies.feeds.watchArticles(query: query),
-        loadPersonalized: dependencies.personalizedArticles.watch,
+        loadPersonalized: (query) =>
+            dependencies.personalizedArticles.watch(query).map((snapshot) {
+          unawaited(dependencies.automaticSummaries.schedule(snapshot));
+          return snapshot;
+        }),
         behaviorSettings: dependencies.readingBehavior.watchSettings(),
         initialQuery: const FeedArticleQuery(sort: FeedArticleSort.smart),
       );
@@ -177,6 +181,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
       }
       unawaited(dependencies.offlineArticles.resumePending());
       unawaited(dependencies.podcastDownloads.start());
+      unawaited(dependencies.automaticSummaries.start());
       if (dependencies.readingBehaviorIntroductionEnabled) {
         _scheduleReadingBehaviorIntroduction(dependencies);
       }
@@ -229,6 +234,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
       unawaited(_checkNetworkAvailability());
       unawaited(dependencies.offlineArticles.resumePending());
       unawaited(dependencies.podcastDownloads.resumePending());
+      unawaited(dependencies.automaticSummaries.resumePending());
       if (dependencies.automaticRefreshEnabled) {
         unawaited(_runAutomaticRefresh());
       }
@@ -538,6 +544,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           repository: dependencies.readingBehavior,
           clock: dependencies.clock,
           personalization: dependencies.personalizedArticles,
+          automaticSummaries: dependencies.automaticSummaries,
         ),
       ),
     );

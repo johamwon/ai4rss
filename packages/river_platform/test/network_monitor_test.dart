@@ -49,6 +49,47 @@ void main() {
     expect(await monitor.check(), NetworkAvailability.unknown);
     expect(await monitor.changes.first, NetworkAvailability.unknown);
   });
+
+  test('automatic summaries distinguish Wi-Fi from other online links', () {
+    expect(
+      automaticSummaryNetworkForConnectivity(const <ConnectivityResult>[]),
+      AutomaticSummaryNetworkKind.unknown,
+    );
+    expect(
+      automaticSummaryNetworkForConnectivity(const <ConnectivityResult>[
+        ConnectivityResult.none,
+      ]),
+      AutomaticSummaryNetworkKind.offline,
+    );
+    expect(
+      automaticSummaryNetworkForConnectivity(const <ConnectivityResult>[
+        ConnectivityResult.mobile,
+        ConnectivityResult.wifi,
+      ]),
+      AutomaticSummaryNetworkKind.wifi,
+    );
+    expect(
+      automaticSummaryNetworkForConnectivity(const <ConnectivityResult>[
+        ConnectivityResult.ethernet,
+      ]),
+      AutomaticSummaryNetworkKind.other,
+    );
+  });
+
+  test('automatic summary network adapter streams policy changes', () async {
+    final gateway = _FakeConnectivityGateway(
+      current: const <ConnectivityResult>[ConnectivityResult.mobile],
+    );
+    final monitor = ConnectivityAutomaticSummaryNetworkMonitor(
+      gateway: gateway,
+    );
+    addTearDown(gateway.close);
+
+    expect(await monitor.check(), AutomaticSummaryNetworkKind.other);
+    final next = monitor.changes.first;
+    gateway.emit(const <ConnectivityResult>[ConnectivityResult.wifi]);
+    expect(await next, AutomaticSummaryNetworkKind.wifi);
+  });
 }
 
 final class _FakeConnectivityGateway implements ConnectivityGateway {

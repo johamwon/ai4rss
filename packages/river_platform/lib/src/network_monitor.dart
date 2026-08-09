@@ -52,6 +52,34 @@ final class ConnectivityNetworkMonitor implements NetworkMonitor {
   }
 }
 
+final class ConnectivityAutomaticSummaryNetworkMonitor
+    implements AutomaticSummaryNetworkMonitor {
+  ConnectivityAutomaticSummaryNetworkMonitor({ConnectivityGateway? gateway})
+      : _gateway = gateway ?? PluginConnectivityGateway();
+
+  final ConnectivityGateway _gateway;
+
+  @override
+  Future<AutomaticSummaryNetworkKind> check() async {
+    try {
+      return automaticSummaryNetworkForConnectivity(await _gateway.check());
+    } on Object {
+      return AutomaticSummaryNetworkKind.unknown;
+    }
+  }
+
+  @override
+  Stream<AutomaticSummaryNetworkKind> get changes async* {
+    try {
+      await for (final result in _gateway.changes) {
+        yield automaticSummaryNetworkForConnectivity(result);
+      }
+    } on Object {
+      yield AutomaticSummaryNetworkKind.unknown;
+    }
+  }
+}
+
 NetworkAvailability availabilityForConnectivity(
   List<ConnectivityResult> results,
 ) {
@@ -62,4 +90,17 @@ NetworkAvailability availabilityForConnectivity(
     return NetworkAvailability.offline;
   }
   return NetworkAvailability.online;
+}
+
+AutomaticSummaryNetworkKind automaticSummaryNetworkForConnectivity(
+  List<ConnectivityResult> results,
+) {
+  if (results.isEmpty) return AutomaticSummaryNetworkKind.unknown;
+  if (results.every((result) => result == ConnectivityResult.none)) {
+    return AutomaticSummaryNetworkKind.offline;
+  }
+  if (results.contains(ConnectivityResult.wifi)) {
+    return AutomaticSummaryNetworkKind.wifi;
+  }
+  return AutomaticSummaryNetworkKind.other;
 }

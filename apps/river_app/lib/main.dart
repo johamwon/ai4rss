@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:river_domain/river_domain.dart';
+import 'package:river_feed/river_feed.dart';
 import 'package:river_platform/river_platform.dart';
 
 import 'app/app_dependencies.dart';
@@ -35,6 +36,15 @@ Future<bool> runRiverBackgroundRefresh() async {
       resumePending: dependencies.feedRefreshCoordinator.resumePending,
       loadSubscriptions: () => dependencies!.feeds.watchSubscriptions().first,
       start: dependencies.feedRefreshCoordinator.start,
+      afterRefresh: () async {
+        final snapshot = await dependencies!.personalizedArticles
+            .watch(
+              const FeedArticleQuery(sort: FeedArticleSort.smart),
+            )
+            .first;
+        await dependencies.automaticSummaries.schedule(snapshot);
+        await dependencies.automaticSummaries.resumePending();
+      },
     );
     return await runner.run();
   } catch (_) {

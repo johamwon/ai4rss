@@ -51,6 +51,31 @@ void main() {
 
     expect(await runner.run(), isFalse);
   });
+
+  test('successful background refresh triggers best-effort follow-up',
+      () async {
+    var followUps = 0;
+    final runner = BackgroundFeedRefreshRunner(
+      resumePending: () async => const FeedRefreshBatchState.idle(),
+      loadSubscriptions: () async => <FeedSubscriptionRecord>[],
+      start: (subscriptions) async => _state(total: 1, succeeded: 1),
+      afterRefresh: () async => followUps += 1,
+    );
+
+    expect(await runner.run(), isTrue);
+    expect(followUps, 1);
+  });
+
+  test('AI follow-up failure never changes feed refresh success', () async {
+    final runner = BackgroundFeedRefreshRunner(
+      resumePending: () async => const FeedRefreshBatchState.idle(),
+      loadSubscriptions: () async => <FeedSubscriptionRecord>[],
+      start: (subscriptions) async => _state(total: 1, succeeded: 1),
+      afterRefresh: () async => throw StateError('private AI failure'),
+    );
+
+    expect(await runner.run(), isTrue);
+  });
 }
 
 FeedRefreshBatchState _state({

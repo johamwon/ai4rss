@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:river_domain/river_domain.dart';
 
+import 'automatic_summaries.dart';
 import 'personalized_articles.dart';
 
 const String readingBehaviorLocalOnlyExplanation =
@@ -43,6 +44,7 @@ final class ReadingBehaviorPrivacyPage extends StatefulWidget {
     required this.clock,
     this.copyExport,
     this.personalization,
+    this.automaticSummaries,
     super.key,
   });
 
@@ -50,6 +52,7 @@ final class ReadingBehaviorPrivacyPage extends StatefulWidget {
   final Clock clock;
   final Future<void> Function(String contents)? copyExport;
   final PreferenceProfileExperience? personalization;
+  final AutomaticSummaryExperience? automaticSummaries;
 
   @override
   State<ReadingBehaviorPrivacyPage> createState() =>
@@ -256,6 +259,24 @@ final class _ReadingBehaviorPrivacyPageState
                               ),
                             ),
                   ),
+                if (widget.automaticSummaries case final automaticSummaries?)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.auto_awesome_outlined),
+                    title: const Text('自动摘要'),
+                    subtitle: const Text('仅为高匹配文章生成，可限制 Wi-Fi 和每日数量'),
+                    enabled: !_busy,
+                    onTap: _busy
+                        ? null
+                        : () => Navigator.of(context).push<void>(
+                              MaterialPageRoute<void>(
+                                builder: (context) =>
+                                    AutomaticSummarySettingsPage(
+                                  experience: automaticSummaries,
+                                ),
+                              ),
+                            ),
+                  ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.copy_all_outlined),
@@ -274,6 +295,194 @@ final class _ReadingBehaviorPrivacyPageState
                 ),
               ],
             ),
+    );
+  }
+}
+
+final class AutomaticSummarySettingsPage extends StatefulWidget {
+  const AutomaticSummarySettingsPage({
+    required this.experience,
+    super.key,
+  });
+
+  final AutomaticSummaryExperience experience;
+
+  @override
+  State<AutomaticSummarySettingsPage> createState() =>
+      _AutomaticSummarySettingsPageState();
+}
+
+final class _AutomaticSummarySettingsPageState
+    extends State<AutomaticSummarySettingsPage> {
+  AutomaticSummaryDashboard? _dashboard;
+  Object? _loadError;
+  var _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_reload());
+  }
+
+  Future<void> _reload() async {
+    try {
+      final dashboard = await widget.experience.loadDashboard();
+      if (!mounted) return;
+      setState(() {
+        _dashboard = dashboard;
+        _loadError = null;
+      });
+    } on Object catch (error) {
+      if (mounted) setState(() => _loadError = error);
+    }
+  }
+
+  Future<void> _setEnabled(bool enabled) async {
+    final dashboard = _dashboard;
+    if (dashboard == null || _busy || dashboard.settings.enabled == enabled) {
+      return;
+    }
+    if (enabled) {
+      final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('启用自动摘要？'),
+              content: const Text(
+                'River 只会处理智能排序中匹配度高且尚未阅读的文章；没有本地全文时会先尝试现有全文提取链路。'
+                '生成时会把该文章正文发送到你配置的 AI 服务；缓存命中不会重复请求。',
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('取消'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('启用'),
+                ),
+              ],
+            ),
+          ) ??
+          false;
+      if (!confirmed || !mounted) return;
+    }
+    await _save(dashboard.settings.copyWith(enabled: enabled));
+  }
+
+  Future<void> _save(AutomaticSummarySettings settings) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      await widget.experience.updateSettings(settings);
+      await _reload();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('自动摘要设置已保存在本机')),
+        );
+      }
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('自动摘要设置保存失败，请重试')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dashboard = _dashboard;
+    if (dashboard == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('自动摘要')),
+        body: Center(
+          child: _loadError == null
+              ? const CircularProgressIndicator()
+              : FilledButton(
+                  onPressed: () => unawaited(_reload()),
+                  child: const Text('重新加载'),
+                ),
+        ),
+      );
+    }
+    final settings = dashboard.settings;
+    final limits = <int>{1, 3, 5, 10, 20, settings.dailyLimit}.toList()..sort();
+    return Scaffold(
+      appBar: AppBar(title: const Text('自动摘要')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        children: <Widget>[
+          const Text(
+            '只处理智能排序得分达到 70% 的未读文章；没有本地全文时会先尝试提取。'
+            '任务可以在应用重启后恢复；失败和缓存命中不占用每日额度。',
+          ),
+          const SizedBox(height: 12),
+          Semantics(
+            toggled: settings.enabled,
+            label: '自动摘要',
+            value: settings.enabled ? '已开启' : '已关闭',
+            child: ExcludeSemantics(
+              child: SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('自动生成高匹配文章摘要'),
+                subtitle: Text(settings.enabled ? '已开启' : '已关闭，不会创建新任务'),
+                value: settings.enabled,
+                onChanged:
+                    _busy ? null : (value) => unawaited(_setEnabled(value)),
+              ),
+            ),
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('仅 Wi-Fi 执行'),
+            subtitle: const Text('未知网络或移动网络会等待，恢复 Wi-Fi 后继续'),
+            value: settings.wifiOnly,
+            onChanged: _busy
+                ? null
+                : (value) => unawaited(
+                      _save(settings.copyWith(wifiOnly: value)),
+                    ),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('每日上限'),
+            subtitle: Text(
+              '今天已完成 ${dashboard.usage.completed}，'
+              '处理中 ${dashboard.usage.reserved}，剩余 ${dashboard.remaining}',
+            ),
+            trailing: DropdownButton<int>(
+              value: settings.dailyLimit,
+              onChanged: _busy
+                  ? null
+                  : (value) {
+                      if (value != null) {
+                        unawaited(_save(settings.copyWith(dailyLimit: value)));
+                      }
+                    },
+              items: limits
+                  .map(
+                    (limit) => DropdownMenuItem<int>(
+                      value: limit,
+                      child: Text('$limit 篇'),
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          ),
+          const Divider(),
+          const ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.shield_outlined),
+            title: Text('成本与隐私保护'),
+            subtitle: Text(
+              '默认关闭；队列只保存文章 ID、正文哈希和排序分数，不保存正文。'
+              '关闭后取消尚未完成的自动任务，手动摘要仍可使用。',
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
