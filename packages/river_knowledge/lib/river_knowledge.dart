@@ -7,6 +7,7 @@ import 'package:river_domain/river_domain.dart';
 
 export 'src/knowledge_markdown.dart';
 export 'src/knowledge_markdown_export.dart';
+export 'src/knowledge_vector_index.dart';
 export 'src/notion_connector.dart';
 export 'src/notion_http.dart';
 export 'src/notion_models.dart';

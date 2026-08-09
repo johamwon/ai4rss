@@ -1,0 +1,9 @@
+{
+  "cases": [
+    { "id": "vector-build-and-skip", "kind": "buildAndSkip" },
+    { "id": "vector-model-upgrade", "kind": "modelUpgrade" },
+    { "id": "vector-content-change", "kind": "contentChange" },
+    { "id": "vector-delete", "kind": "delete" },
+    { "id": "vector-corruption-recovery", "kind": "corruptionRecovery" }
+  ]
+}
