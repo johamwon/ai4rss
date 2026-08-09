@@ -84,6 +84,7 @@ final class LocalPersonalizedArticleExperience
     this.ranker = const LocalArticleRanker(),
     this.guardrails = const LocalRankingGuardrails(),
     this.explainer = const LocalRecommendationExplainer(),
+    this.experiment,
   });
 
   final FeedRepository feeds;
@@ -93,8 +94,12 @@ final class LocalPersonalizedArticleExperience
   final LocalArticleRanker ranker;
   final LocalRankingGuardrails guardrails;
   final LocalRecommendationExplainer explainer;
+  final LocalRankingExperiment? experiment;
 
-  Stream<PersonalizedArticleListSnapshot> watch(FeedArticleQuery query) {
+  Stream<PersonalizedArticleListSnapshot> watch(
+    FeedArticleQuery query, {
+    bool recordExperimentExposure = true,
+  }) {
     if (query.sort != FeedArticleSort.smart) {
       return feeds.watchArticles(query: query).map(
             PersonalizedArticleListSnapshot.chronological,
@@ -102,8 +107,14 @@ final class LocalPersonalizedArticleExperience
     }
     final chronologicalQuery = query.copyWith(sort: FeedArticleSort.newest);
     return feeds.watchArticles(query: chronologicalQuery).asyncMap(
-          (articles) => _personalize(articles, query: query),
-        );
+      (articles) async {
+        final snapshot = await _personalize(articles, query: query);
+        if (recordExperimentExposure) {
+          await _recordExposure(snapshot);
+        }
+        return snapshot;
+      },
+    );
   }
 
   @override
@@ -226,6 +237,10 @@ final class LocalPersonalizedArticleExperience
       return PersonalizedArticleListSnapshot.chronological(articles);
     }
     try {
+      final enrollment = await experiment?.readEnrollment();
+      if (enrollment?.arm == RankingExperimentArm.chronological) {
+        return PersonalizedArticleListSnapshot.chronological(articles);
+      }
       final allArticles = query.view == FeedArticleView.inbox &&
               query.feedId == null &&
               query.folderId == null
@@ -294,6 +309,19 @@ final class LocalPersonalizedArticleExperience
       );
     } on FormatException {
       return PersonalizedArticleListSnapshot.chronological(articles);
+    }
+  }
+
+  Future<void> _recordExposure(PersonalizedArticleListSnapshot snapshot) async {
+    final metrics = experiment;
+    if (metrics == null || snapshot.articles.isEmpty) return;
+    try {
+      await metrics.recordExposure(
+        sourceIds: snapshot.articles.map((article) => article.feedId),
+        now: clock.now(),
+      );
+    } on Object {
+      // Local experiment observability must never block the article list.
     }
   }
 

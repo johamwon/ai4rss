@@ -40,6 +40,7 @@ Future<bool> runRiverBackgroundRefresh() async {
         final snapshot = await dependencies!.personalizedArticles
             .watch(
               const FeedArticleQuery(sort: FeedArticleSort.smart),
+              recordExperimentExposure: false,
             )
             .first;
         await dependencies.automaticSummaries.schedule(snapshot);

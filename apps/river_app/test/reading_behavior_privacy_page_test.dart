@@ -5,6 +5,7 @@ import 'package:river_app/preferences/personalized_articles.dart';
 import 'package:river_app/preferences/reading_behavior_privacy_page.dart';
 import 'package:river_data/river_data.dart';
 import 'package:river_domain/river_domain.dart';
+import 'package:river_preferences/river_preferences.dart';
 
 final class _FixedClock implements Clock {
   @override
@@ -183,6 +184,48 @@ void main() {
     await tester.pumpAndSettle();
     expect(automatic.settings.dailyLimit, 5);
   });
+
+  testWidgets('ranking experiment is explicit, local-only, and stable',
+      (tester) async {
+    final ranking = LocalRankingExperiment(
+      repository: DriftRankingExperimentRepository(database),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ReadingBehaviorPrivacyPage(
+          repository: repository,
+          clock: _FixedClock(),
+          rankingExperiment: ranking,
+          experimentIds: _Ids(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('本地排序对照实验'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('不会自动上传'), findsOneWidget);
+    expect(find.textContaining('样本不足'), findsOneWidget);
+    expect(find.text('未参加；现有智能排序行为不变'), findsOneWidget);
+
+    await tester.tap(find.text('参加实验'));
+    await tester.pumpAndSettle();
+    expect(find.text('参加本地排序对照实验？'), findsOneWidget);
+    expect(find.textContaining('不会记录或上传文章'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, '仅在本机参加'));
+    await tester.pumpAndSettle();
+
+    final enrollment = await ranking.readEnrollment();
+    expect(enrollment, isNotNull);
+    expect(find.textContaining('本机稳定分组'), findsOneWidget);
+  });
+}
+
+final class _Ids implements IdGenerator {
+  var _next = 0;
+
+  @override
+  String next() => 'experiment-device-${_next++}';
 }
 
 final class _FakePreferenceProfileExperience

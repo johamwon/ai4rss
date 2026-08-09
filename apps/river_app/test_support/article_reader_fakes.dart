@@ -4,6 +4,7 @@ import 'package:river_app/app/article_reader.dart';
 import 'package:river_app/app/article_summary.dart';
 import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
+import 'package:river_preferences/river_preferences.dart';
 
 final class FakeArticleReaderRepository implements ArticleReaderRepository {
   FakeArticleReaderRepository(this.watch);
@@ -457,6 +458,9 @@ ArticleReaderController buildReaderController({
       const UnavailableAudioPlaybackRepository(),
   KnowledgeRepository? knowledge,
   ArticleSummaryExperience? summaries,
+  Clock clock = const FixedReaderClock(),
+  ReadingBehaviorRepository? readingBehavior,
+  LocalRankingExperiment? rankingExperiment,
 }) =>
     ArticleReaderController(
       articleId: articleId,
@@ -469,9 +473,11 @@ ArticleReaderController buildReaderController({
       share: share ?? FakeShareGateway(),
       externalUri: externalUri ?? FakeExternalUriGateway(),
       offlineArticles: offlineArticles ?? FakeOfflineArticleManager(),
-      clock: const FixedReaderClock(),
+      clock: clock,
       audio: audio,
       audioPlayback: audioPlayback,
       knowledge: knowledge,
       summaries: summaries,
+      readingBehavior: readingBehavior,
+      rankingExperiment: rankingExperiment,
     );

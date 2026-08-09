@@ -3,6 +3,7 @@ import 'package:river_app/preferences/personalized_articles.dart';
 import 'package:river_data/river_data.dart' hide ReadingEvent;
 import 'package:river_domain/river_domain.dart';
 import 'package:river_feed/river_feed.dart';
+import 'package:river_preferences/river_preferences.dart';
 
 final class _FixedClock implements Clock {
   @override
@@ -14,16 +15,21 @@ void main() {
   late DriftFeedRepository feeds;
   late DriftReadingEventRepository behavior;
   late LocalPersonalizedArticleExperience experience;
+  late DriftRankingExperimentRepository experimentRepository;
+  late LocalRankingExperiment experiment;
 
   setUp(() async {
     database = RiverDatabase.inMemory();
     await database.verifyReady();
     feeds = DriftFeedRepository(database);
     behavior = DriftReadingEventRepository(database);
+    experimentRepository = DriftRankingExperimentRepository(database);
+    experiment = LocalRankingExperiment(repository: experimentRepository);
     experience = LocalPersonalizedArticleExperience(
       feeds: feeds,
       behavior: behavior,
       clock: _FixedClock(),
+      experiment: experiment,
     );
     await _seedArticles(database);
     await behavior.saveSettings(
@@ -94,6 +100,43 @@ void main() {
       await database.select(database.feedSubscriptions).get(),
       hasLength(2),
     );
+  });
+
+  test('control arm uses chronological order and records aggregate exposure',
+      () async {
+    await experimentRepository.saveEnrollment(
+      RankingExperimentEnrollment(
+        experimentId: rankingExperimentId,
+        arm: RankingExperimentArm.chronological,
+        assignedAt: _FixedClock().now(),
+      ),
+    );
+
+    final snapshot = await experience
+        .watch(const FeedArticleQuery(sort: FeedArticleSort.smart))
+        .first;
+    expect(snapshot.personalized, isFalse);
+    expect(snapshot.articles.first.id, 'article-a1');
+    var metrics = await experimentRepository.readMetrics(
+      experimentId: rankingExperimentId,
+      startDay: '2026-08-03',
+      endDay: '2026-08-03',
+    );
+    expect(metrics.single.exposures, 1);
+    expect(metrics.single.exposedArticles, 4);
+
+    await experience
+        .watch(
+          const FeedArticleQuery(sort: FeedArticleSort.smart),
+          recordExperimentExposure: false,
+        )
+        .first;
+    metrics = await experimentRepository.readMetrics(
+      experimentId: rankingExperimentId,
+      startDay: '2026-08-03',
+      endDay: '2026-08-03',
+    );
+    expect(metrics.single.exposures, 1);
   });
 }
 

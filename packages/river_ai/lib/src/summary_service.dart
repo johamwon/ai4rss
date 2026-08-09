@@ -72,6 +72,20 @@ final class SummaryService {
     return _readCached(request.identity);
   }
 
+  /// Returns accounting for a previously validated cache entry.
+  Future<AiArtifact?> readCachedArtifact(Article article) async {
+    final request = _requestFor(article);
+    final artifact = await _readCachedArtifact(request.identity);
+    if (artifact == null) return null;
+    try {
+      const ArticleSummaryCacheCodec().decode(artifact);
+      return artifact;
+    } on AiSchemaFailure {
+      await _deleteInvalid(request.identity.cacheKey);
+      return null;
+    }
+  }
+
   _SummaryRequest _requestFor(Article article) {
     final content = normalizeSummaryContent(article.plainText ?? '');
     if (content.isEmpty) {
@@ -164,6 +178,17 @@ final class SummaryService {
       );
 
   Future<ArticleSummary?> _readCached(SummaryCacheIdentity identity) async {
+    final artifact = await _readCachedArtifact(identity);
+    if (artifact == null) return null;
+    try {
+      return const ArticleSummaryCacheCodec().decode(artifact);
+    } on AiSchemaFailure {
+      await _deleteInvalid(identity.cacheKey);
+      return null;
+    }
+  }
+
+  Future<AiArtifact?> _readCachedArtifact(SummaryCacheIdentity identity) async {
     final repository = artifacts;
     if (repository == null) return null;
     AiArtifact? artifact;
@@ -183,12 +208,7 @@ final class SummaryService {
       await _deleteInvalid(identity.cacheKey);
       return null;
     }
-    try {
-      return const ArticleSummaryCacheCodec().decode(artifact);
-    } on AiSchemaFailure {
-      await _deleteInvalid(identity.cacheKey);
-      return null;
-    }
+    return artifact;
   }
 
   Future<void> _writeCached({

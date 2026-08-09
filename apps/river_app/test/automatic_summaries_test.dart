@@ -17,13 +17,24 @@ void main() {
   late PersistentJobQueue jobs;
   late _Network network;
   late _Clock clock;
+  late DriftRankingExperimentRepository experimentRepository;
+  late LocalRankingExperiment experiment;
 
-  setUp(() {
+  setUp(() async {
     database = RiverDatabase.inMemory();
     repository = DriftAutomaticSummaryRepository(database);
     jobs = PersistentJobQueue(database);
     network = _Network(AutomaticSummaryNetworkKind.wifi);
     clock = _Clock(DateTime.utc(2026, 8, 5, 8));
+    experimentRepository = DriftRankingExperimentRepository(database);
+    experiment = LocalRankingExperiment(repository: experimentRepository);
+    await experimentRepository.saveEnrollment(
+      RankingExperimentEnrollment(
+        experimentId: rankingExperimentId,
+        arm: RankingExperimentArm.personalized,
+        assignedAt: clock.now(),
+      ),
+    );
   });
 
   tearDown(() async {
@@ -34,6 +45,8 @@ void main() {
   DurableAutomaticSummaryManager buildManager({
     required _Summaries summaries,
     Duration providerRetryDelay = const Duration(minutes: 2),
+    LocalRankingExperiment? metrics,
+    AiMonotonicClock? metricsClock,
   }) =>
       DurableAutomaticSummaryManager(
         jobs: jobs,
@@ -44,6 +57,8 @@ void main() {
         clock: clock,
         ids: _Ids(),
         providerRetryDelay: providerRetryDelay,
+        metrics: metrics,
+        metricsClock: metricsClock,
       );
 
   test('only high-match unread articles run within the daily limit', () async {
@@ -221,6 +236,34 @@ void main() {
       DurableJobStatus.cancelled,
     );
   });
+
+  test('records eligible, generated, latency, calls, and exact cached cost',
+      () async {
+    await repository.saveSettings(
+      const AutomaticSummarySettings(enabled: true),
+      updatedAt: clock.now(),
+    );
+    final manager = buildManager(
+      summaries: _Summaries(),
+      metrics: experiment,
+      metricsClock: _SteppingMonotonicClock(),
+    );
+    addTearDown(manager.close);
+
+    await manager.schedule(_snapshot(single: true));
+
+    final metrics = (await experimentRepository.readMetrics(
+      experimentId: rankingExperimentId,
+      startDay: '2026-08-05',
+      endDay: '2026-08-05',
+    ))
+        .single;
+    expect(metrics.summaryEligible, 1);
+    expect(metrics.summaryGenerated, 1);
+    expect(metrics.summaryProviderCalls, 2);
+    expect(metrics.summaryLatencyMilliseconds, 125);
+    expect(metrics.summaryCostUsd, 0.0042);
+  });
 }
 
 PersonalizedArticleListSnapshot _snapshot({bool single = false}) {
@@ -313,6 +356,14 @@ final class _Summaries implements ArticleSummaryExperience {
       ArticleSummaryInspection(
         preparation: _preparation,
         cachedSummary: cached || generatedCache ? _summary : null,
+        accounting: cached || generatedCache
+            ? const ArticleSummaryAccounting(
+                inputTokens: 100,
+                outputTokens: 40,
+                providerCalls: 2,
+                costUsd: 0.0042,
+              )
+            : null,
       );
 
   @override
@@ -397,6 +448,17 @@ final class _Clock implements Clock {
 
   @override
   DateTime now() => value;
+}
+
+final class _SteppingMonotonicClock implements AiMonotonicClock {
+  Duration _value = Duration.zero;
+
+  @override
+  Duration elapsed() {
+    final current = _value;
+    _value += const Duration(milliseconds: 125);
+    return current;
+  }
 }
 
 final class _Ids implements IdGenerator {

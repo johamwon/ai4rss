@@ -1,0 +1,22 @@
+{
+  "cases": [
+    {
+      "id": "clear-completion-lift",
+      "control": {"opens": 100, "completions": 50, "quickExits": 0, "exposures": 20, "diversity": 0.5},
+      "treatment": {"opens": 100, "completions": 80, "quickExits": 0, "exposures": 20, "diversity": 0.5},
+      "expectedDecision": "ship"
+    },
+    {
+      "id": "no-completion-lift",
+      "control": {"opens": 100, "completions": 50, "quickExits": 0, "exposures": 20, "diversity": 0.5},
+      "treatment": {"opens": 100, "completions": 50, "quickExits": 0, "exposures": 20, "diversity": 0.5},
+      "expectedDecision": "hold"
+    },
+    {
+      "id": "minimum-sample-gate",
+      "control": {"opens": 99, "completions": 80, "quickExits": 0, "exposures": 19, "diversity": 0.5},
+      "treatment": {"opens": 99, "completions": 90, "quickExits": 0, "exposures": 19, "diversity": 0.5},
+      "expectedDecision": "insufficientData"
+    }
+  ]
+}

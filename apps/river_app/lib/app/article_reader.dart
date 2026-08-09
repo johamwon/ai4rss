@@ -9,6 +9,7 @@ import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
 import 'package:river_feed/river_feed.dart';
 import 'package:river_knowledge/river_knowledge.dart';
+import 'package:river_preferences/river_preferences.dart';
 
 import 'article_summary.dart';
 
@@ -211,6 +212,8 @@ final class ArticleReaderController extends ChangeNotifier {
     PersistentAudioQueue? audioQueue,
     KnowledgeRepository? knowledge,
     ArticleSummaryExperience? summaries,
+    ReadingBehaviorRepository? readingBehavior,
+    LocalRankingExperiment? rankingExperiment,
   })  : _repository = repository,
         _extractor = extractor,
         _readerSettings = readerSettings,
@@ -223,6 +226,8 @@ final class ArticleReaderController extends ChangeNotifier {
         _audioQueue = audioQueue,
         _knowledge = knowledge,
         _summaries = summaries,
+        _readingBehavior = readingBehavior,
+        _rankingExperiment = rankingExperiment,
         _audioController = audioController ??
             AudioPlaybackController(
               engine: audio,
@@ -235,6 +240,7 @@ final class ArticleReaderController extends ChangeNotifier {
     _subscribeAnnotations();
     _subscribeOfflineArticle();
     _subscribeAudio();
+    _startReadingSession();
   }
 
   final String articleId;
@@ -250,6 +256,8 @@ final class ArticleReaderController extends ChangeNotifier {
   final PersistentAudioQueue? _audioQueue;
   final KnowledgeRepository? _knowledge;
   final ArticleSummaryExperience? _summaries;
+  final ReadingBehaviorRepository? _readingBehavior;
+  final LocalRankingExperiment? _rankingExperiment;
   final AudioPlaybackController _audioController;
   final bool _ownsAudioController;
   StreamSubscription<FeedArticleDetailRecord?>? _articleSubscription;
@@ -266,6 +274,10 @@ final class ArticleReaderController extends ChangeNotifier {
   Timer? _progressTimer;
   double? _pendingProgress;
   var _disposed = false;
+  ReadingSessionTracker? _readingSession;
+  Future<RankingExperimentEnrollment?>? _readingEnrollment;
+  Future<void> _readingEventWrites = Future<void>.value();
+  Future<void>? _readingSessionClose;
 
   ArticleReaderState get state => _state;
   bool get canAnnotate => _ids != null && _state.content != null;
@@ -1129,9 +1141,88 @@ final class ArticleReaderController extends ChangeNotifier {
 
   void reportProgress(double progress) {
     final normalized = progress.clamp(0, 1).toDouble();
+    final session = _readingSession;
+    if (session != null) {
+      try {
+        session.recordInteraction();
+        session.recordScrollDepth(normalized);
+        _queueReadingEvents(session.drainEvents());
+      } on StateError {
+        // Teardown may race with a final scroll notification.
+      }
+    }
     _pendingProgress = normalized;
     _progressTimer?.cancel();
     _progressTimer = Timer(const Duration(milliseconds: 450), _flushProgress);
+  }
+
+  void updateReadingVisibility(ReadingSessionVisibility visibility) {
+    final session = _readingSession;
+    if (session == null) return;
+    try {
+      session.updateVisibility(visibility);
+      _queueReadingEvents(session.drainEvents());
+    } on StateError {
+      // The session is already closed.
+    }
+  }
+
+  Future<void> closeReadingSession() =>
+      _readingSessionClose ??= _closeReadingSession();
+
+  void _startReadingSession() {
+    final repository = _readingBehavior;
+    final ids = _ids;
+    if (repository == null || ids == null) return;
+    final session = ReadingSessionTracker(
+      articleId: articleId,
+      clock: _clock,
+      idGenerator: ids,
+    )..start();
+    _readingSession = session;
+    _queueReadingEvents(session.drainEvents());
+    _readingEnrollment = _rankingExperiment?.readEnrollment().onError(
+          (Object _, StackTrace __) => null,
+        );
+  }
+
+  void _queueReadingEvents(Iterable<ReadingEvent> events) {
+    final repository = _readingBehavior;
+    if (repository == null) return;
+    for (final event in events) {
+      _readingEventWrites = _readingEventWrites.then((_) async {
+        try {
+          await repository.record(event);
+        } on Object {
+          // Preference capture is best-effort and must never block reading.
+        }
+      });
+    }
+  }
+
+  Future<void> _closeReadingSession() async {
+    final session = _readingSession;
+    _readingSession = null;
+    if (session == null) return;
+    try {
+      _queueReadingEvents(session.close());
+    } on StateError {
+      return;
+    }
+    await _readingEventWrites;
+    final enrollment = await _readingEnrollment;
+    final experiment = _rankingExperiment;
+    if (enrollment == null || experiment == null) return;
+    try {
+      await experiment.recordReadingOutcome(
+        enrollment: enrollment,
+        activeSeconds: session.activeDuration.inSeconds,
+        completed: session.isCompleted,
+        now: _clock.now(),
+      );
+    } on Object {
+      // Experiment metrics are local observability, not reader state.
+    }
   }
 
   void clearOperationFailure() =>
@@ -1325,6 +1416,7 @@ final class ArticleReaderController extends ChangeNotifier {
 
   @override
   void dispose() {
+    unawaited(closeReadingSession());
     _disposed = true;
     _flushProgress();
     _progressTimer?.cancel();
@@ -1392,6 +1484,8 @@ final class ArticleReaderPage extends StatefulWidget {
     this.audioQueue,
     this.knowledge,
     this.summaries,
+    this.readingBehavior,
+    this.rankingExperiment,
     super.key,
   });
 
@@ -1411,17 +1505,21 @@ final class ArticleReaderPage extends StatefulWidget {
   final PersistentAudioQueue? audioQueue;
   final KnowledgeRepository? knowledge;
   final ArticleSummaryExperience? summaries;
+  final ReadingBehaviorRepository? readingBehavior;
+  final LocalRankingExperiment? rankingExperiment;
 
   @override
   State<ArticleReaderPage> createState() => _ArticleReaderPageState();
 }
 
-final class _ArticleReaderPageState extends State<ArticleReaderPage> {
+final class _ArticleReaderPageState extends State<ArticleReaderPage>
+    with WidgetsBindingObserver {
   late final ArticleReaderController _controller;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _controller = ArticleReaderController(
       articleId: widget.articleId,
       repository: widget.repository,
@@ -1439,11 +1537,27 @@ final class _ArticleReaderPageState extends State<ArticleReaderPage> {
       audioQueue: widget.audioQueue,
       knowledge: widget.knowledge,
       summaries: widget.summaries,
+      readingBehavior: widget.readingBehavior,
+      rankingExperiment: widget.rankingExperiment,
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _controller.updateReadingVisibility(
+      switch (state) {
+        AppLifecycleState.resumed => ReadingSessionVisibility.foreground,
+        AppLifecycleState.inactive => ReadingSessionVisibility.background,
+        AppLifecycleState.hidden => ReadingSessionVisibility.background,
+        AppLifecycleState.paused => ReadingSessionVisibility.background,
+        AppLifecycleState.detached => ReadingSessionVisibility.screenLocked,
+      },
     );
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
   }

@@ -456,6 +456,8 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           audioQueue: dependencies.audioQueue,
           knowledge: dependencies.knowledge,
           summaries: dependencies.articleSummaries,
+          readingBehavior: dependencies.readingBehavior,
+          rankingExperiment: dependencies.rankingExperiment,
         ),
       ),
     );
@@ -545,6 +547,8 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           clock: dependencies.clock,
           personalization: dependencies.personalizedArticles,
           automaticSummaries: dependencies.automaticSummaries,
+          rankingExperiment: dependencies.rankingExperiment,
+          experimentIds: dependencies.ids,
         ),
       ),
     );
