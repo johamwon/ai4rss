@@ -156,6 +156,38 @@ void main() {
     );
   });
 
+  test('preference controls are bounded, comparable, and normalized', () {
+    const controls = ReadingPreferenceControls(
+      sourceScoreAdjustments: <String, double>{'feed-1': 2},
+      topicScoreAdjustments: <String, double>{'flutter': -2},
+      blockedSourceIds: <String>{'feed-2'},
+      blockedTopics: <String>{'spoilers'},
+    );
+    controls.validate();
+
+    expect(
+      controls,
+      const ReadingPreferenceControls(
+        sourceScoreAdjustments: <String, double>{'feed-1': 2},
+        topicScoreAdjustments: <String, double>{'flutter': -2},
+        blockedSourceIds: <String>{'feed-2'},
+        blockedTopics: <String>{'spoilers'},
+      ),
+    );
+    expect(
+      () => const ReadingPreferenceControls(
+        topicScoreAdjustments: <String, double>{' Flutter ': 1},
+      ).validate(),
+      throwsFormatException,
+    );
+    expect(
+      () => const ReadingPreferenceControls(
+        sourceScoreAdjustments: <String, double>{'feed-1': 4.1},
+      ).validate(),
+      throwsFormatException,
+    );
+  });
+
   test('behavior export is ordered and contains only bounded event fields', () {
     final later = ReadingEvent(
       eventId: 'event-later',
@@ -181,6 +213,16 @@ void main() {
 
     expect(export['schema'], readingBehaviorExportSchema);
     expect(export['version'], readingBehaviorExportSchemaVersion);
+    final settings = export['settings']! as Map<String, Object?>;
+    expect(
+      settings['preferenceControls'],
+      <String, Object>{
+        'sourceScoreAdjustments': <String, double>{},
+        'topicScoreAdjustments': <String, double>{},
+        'blockedSourceIds': <String>[],
+        'blockedTopics': <String>[],
+      },
+    );
     expect(events.map((event) => event['eventId']), <String>[
       'event-earlier',
       'event-later',

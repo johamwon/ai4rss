@@ -159,6 +159,9 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
       _articleListController?.dispose();
       _articleListController = ArticleListController(
         load: (query) => dependencies.feeds.watchArticles(query: query),
+        loadPersonalized: dependencies.personalizedArticles.watch,
+        behaviorSettings: dependencies.readingBehavior.watchSettings(),
+        initialQuery: const FeedArticleQuery(sort: FeedArticleSort.smart),
       );
       _automaticRefresh = AutomaticFeedRefreshController(
         clock: dependencies.clock,
@@ -534,6 +537,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
         builder: (context) => ReadingBehaviorPrivacyPage(
           repository: dependencies.readingBehavior,
           clock: dependencies.clock,
+          personalization: dependencies.personalizedArticles,
         ),
       ),
     );

@@ -143,6 +143,30 @@ void main() {
     },
   );
 
+  test('preference controls persist with deterministic JSON', () async {
+    const settings = domain.ReadingBehaviorSettings(
+      captureEnabled: true,
+      retentionDays: 365,
+      preferenceControls: domain.ReadingPreferenceControls(
+        sourceScoreAdjustments: <String, double>{'feed-z': -2, 'feed-a': 2},
+        topicScoreAdjustments: <String, double>{'flutter': 2},
+        blockedSourceIds: <String>{'feed-blocked'},
+        blockedTopics: <String>{'spoilers'},
+      ),
+    );
+    await repository.saveSettings(
+      settings,
+      updatedAt: DateTime.utc(2026, 8, 3),
+    );
+
+    expect(await repository.readSettings(), settings);
+    final row = await database
+        .select(database.readingBehaviorSettingsRows)
+        .getSingle();
+    expect(row.sourceScoreAdjustmentsJson, '{"feed-a":2.0,"feed-z":-2.0}');
+    expect(row.blockedTopicsJson, '["spoilers"]');
+  });
+
   test('export is stable and excludes article content', () async {
     await repository.record(
       _openEvent('later', at: DateTime.utc(2026, 7, 30, 13)),

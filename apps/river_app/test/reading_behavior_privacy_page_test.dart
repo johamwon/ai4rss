@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:river_app/preferences/personalized_articles.dart';
 import 'package:river_app/preferences/reading_behavior_privacy_page.dart';
 import 'package:river_data/river_data.dart';
 import 'package:river_domain/river_domain.dart';
@@ -104,4 +105,97 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump();
   });
+
+  testWidgets('profile can be viewed, edited, disabled, and cleared',
+      (tester) async {
+    final personalization = _FakePreferenceProfileExperience();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ReadingBehaviorPrivacyPage(
+          repository: repository,
+          clock: _FixedClock(),
+          personalization: personalization,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('查看和编辑偏好画像'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('偏好画像'), findsOneWidget);
+    expect(find.text('Example Feed'), findsOneWidget);
+    expect(find.bySemanticsLabel('个性化排序与本地行为学习'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('调整Example Feed的偏好'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('减少此类内容').last);
+    await tester.pumpAndSettle();
+    expect(personalization.sourceAdjustment, -2);
+
+    await tester.tap(find.text('个性化排序'));
+    await tester.pumpAndSettle();
+    expect(find.text('关闭个性化排序？'), findsOneWidget);
+    await tester.tap(find.text('关闭并回到时间排序'));
+    await tester.pumpAndSettle();
+    expect(personalization.enabled, isFalse);
+
+    await tester.ensureVisible(find.text('清空偏好画像'));
+    await tester.tap(find.text('清空偏好画像'));
+    await tester.pumpAndSettle();
+    expect(find.text('清空偏好画像？'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, '清空画像'));
+    await tester.pumpAndSettle();
+    expect(personalization.cleared, isTrue);
+  });
+}
+
+final class _FakePreferenceProfileExperience
+    implements PreferenceProfileExperience {
+  bool enabled = true;
+  bool cleared = false;
+  double sourceAdjustment = 0;
+
+  @override
+  Future<PreferenceProfileSnapshot> loadProfile() async =>
+      PreferenceProfileSnapshot(
+        settings: ReadingBehaviorSettings(captureEnabled: enabled),
+        evidenceCount: cleared ? 0 : 3,
+        sources: cleared
+            ? const <PreferenceProfileDimension>[]
+            : <PreferenceProfileDimension>[
+                PreferenceProfileDimension(
+                  id: 'feed-1',
+                  label: 'Example Feed',
+                  learnedScore: 1.5,
+                  adjustment: sourceAdjustment,
+                  blocked: false,
+                ),
+              ],
+        topics: const <PreferenceProfileDimension>[],
+      );
+
+  @override
+  Future<int> clearProfile() async {
+    cleared = true;
+    sourceAdjustment = 0;
+    return 3;
+  }
+
+  @override
+  Future<void> setEnabled(bool value) async => enabled = value;
+
+  @override
+  Future<void> setSourceAdjustment(String sourceId, double adjustment) async {
+    sourceAdjustment = adjustment;
+  }
+
+  @override
+  Future<void> setSourceBlocked(String sourceId, bool blocked) async {}
+
+  @override
+  Future<void> setTopicAdjustment(String topic, double adjustment) async {}
+
+  @override
+  Future<void> setTopicBlocked(String topic, bool blocked) async {}
 }

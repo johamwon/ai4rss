@@ -13,6 +13,7 @@ import 'package:river_platform/river_platform.dart';
 import 'package:river_sync/river_sync.dart';
 
 import '../knowledge/notion_workspace.dart';
+import '../preferences/personalized_articles.dart';
 import 'article_summary.dart';
 
 final class AppDependencies {
@@ -127,6 +128,11 @@ final class AppDependencies {
     readerSettings = DriftReaderSettingsRepository(database);
     readingBehavior =
         readingBehaviorRepository ?? DriftReadingEventRepository(database);
+    personalizedArticles = LocalPersonalizedArticleExperience(
+      feeds: feeds,
+      behavior: readingBehavior,
+      clock: clock,
+    );
     annotations = DriftArticleAnnotationRepository(database);
     audioQueueRepository = DriftAudioQueueRepository(database);
     audioQueue = PersistentAudioQueue(
@@ -278,6 +284,7 @@ final class AppDependencies {
   late final SubscriptionOrganizerService subscriptionOrganizer;
   late final DriftReaderSettingsRepository readerSettings;
   late final ReadingBehaviorRepository readingBehavior;
+  late final LocalPersonalizedArticleExperience personalizedArticles;
   late final DriftArticleAnnotationRepository annotations;
   late final DriftAudioQueueRepository audioQueueRepository;
   late final PersistentAudioQueue audioQueue;

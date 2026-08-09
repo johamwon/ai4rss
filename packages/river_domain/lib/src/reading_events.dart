@@ -23,6 +23,7 @@ abstract interface class ReadingBehaviorRepository
   Future<List<ReadingEvent>> readEvents();
   Future<int> purgeExpired({required DateTime now});
   Future<int> clearEvents();
+  Future<int> clearPreferenceProfile({required DateTime updatedAt});
   Future<String> exportJson({required DateTime exportedAt});
 }
 
@@ -30,18 +31,22 @@ final class ReadingBehaviorSettings {
   const ReadingBehaviorSettings({
     this.captureEnabled = false,
     this.retentionDays = 90,
+    this.preferenceControls = const ReadingPreferenceControls(),
   });
 
   final bool captureEnabled;
   final int retentionDays;
+  final ReadingPreferenceControls preferenceControls;
 
   ReadingBehaviorSettings copyWith({
     bool? captureEnabled,
     int? retentionDays,
+    ReadingPreferenceControls? preferenceControls,
   }) =>
       ReadingBehaviorSettings(
         captureEnabled: captureEnabled ?? this.captureEnabled,
         retentionDays: retentionDays ?? this.retentionDays,
+        preferenceControls: preferenceControls ?? this.preferenceControls,
       );
 
   void validate() {
@@ -50,16 +55,113 @@ final class ReadingBehaviorSettings {
         'Reading event retention must be between 1 and 3650 days.',
       );
     }
+    preferenceControls.validate();
   }
 
   @override
   bool operator ==(Object other) =>
       other is ReadingBehaviorSettings &&
       other.captureEnabled == captureEnabled &&
-      other.retentionDays == retentionDays;
+      other.retentionDays == retentionDays &&
+      other.preferenceControls == preferenceControls;
 
   @override
-  int get hashCode => Object.hash(captureEnabled, retentionDays);
+  int get hashCode =>
+      Object.hash(captureEnabled, retentionDays, preferenceControls);
+}
+
+final class ReadingPreferenceControls {
+  const ReadingPreferenceControls({
+    this.sourceScoreAdjustments = const <String, double>{},
+    this.topicScoreAdjustments = const <String, double>{},
+    this.blockedSourceIds = const <String>{},
+    this.blockedTopics = const <String>{},
+  });
+
+  static const int maximumSourceDimensions = 256;
+  static const int maximumTopicDimensions = 64;
+  static const double maximumAbsoluteAdjustment = 4;
+
+  final Map<String, double> sourceScoreAdjustments;
+  final Map<String, double> topicScoreAdjustments;
+  final Set<String> blockedSourceIds;
+  final Set<String> blockedTopics;
+
+  bool get isEmpty =>
+      sourceScoreAdjustments.isEmpty &&
+      topicScoreAdjustments.isEmpty &&
+      blockedSourceIds.isEmpty &&
+      blockedTopics.isEmpty;
+
+  ReadingPreferenceControls copyWith({
+    Map<String, double>? sourceScoreAdjustments,
+    Map<String, double>? topicScoreAdjustments,
+    Set<String>? blockedSourceIds,
+    Set<String>? blockedTopics,
+  }) =>
+      ReadingPreferenceControls(
+        sourceScoreAdjustments:
+            sourceScoreAdjustments ?? this.sourceScoreAdjustments,
+        topicScoreAdjustments:
+            topicScoreAdjustments ?? this.topicScoreAdjustments,
+        blockedSourceIds: blockedSourceIds ?? this.blockedSourceIds,
+        blockedTopics: blockedTopics ?? this.blockedTopics,
+      );
+
+  void validate() {
+    if (sourceScoreAdjustments.length > maximumSourceDimensions ||
+        blockedSourceIds.length > maximumSourceDimensions ||
+        topicScoreAdjustments.length > maximumTopicDimensions ||
+        blockedTopics.length > maximumTopicDimensions) {
+      throw const FormatException('Too many reading preference controls.');
+    }
+    for (final entry in sourceScoreAdjustments.entries) {
+      _validatePreferenceDimension(
+        entry.key,
+        maximumLength: 256,
+        normalizeAsTopic: false,
+      );
+      _validatePreferenceAdjustment(entry.value);
+    }
+    for (final entry in topicScoreAdjustments.entries) {
+      _validatePreferenceDimension(
+        entry.key,
+        maximumLength: 64,
+        normalizeAsTopic: true,
+      );
+      _validatePreferenceAdjustment(entry.value);
+    }
+    for (final sourceId in blockedSourceIds) {
+      _validatePreferenceDimension(
+        sourceId,
+        maximumLength: 256,
+        normalizeAsTopic: false,
+      );
+    }
+    for (final topic in blockedTopics) {
+      _validatePreferenceDimension(
+        topic,
+        maximumLength: 64,
+        normalizeAsTopic: true,
+      );
+    }
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is ReadingPreferenceControls &&
+      _mapsEqual(other.sourceScoreAdjustments, sourceScoreAdjustments) &&
+      _mapsEqual(other.topicScoreAdjustments, topicScoreAdjustments) &&
+      _setsEqual(other.blockedSourceIds, blockedSourceIds) &&
+      _setsEqual(other.blockedTopics, blockedTopics);
+
+  @override
+  int get hashCode => Object.hash(
+        _stableMapHash(sourceScoreAdjustments),
+        _stableMapHash(topicScoreAdjustments),
+        _stableSetHash(blockedSourceIds),
+        _stableSetHash(blockedTopics),
+      );
 }
 
 abstract final class ReadingBehaviorExportCodec {
@@ -84,6 +186,18 @@ abstract final class ReadingBehaviorExportCodec {
       'settings': <String, Object>{
         'captureEnabled': settings.captureEnabled,
         'retentionDays': settings.retentionDays,
+        'preferenceControls': <String, Object>{
+          'sourceScoreAdjustments': _sortedMap(
+            settings.preferenceControls.sourceScoreAdjustments,
+          ),
+          'topicScoreAdjustments': _sortedMap(
+            settings.preferenceControls.topicScoreAdjustments,
+          ),
+          'blockedSourceIds':
+              settings.preferenceControls.blockedSourceIds.toList()..sort(),
+          'blockedTopics': settings.preferenceControls.blockedTopics.toList()
+            ..sort(),
+        },
       },
       'events': ordered.map((event) => event.toJson()).toList(),
     });
@@ -280,6 +394,49 @@ String _requiredEventString(Map<String, Object?> json, String key) {
 
 bool _validEventIdentifier(String value) =>
     value.isNotEmpty && value.length <= 256 && value.trim() == value;
+
+void _validatePreferenceDimension(
+  String value, {
+  required int maximumLength,
+  required bool normalizeAsTopic,
+}) {
+  final normalized =
+      normalizeAsTopic ? value.trim().toLowerCase() : value.trim();
+  if (value.isEmpty || value.length > maximumLength || value != normalized) {
+    throw const FormatException('Invalid reading preference dimension.');
+  }
+}
+
+void _validatePreferenceAdjustment(double value) {
+  if (!value.isFinite ||
+      value < -ReadingPreferenceControls.maximumAbsoluteAdjustment ||
+      value > ReadingPreferenceControls.maximumAbsoluteAdjustment) {
+    throw const FormatException('Invalid reading preference adjustment.');
+  }
+}
+
+bool _mapsEqual(Map<String, double> left, Map<String, double> right) {
+  if (left.length != right.length) return false;
+  return left.entries.every((entry) => right[entry.key] == entry.value);
+}
+
+bool _setsEqual(Set<String> left, Set<String> right) =>
+    left.length == right.length && left.containsAll(right);
+
+int _stableMapHash(Map<String, double> value) {
+  final keys = value.keys.toList()..sort();
+  return Object.hashAll(keys.map((key) => Object.hash(key, value[key])));
+}
+
+int _stableSetHash(Set<String> value) {
+  final items = value.toList()..sort();
+  return Object.hashAll(items);
+}
+
+Map<String, double> _sortedMap(Map<String, double> value) {
+  final keys = value.keys.toList()..sort();
+  return <String, double>{for (final key in keys) key: value[key]!};
+}
 
 void _requireExactEventKeys(
   Map<String, Object?> value,

@@ -42,7 +42,7 @@ final class RiverDatabase extends _$RiverDatabase {
   }
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -257,6 +257,28 @@ final class RiverDatabase extends _$RiverDatabase {
       if (from < 15 && !await _hasTable('reading_behavior_settings_rows')) {
         await migrator.createTable(readingBehaviorSettingsRows);
       }
+      if (from < 16) {
+        await _addReadingBehaviorSettingsColumnIfMissing(
+          migrator,
+          'source_score_adjustments_json',
+          readingBehaviorSettingsRows.sourceScoreAdjustmentsJson,
+        );
+        await _addReadingBehaviorSettingsColumnIfMissing(
+          migrator,
+          'topic_score_adjustments_json',
+          readingBehaviorSettingsRows.topicScoreAdjustmentsJson,
+        );
+        await _addReadingBehaviorSettingsColumnIfMissing(
+          migrator,
+          'blocked_source_ids_json',
+          readingBehaviorSettingsRows.blockedSourceIdsJson,
+        );
+        await _addReadingBehaviorSettingsColumnIfMissing(
+          migrator,
+          'blocked_topics_json',
+          readingBehaviorSettingsRows.blockedTopicsJson,
+        );
+      }
     },
     beforeOpen: (OpeningDetails details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -310,6 +332,16 @@ final class RiverDatabase extends _$RiverDatabase {
   ) async {
     if (!await _hasColumn('knowledge_items', columnName)) {
       await migrator.addColumn(knowledgeItems, column);
+    }
+  }
+
+  Future<void> _addReadingBehaviorSettingsColumnIfMissing(
+    Migrator migrator,
+    String columnName,
+    GeneratedColumn<Object> column,
+  ) async {
+    if (!await _hasColumn('reading_behavior_settings_rows', columnName)) {
+      await migrator.addColumn(readingBehaviorSettingsRows, column);
     }
   }
 

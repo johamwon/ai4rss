@@ -4081,6 +4081,55 @@ class $ReadingBehaviorSettingsRowsTable extends ReadingBehaviorSettingsRows
     requiredDuringInsert: false,
     defaultValue: const Constant(90),
   );
+  static const VerificationMeta _sourceScoreAdjustmentsJsonMeta =
+      const VerificationMeta('sourceScoreAdjustmentsJson');
+  @override
+  late final GeneratedColumn<String> sourceScoreAdjustmentsJson =
+      GeneratedColumn<String>(
+        'source_score_adjustments_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('{}'),
+      );
+  static const VerificationMeta _topicScoreAdjustmentsJsonMeta =
+      const VerificationMeta('topicScoreAdjustmentsJson');
+  @override
+  late final GeneratedColumn<String> topicScoreAdjustmentsJson =
+      GeneratedColumn<String>(
+        'topic_score_adjustments_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('{}'),
+      );
+  static const VerificationMeta _blockedSourceIdsJsonMeta =
+      const VerificationMeta('blockedSourceIdsJson');
+  @override
+  late final GeneratedColumn<String> blockedSourceIdsJson =
+      GeneratedColumn<String>(
+        'blocked_source_ids_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('[]'),
+      );
+  static const VerificationMeta _blockedTopicsJsonMeta = const VerificationMeta(
+    'blockedTopicsJson',
+  );
+  @override
+  late final GeneratedColumn<String> blockedTopicsJson =
+      GeneratedColumn<String>(
+        'blocked_topics_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('[]'),
+      );
   static const VerificationMeta _updatedAtMeta = const VerificationMeta(
     'updatedAt',
   );
@@ -4097,6 +4146,10 @@ class $ReadingBehaviorSettingsRowsTable extends ReadingBehaviorSettingsRows
     id,
     captureEnabled,
     retentionDays,
+    sourceScoreAdjustmentsJson,
+    topicScoreAdjustmentsJson,
+    blockedSourceIdsJson,
+    blockedTopicsJson,
     updatedAt,
   ];
   @override
@@ -4134,6 +4187,42 @@ class $ReadingBehaviorSettingsRowsTable extends ReadingBehaviorSettingsRows
         ),
       );
     }
+    if (data.containsKey('source_score_adjustments_json')) {
+      context.handle(
+        _sourceScoreAdjustmentsJsonMeta,
+        sourceScoreAdjustmentsJson.isAcceptableOrUnknown(
+          data['source_score_adjustments_json']!,
+          _sourceScoreAdjustmentsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('topic_score_adjustments_json')) {
+      context.handle(
+        _topicScoreAdjustmentsJsonMeta,
+        topicScoreAdjustmentsJson.isAcceptableOrUnknown(
+          data['topic_score_adjustments_json']!,
+          _topicScoreAdjustmentsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('blocked_source_ids_json')) {
+      context.handle(
+        _blockedSourceIdsJsonMeta,
+        blockedSourceIdsJson.isAcceptableOrUnknown(
+          data['blocked_source_ids_json']!,
+          _blockedSourceIdsJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('blocked_topics_json')) {
+      context.handle(
+        _blockedTopicsJsonMeta,
+        blockedTopicsJson.isAcceptableOrUnknown(
+          data['blocked_topics_json']!,
+          _blockedTopicsJsonMeta,
+        ),
+      );
+    }
     if (data.containsKey('updated_at')) {
       context.handle(
         _updatedAtMeta,
@@ -4166,6 +4255,22 @@ class $ReadingBehaviorSettingsRowsTable extends ReadingBehaviorSettingsRows
         DriftSqlType.int,
         data['${effectivePrefix}retention_days'],
       )!,
+      sourceScoreAdjustmentsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_score_adjustments_json'],
+      )!,
+      topicScoreAdjustmentsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}topic_score_adjustments_json'],
+      )!,
+      blockedSourceIdsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}blocked_source_ids_json'],
+      )!,
+      blockedTopicsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}blocked_topics_json'],
+      )!,
       updatedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
@@ -4184,11 +4289,19 @@ class ReadingBehaviorSettingsRow extends DataClass
   final String id;
   final bool captureEnabled;
   final int retentionDays;
+  final String sourceScoreAdjustmentsJson;
+  final String topicScoreAdjustmentsJson;
+  final String blockedSourceIdsJson;
+  final String blockedTopicsJson;
   final DateTime updatedAt;
   const ReadingBehaviorSettingsRow({
     required this.id,
     required this.captureEnabled,
     required this.retentionDays,
+    required this.sourceScoreAdjustmentsJson,
+    required this.topicScoreAdjustmentsJson,
+    required this.blockedSourceIdsJson,
+    required this.blockedTopicsJson,
     required this.updatedAt,
   });
   @override
@@ -4197,6 +4310,14 @@ class ReadingBehaviorSettingsRow extends DataClass
     map['id'] = Variable<String>(id);
     map['capture_enabled'] = Variable<bool>(captureEnabled);
     map['retention_days'] = Variable<int>(retentionDays);
+    map['source_score_adjustments_json'] = Variable<String>(
+      sourceScoreAdjustmentsJson,
+    );
+    map['topic_score_adjustments_json'] = Variable<String>(
+      topicScoreAdjustmentsJson,
+    );
+    map['blocked_source_ids_json'] = Variable<String>(blockedSourceIdsJson);
+    map['blocked_topics_json'] = Variable<String>(blockedTopicsJson);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
   }
@@ -4206,6 +4327,10 @@ class ReadingBehaviorSettingsRow extends DataClass
       id: Value(id),
       captureEnabled: Value(captureEnabled),
       retentionDays: Value(retentionDays),
+      sourceScoreAdjustmentsJson: Value(sourceScoreAdjustmentsJson),
+      topicScoreAdjustmentsJson: Value(topicScoreAdjustmentsJson),
+      blockedSourceIdsJson: Value(blockedSourceIdsJson),
+      blockedTopicsJson: Value(blockedTopicsJson),
       updatedAt: Value(updatedAt),
     );
   }
@@ -4219,6 +4344,16 @@ class ReadingBehaviorSettingsRow extends DataClass
       id: serializer.fromJson<String>(json['id']),
       captureEnabled: serializer.fromJson<bool>(json['captureEnabled']),
       retentionDays: serializer.fromJson<int>(json['retentionDays']),
+      sourceScoreAdjustmentsJson: serializer.fromJson<String>(
+        json['sourceScoreAdjustmentsJson'],
+      ),
+      topicScoreAdjustmentsJson: serializer.fromJson<String>(
+        json['topicScoreAdjustmentsJson'],
+      ),
+      blockedSourceIdsJson: serializer.fromJson<String>(
+        json['blockedSourceIdsJson'],
+      ),
+      blockedTopicsJson: serializer.fromJson<String>(json['blockedTopicsJson']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
   }
@@ -4229,6 +4364,14 @@ class ReadingBehaviorSettingsRow extends DataClass
       'id': serializer.toJson<String>(id),
       'captureEnabled': serializer.toJson<bool>(captureEnabled),
       'retentionDays': serializer.toJson<int>(retentionDays),
+      'sourceScoreAdjustmentsJson': serializer.toJson<String>(
+        sourceScoreAdjustmentsJson,
+      ),
+      'topicScoreAdjustmentsJson': serializer.toJson<String>(
+        topicScoreAdjustmentsJson,
+      ),
+      'blockedSourceIdsJson': serializer.toJson<String>(blockedSourceIdsJson),
+      'blockedTopicsJson': serializer.toJson<String>(blockedTopicsJson),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
@@ -4237,11 +4380,21 @@ class ReadingBehaviorSettingsRow extends DataClass
     String? id,
     bool? captureEnabled,
     int? retentionDays,
+    String? sourceScoreAdjustmentsJson,
+    String? topicScoreAdjustmentsJson,
+    String? blockedSourceIdsJson,
+    String? blockedTopicsJson,
     DateTime? updatedAt,
   }) => ReadingBehaviorSettingsRow(
     id: id ?? this.id,
     captureEnabled: captureEnabled ?? this.captureEnabled,
     retentionDays: retentionDays ?? this.retentionDays,
+    sourceScoreAdjustmentsJson:
+        sourceScoreAdjustmentsJson ?? this.sourceScoreAdjustmentsJson,
+    topicScoreAdjustmentsJson:
+        topicScoreAdjustmentsJson ?? this.topicScoreAdjustmentsJson,
+    blockedSourceIdsJson: blockedSourceIdsJson ?? this.blockedSourceIdsJson,
+    blockedTopicsJson: blockedTopicsJson ?? this.blockedTopicsJson,
     updatedAt: updatedAt ?? this.updatedAt,
   );
   ReadingBehaviorSettingsRow copyWithCompanion(
@@ -4255,6 +4408,18 @@ class ReadingBehaviorSettingsRow extends DataClass
       retentionDays: data.retentionDays.present
           ? data.retentionDays.value
           : this.retentionDays,
+      sourceScoreAdjustmentsJson: data.sourceScoreAdjustmentsJson.present
+          ? data.sourceScoreAdjustmentsJson.value
+          : this.sourceScoreAdjustmentsJson,
+      topicScoreAdjustmentsJson: data.topicScoreAdjustmentsJson.present
+          ? data.topicScoreAdjustmentsJson.value
+          : this.topicScoreAdjustmentsJson,
+      blockedSourceIdsJson: data.blockedSourceIdsJson.present
+          ? data.blockedSourceIdsJson.value
+          : this.blockedSourceIdsJson,
+      blockedTopicsJson: data.blockedTopicsJson.present
+          ? data.blockedTopicsJson.value
+          : this.blockedTopicsJson,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
   }
@@ -4265,13 +4430,26 @@ class ReadingBehaviorSettingsRow extends DataClass
           ..write('id: $id, ')
           ..write('captureEnabled: $captureEnabled, ')
           ..write('retentionDays: $retentionDays, ')
+          ..write('sourceScoreAdjustmentsJson: $sourceScoreAdjustmentsJson, ')
+          ..write('topicScoreAdjustmentsJson: $topicScoreAdjustmentsJson, ')
+          ..write('blockedSourceIdsJson: $blockedSourceIdsJson, ')
+          ..write('blockedTopicsJson: $blockedTopicsJson, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, captureEnabled, retentionDays, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    captureEnabled,
+    retentionDays,
+    sourceScoreAdjustmentsJson,
+    topicScoreAdjustmentsJson,
+    blockedSourceIdsJson,
+    blockedTopicsJson,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4279,6 +4457,10 @@ class ReadingBehaviorSettingsRow extends DataClass
           other.id == this.id &&
           other.captureEnabled == this.captureEnabled &&
           other.retentionDays == this.retentionDays &&
+          other.sourceScoreAdjustmentsJson == this.sourceScoreAdjustmentsJson &&
+          other.topicScoreAdjustmentsJson == this.topicScoreAdjustmentsJson &&
+          other.blockedSourceIdsJson == this.blockedSourceIdsJson &&
+          other.blockedTopicsJson == this.blockedTopicsJson &&
           other.updatedAt == this.updatedAt);
 }
 
@@ -4287,12 +4469,20 @@ class ReadingBehaviorSettingsRowsCompanion
   final Value<String> id;
   final Value<bool> captureEnabled;
   final Value<int> retentionDays;
+  final Value<String> sourceScoreAdjustmentsJson;
+  final Value<String> topicScoreAdjustmentsJson;
+  final Value<String> blockedSourceIdsJson;
+  final Value<String> blockedTopicsJson;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
   const ReadingBehaviorSettingsRowsCompanion({
     this.id = const Value.absent(),
     this.captureEnabled = const Value.absent(),
     this.retentionDays = const Value.absent(),
+    this.sourceScoreAdjustmentsJson = const Value.absent(),
+    this.topicScoreAdjustmentsJson = const Value.absent(),
+    this.blockedSourceIdsJson = const Value.absent(),
+    this.blockedTopicsJson = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -4300,6 +4490,10 @@ class ReadingBehaviorSettingsRowsCompanion
     required String id,
     this.captureEnabled = const Value.absent(),
     this.retentionDays = const Value.absent(),
+    this.sourceScoreAdjustmentsJson = const Value.absent(),
+    this.topicScoreAdjustmentsJson = const Value.absent(),
+    this.blockedSourceIdsJson = const Value.absent(),
+    this.blockedTopicsJson = const Value.absent(),
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -4308,6 +4502,10 @@ class ReadingBehaviorSettingsRowsCompanion
     Expression<String>? id,
     Expression<bool>? captureEnabled,
     Expression<int>? retentionDays,
+    Expression<String>? sourceScoreAdjustmentsJson,
+    Expression<String>? topicScoreAdjustmentsJson,
+    Expression<String>? blockedSourceIdsJson,
+    Expression<String>? blockedTopicsJson,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
   }) {
@@ -4315,6 +4513,13 @@ class ReadingBehaviorSettingsRowsCompanion
       if (id != null) 'id': id,
       if (captureEnabled != null) 'capture_enabled': captureEnabled,
       if (retentionDays != null) 'retention_days': retentionDays,
+      if (sourceScoreAdjustmentsJson != null)
+        'source_score_adjustments_json': sourceScoreAdjustmentsJson,
+      if (topicScoreAdjustmentsJson != null)
+        'topic_score_adjustments_json': topicScoreAdjustmentsJson,
+      if (blockedSourceIdsJson != null)
+        'blocked_source_ids_json': blockedSourceIdsJson,
+      if (blockedTopicsJson != null) 'blocked_topics_json': blockedTopicsJson,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -4324,6 +4529,10 @@ class ReadingBehaviorSettingsRowsCompanion
     Value<String>? id,
     Value<bool>? captureEnabled,
     Value<int>? retentionDays,
+    Value<String>? sourceScoreAdjustmentsJson,
+    Value<String>? topicScoreAdjustmentsJson,
+    Value<String>? blockedSourceIdsJson,
+    Value<String>? blockedTopicsJson,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
   }) {
@@ -4331,6 +4540,12 @@ class ReadingBehaviorSettingsRowsCompanion
       id: id ?? this.id,
       captureEnabled: captureEnabled ?? this.captureEnabled,
       retentionDays: retentionDays ?? this.retentionDays,
+      sourceScoreAdjustmentsJson:
+          sourceScoreAdjustmentsJson ?? this.sourceScoreAdjustmentsJson,
+      topicScoreAdjustmentsJson:
+          topicScoreAdjustmentsJson ?? this.topicScoreAdjustmentsJson,
+      blockedSourceIdsJson: blockedSourceIdsJson ?? this.blockedSourceIdsJson,
+      blockedTopicsJson: blockedTopicsJson ?? this.blockedTopicsJson,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -4348,6 +4563,24 @@ class ReadingBehaviorSettingsRowsCompanion
     if (retentionDays.present) {
       map['retention_days'] = Variable<int>(retentionDays.value);
     }
+    if (sourceScoreAdjustmentsJson.present) {
+      map['source_score_adjustments_json'] = Variable<String>(
+        sourceScoreAdjustmentsJson.value,
+      );
+    }
+    if (topicScoreAdjustmentsJson.present) {
+      map['topic_score_adjustments_json'] = Variable<String>(
+        topicScoreAdjustmentsJson.value,
+      );
+    }
+    if (blockedSourceIdsJson.present) {
+      map['blocked_source_ids_json'] = Variable<String>(
+        blockedSourceIdsJson.value,
+      );
+    }
+    if (blockedTopicsJson.present) {
+      map['blocked_topics_json'] = Variable<String>(blockedTopicsJson.value);
+    }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
@@ -4363,6 +4596,10 @@ class ReadingBehaviorSettingsRowsCompanion
           ..write('id: $id, ')
           ..write('captureEnabled: $captureEnabled, ')
           ..write('retentionDays: $retentionDays, ')
+          ..write('sourceScoreAdjustmentsJson: $sourceScoreAdjustmentsJson, ')
+          ..write('topicScoreAdjustmentsJson: $topicScoreAdjustmentsJson, ')
+          ..write('blockedSourceIdsJson: $blockedSourceIdsJson, ')
+          ..write('blockedTopicsJson: $blockedTopicsJson, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -18280,6 +18517,10 @@ typedef $$ReadingBehaviorSettingsRowsTableCreateCompanionBuilder =
       required String id,
       Value<bool> captureEnabled,
       Value<int> retentionDays,
+      Value<String> sourceScoreAdjustmentsJson,
+      Value<String> topicScoreAdjustmentsJson,
+      Value<String> blockedSourceIdsJson,
+      Value<String> blockedTopicsJson,
       required DateTime updatedAt,
       Value<int> rowid,
     });
@@ -18288,6 +18529,10 @@ typedef $$ReadingBehaviorSettingsRowsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<bool> captureEnabled,
       Value<int> retentionDays,
+      Value<String> sourceScoreAdjustmentsJson,
+      Value<String> topicScoreAdjustmentsJson,
+      Value<String> blockedSourceIdsJson,
+      Value<String> blockedTopicsJson,
       Value<DateTime> updatedAt,
       Value<int> rowid,
     });
@@ -18313,6 +18558,26 @@ class $$ReadingBehaviorSettingsRowsTableFilterComposer
 
   ColumnFilters<int> get retentionDays => $composableBuilder(
     column: $table.retentionDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceScoreAdjustmentsJson => $composableBuilder(
+    column: $table.sourceScoreAdjustmentsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get topicScoreAdjustmentsJson => $composableBuilder(
+    column: $table.topicScoreAdjustmentsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get blockedSourceIdsJson => $composableBuilder(
+    column: $table.blockedSourceIdsJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get blockedTopicsJson => $composableBuilder(
+    column: $table.blockedTopicsJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -18346,6 +18611,26 @@ class $$ReadingBehaviorSettingsRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get sourceScoreAdjustmentsJson => $composableBuilder(
+    column: $table.sourceScoreAdjustmentsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get topicScoreAdjustmentsJson => $composableBuilder(
+    column: $table.topicScoreAdjustmentsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get blockedSourceIdsJson => $composableBuilder(
+    column: $table.blockedSourceIdsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get blockedTopicsJson => $composableBuilder(
+    column: $table.blockedTopicsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
@@ -18371,6 +18656,26 @@ class $$ReadingBehaviorSettingsRowsTableAnnotationComposer
 
   GeneratedColumn<int> get retentionDays => $composableBuilder(
     column: $table.retentionDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sourceScoreAdjustmentsJson => $composableBuilder(
+    column: $table.sourceScoreAdjustmentsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get topicScoreAdjustmentsJson => $composableBuilder(
+    column: $table.topicScoreAdjustmentsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get blockedSourceIdsJson => $composableBuilder(
+    column: $table.blockedSourceIdsJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get blockedTopicsJson => $composableBuilder(
+    column: $table.blockedTopicsJson,
     builder: (column) => column,
   );
 
@@ -18427,12 +18732,20 @@ class $$ReadingBehaviorSettingsRowsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<bool> captureEnabled = const Value.absent(),
                 Value<int> retentionDays = const Value.absent(),
+                Value<String> sourceScoreAdjustmentsJson = const Value.absent(),
+                Value<String> topicScoreAdjustmentsJson = const Value.absent(),
+                Value<String> blockedSourceIdsJson = const Value.absent(),
+                Value<String> blockedTopicsJson = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => ReadingBehaviorSettingsRowsCompanion(
                 id: id,
                 captureEnabled: captureEnabled,
                 retentionDays: retentionDays,
+                sourceScoreAdjustmentsJson: sourceScoreAdjustmentsJson,
+                topicScoreAdjustmentsJson: topicScoreAdjustmentsJson,
+                blockedSourceIdsJson: blockedSourceIdsJson,
+                blockedTopicsJson: blockedTopicsJson,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
@@ -18441,12 +18754,20 @@ class $$ReadingBehaviorSettingsRowsTableTableManager
                 required String id,
                 Value<bool> captureEnabled = const Value.absent(),
                 Value<int> retentionDays = const Value.absent(),
+                Value<String> sourceScoreAdjustmentsJson = const Value.absent(),
+                Value<String> topicScoreAdjustmentsJson = const Value.absent(),
+                Value<String> blockedSourceIdsJson = const Value.absent(),
+                Value<String> blockedTopicsJson = const Value.absent(),
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
               }) => ReadingBehaviorSettingsRowsCompanion.insert(
                 id: id,
                 captureEnabled: captureEnabled,
                 retentionDays: retentionDays,
+                sourceScoreAdjustmentsJson: sourceScoreAdjustmentsJson,
+                topicScoreAdjustmentsJson: topicScoreAdjustmentsJson,
+                blockedSourceIdsJson: blockedSourceIdsJson,
+                blockedTopicsJson: blockedTopicsJson,
                 updatedAt: updatedAt,
                 rowid: rowid,
               ),
