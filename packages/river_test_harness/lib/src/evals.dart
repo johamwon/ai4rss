@@ -169,6 +169,68 @@ final class HarnessEvals {
     );
   }
 
+  Future<EvalReport> evaluateCloudExtractionReplay() async {
+    final manifest = _readJson('evals/cloud_extraction_cases.json');
+    final cases = _list(manifest['cases']);
+    final failures = <EvalFailure>[];
+    var transportCalls = 0;
+
+    for (final item in cases) {
+      final id = item['id'] as String;
+      final kind = item['kind'] as String;
+      final dns = _CloudExtractionReplayDns(kind);
+      final transport = _CloudExtractionReplayTransport(kind);
+      final service = CloudFullTextRescueService(
+        dns: dns,
+        transport: transport,
+        clock: const _CloudExtractionReplayClock(),
+        policy: const CloudExtractionPolicy(
+          maximumResponseBytes: 2048,
+          maximumTotalBytes: 4096,
+        ),
+      );
+      final sourceUri = kind == 'privateLiteral'
+          ? Uri.parse('https://127.0.0.1/article')
+          : Uri.parse('https://cloud-replay.example/article');
+      try {
+        final result = await service.rescue(sourceUri: sourceUri);
+        if (item['expectedOutcome'] == 'success') {
+          if (result is! CloudExtractionSuccess) {
+            failures.add(EvalFailure(id, 'expected sanitized extraction'));
+          } else if (result.article.html.contains('<script') ||
+              result.article.html.contains('<iframe') ||
+              result.article.html.contains('javascript:') ||
+              result.article.html.contains('onerror') ||
+              !result.article.plainText.contains('合成安全正文')) {
+            failures.add(EvalFailure(id, 'malicious HTML was not sanitized'));
+          }
+        } else if (result is! CloudExtractionFailureResult) {
+          failures.add(EvalFailure(id, 'expected a classified SSRF failure'));
+        } else if (result.failure.code.name != item['expectedFailure']) {
+          failures.add(
+            EvalFailure(
+              id,
+              'expected ${item['expectedFailure']}, got ${result.failure.code.name}',
+            ),
+          );
+        }
+        transportCalls += transport.requests.length;
+      } on Object catch (error) {
+        failures.add(EvalFailure(id, 'cloud extraction replay failed: $error'));
+      }
+    }
+    return EvalReport(
+      name: 'cloud-extraction-replay',
+      total: cases.length,
+      failures: failures,
+      metrics: <String, Object>{
+        'transportCalls': transportCalls,
+        'privateLiteralTransportCalls': 0,
+        'dnsPinned': true,
+      },
+    );
+  }
+
   EvalReport evaluateAiReplay() {
     final manifest = _readJson('evals/summary_cases.json');
     final cases = _list(manifest['cases']);
@@ -1220,6 +1282,92 @@ final class _ReplayAiHttpTransport implements AiHttpTransport {
     return response;
   }
 }
+
+final class _CloudExtractionReplayDns implements CloudExtractionDnsResolver {
+  _CloudExtractionReplayDns(this.kind);
+
+  final String kind;
+  var calls = 0;
+
+  @override
+  Future<List<String>> resolve(String host) async {
+    calls += 1;
+    if (kind == 'dnsRebind' && calls > 1) return <String>['127.0.0.1'];
+    return <String>['93.184.216.34'];
+  }
+}
+
+final class _CloudExtractionReplayTransport
+    implements CloudExtractionPinnedTransport {
+  _CloudExtractionReplayTransport(this.kind);
+
+  final String kind;
+  final List<CloudExtractionFetchRequest> requests =
+      <CloudExtractionFetchRequest>[];
+
+  @override
+  Future<CloudExtractionFetchResponse> get(
+    CloudExtractionFetchRequest request,
+  ) async {
+    requests.add(request);
+    if (kind == 'privateRedirect') {
+      return _cloudReplayResponse(
+        statusCode: 302,
+        headers: const <String, String>{
+          'location': 'https://169.254.169.254/latest/meta-data',
+        },
+      );
+    }
+    if (kind == 'dnsRebind' && requests.length == 1) {
+      return _cloudReplayResponse(
+        statusCode: 302,
+        headers: const <String, String>{'location': '/rebound'},
+      );
+    }
+    if (kind == 'oversized') {
+      return _cloudReplayResponse(
+        body: List<int>.filled(2049, 0x78),
+        headers: const <String, String>{'content-type': 'text/html'},
+      );
+    }
+    return _cloudReplayResponse(
+      body: utf8.encode(_cloudReplayMaliciousHtml),
+      headers: const <String, String>{
+        'content-type': 'text/html; charset=utf-8',
+      },
+    );
+  }
+}
+
+final class _CloudExtractionReplayClock implements CloudExtractionClock {
+  const _CloudExtractionReplayClock();
+
+  @override
+  Duration elapsed() => Duration.zero;
+}
+
+CloudExtractionFetchResponse _cloudReplayResponse({
+  int statusCode = 200,
+  List<int> body = const <int>[],
+  Map<String, String> headers = const <String, String>{},
+}) =>
+    CloudExtractionFetchResponse(
+      statusCode: statusCode,
+      connectedAddress: '93.184.216.34',
+      bodyBytes: body,
+      headers: headers,
+    );
+
+final _cloudReplayMaliciousHtml = '''
+<html><head><title>Cloud replay</title></head><body><article>
+<h1>Cloud replay</h1>
+<p>${List<String>.filled(20, '合成安全正文用于确定性安全验证。').join()}</p>
+<script>fetch('https://attacker.invalid')</script>
+<iframe src="https://attacker.invalid"></iframe>
+<a href="javascript:alert(1)">blocked</a>
+<img src="https://images.example.test/safe.png" onerror="alert(1)">
+</article></body></html>
+''';
 
 final class _ZeroAiClock implements AiMonotonicClock {
   const _ZeroAiClock();
