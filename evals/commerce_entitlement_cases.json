@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {"id": "free-guest", "kind": "free-guest"},
+    {"id": "verified-pro", "kind": "verified-pro"},
+    {"id": "offline-cache", "kind": "offline-cache"},
+    {"id": "expired-trial", "kind": "expired-trial", "plan": "trial"},
+    {"id": "forged-snapshot", "kind": "forged", "revision": 2}
+  ]
+}

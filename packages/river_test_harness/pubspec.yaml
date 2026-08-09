@@ -10,6 +10,8 @@ dependencies:
     path: ../river_ai
   river_audio:
     path: ../river_audio
+  river_commerce:
+    path: ../river_commerce
   river_domain:
     path: ../river_domain
   river_extract:
