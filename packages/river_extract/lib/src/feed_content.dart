@@ -20,7 +20,11 @@ final class FeedContentAssessment {
 }
 
 final class FeedContentAssessor {
-  const FeedContentAssessor();
+  const FeedContentAssessor({
+    this.resourcePolicy = const DirectSanitizedResourcePolicy(),
+  });
+
+  final SanitizedResourcePolicy resourcePolicy;
 
   FeedContentAssessment assess({
     String? contentHtml,
@@ -30,7 +34,11 @@ final class FeedContentAssessor {
     final explicitContent = contentHtml?.trim();
     final usesExplicitContent = explicitContent?.isNotEmpty ?? false;
     final candidate = usesExplicitContent ? explicitContent! : summary ?? '';
-    final sanitized = sanitizeHtmlFragment(candidate, baseUri: sourceUri);
+    final sanitized = sanitizeHtmlFragment(
+      candidate,
+      baseUri: sourceUri,
+      resourcePolicy: resourcePolicy,
+    );
     final text = sanitized.plainText;
     if (text.isEmpty) {
       return FeedContentAssessment(
@@ -89,7 +97,9 @@ final class FeedContentExtractionStage implements ExtractionStage {
   String get id => 'feed-full-content';
 
   @override
-  String get version => '1';
+  String get version => assessor.resourcePolicy is DirectSanitizedResourcePolicy
+      ? '1'
+      : '2-proxy-v1';
 
   @override
   StageExtractionResult extract(ExtractionRequest request) {

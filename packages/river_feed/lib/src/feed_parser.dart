@@ -5,18 +5,33 @@ import 'package:xml/xml.dart';
 import 'feed_models.dart';
 
 final class FeedParser {
-  const FeedParser();
+  const FeedParser({
+    this.maximumDocumentCharacters = 10 * 1024 * 1024,
+    this.maximumItems = 100000,
+  });
+
+  final int maximumDocumentCharacters;
+  final int maximumItems;
 
   ParsedFeed parse(String document, {Uri? sourceUri}) {
+    if (maximumDocumentCharacters < 1 ||
+        maximumItems < 1 ||
+        document.length > maximumDocumentCharacters) {
+      throw const FeedParseException('Feed document exceeds parser limits');
+    }
     final kind = detectFeedDocument(document);
     try {
-      return switch (kind) {
+      final parsed = switch (kind) {
         FeedDocumentKind.rss => _parseRss(document, sourceUri),
         FeedDocumentKind.atom => _parseAtom(document, sourceUri),
         FeedDocumentKind.jsonFeed => _parseJsonFeed(document, sourceUri),
         FeedDocumentKind.unknown =>
           throw const FeedParseException('Unsupported feed document'),
       };
+      if (parsed.items.length > maximumItems) {
+        throw const FeedParseException('Feed item count exceeds parser limits');
+      }
+      return parsed;
     } on FeedParseException {
       rethrow;
     } catch (error) {
@@ -27,6 +42,11 @@ final class FeedParser {
   ParsedFeed _parseRss(String document, Uri? sourceUri) {
     final xml = XmlDocument.parse(document);
     final root = xml.rootElement;
+    if (root.name.local == 'RDF' &&
+        root.name.namespaceUri !=
+            'http://www.w3.org/1999/02/22-rdf-syntax-ns#') {
+      throw const FeedParseException('RSS RDF namespace is invalid');
+    }
     final channel = _firstDescendant(root, 'channel');
     if (channel == null) {
       throw const FeedParseException('RSS channel is missing');
@@ -36,19 +56,42 @@ final class FeedParser {
         .whereType<XmlElement>()
         .where((element) => element.name.local == 'item');
     final items = itemElements.map((item) {
-      final link = _uri(_text(item, 'link'), sourceUri);
+      final itemBase = _elementBase(item, sourceUri);
+      final link = _uri(_text(item, 'link'), itemBase);
       final title = _text(item, 'title') ?? '(untitled)';
       final enclosure = _child(item, 'enclosure');
       return ParsedFeedItem(
-        id: _text(item, 'guid') ?? link?.toString() ?? title,
+        id: _text(item, 'guid') ??
+            item.getAttribute(
+              'about',
+              namespaceUri: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+            ) ??
+            link?.toString() ??
+            title,
         title: title,
         url: link,
-        author: _text(item, 'creator', prefix: 'dc') ?? _text(item, 'author'),
-        publishedAt: _date(_text(item, 'pubDate')),
+        author: _textNamespace(
+              item,
+              'creator',
+              'http://purl.org/dc/elements/1.1/',
+            ) ??
+            _text(item, 'author'),
+        publishedAt: _date(
+          _text(item, 'pubDate') ??
+              _textNamespace(
+                item,
+                'date',
+                'http://purl.org/dc/elements/1.1/',
+              ),
+        ),
         updatedAt: _date(_text(item, 'updated')),
         summary: _text(item, 'description'),
-        contentHtml: _text(item, 'encoded', prefix: 'content'),
-        enclosureUrl: _uri(enclosure?.getAttribute('url'), sourceUri),
+        contentHtml: _textNamespace(
+          item,
+          'encoded',
+          'http://purl.org/rss/1.0/modules/content/',
+        ),
+        enclosureUrl: _uri(enclosure?.getAttribute('url'), itemBase),
         enclosureMimeType: enclosure?.getAttribute('type'),
       );
     }).toList(growable: false);
@@ -56,7 +99,10 @@ final class FeedParser {
     return ParsedFeed(
       kind: FeedDocumentKind.rss,
       title: _text(channel, 'title') ?? '(untitled feed)',
-      homePageUrl: _uri(_text(channel, 'link'), sourceUri),
+      homePageUrl: _uri(
+        _text(channel, 'link'),
+        _elementBase(channel, sourceUri),
+      ),
       feedUrl: sourceUri,
       description: _text(channel, 'description'),
       items: items,
@@ -79,11 +125,13 @@ final class FeedParser {
         id: _text(entry, 'id') ?? link?.toString() ?? title,
         title: title,
         url: link,
-        author: author == null ? null : _text(author, 'name'),
+        author: author == null
+            ? _text(_child(feed, 'author') ?? feed, 'name')
+            : _text(author, 'name'),
         publishedAt: _date(_text(entry, 'published')),
         updatedAt: _date(_text(entry, 'updated')),
         summary: _text(entry, 'summary'),
-        contentHtml: content?.innerText.trim(),
+        contentHtml: _atomContent(content),
       );
     }).toList(growable: false);
 
@@ -167,7 +215,7 @@ Uri? _atomLink(XmlElement parent, Uri? base, {String relation = 'alternate'}) {
   for (final link in _children(parent, 'link')) {
     final rel = link.getAttribute('rel') ?? 'alternate';
     if (rel == relation) {
-      return _uri(link.getAttribute('href'), base);
+      return _uri(link.getAttribute('href'), _elementBase(link, base));
     }
   }
   return null;
@@ -181,7 +229,56 @@ Uri? _uri(String? value, Uri? base) {
   if (uri == null) {
     return null;
   }
-  return uri.hasScheme || base == null ? uri : base.resolveUri(uri);
+  final resolved = uri.hasScheme || base == null ? uri : base.resolveUri(uri);
+  if ((resolved.scheme != 'http' && resolved.scheme != 'https') ||
+      resolved.host.isEmpty ||
+      resolved.userInfo.isNotEmpty) {
+    return null;
+  }
+  return resolved;
+}
+
+String? _textNamespace(
+  XmlElement parent,
+  String local,
+  String namespace,
+) {
+  for (final child in parent.children.whereType<XmlElement>()) {
+    if (child.name.local == local && child.name.namespaceUri == namespace) {
+      final value = child.innerText.trim();
+      return value.isEmpty ? null : value;
+    }
+  }
+  return null;
+}
+
+Uri? _elementBase(XmlElement element, Uri? fallback) {
+  final lineage = <XmlElement>[];
+  XmlNode? current = element;
+  while (current is XmlElement) {
+    lineage.add(current);
+    current = current.parent;
+  }
+  var value = fallback;
+  for (final candidate in lineage.reversed) {
+    final raw = candidate.getAttribute(
+      'base',
+      namespaceUri: 'http://www.w3.org/XML/1998/namespace',
+    );
+    if (raw == null || raw.trim().isEmpty) continue;
+    final parsed = Uri.tryParse(raw.trim());
+    if (parsed == null) continue;
+    value = parsed.hasScheme ? parsed : value?.resolveUri(parsed);
+  }
+  return value;
+}
+
+String? _atomContent(XmlElement? content) {
+  if (content == null) return null;
+  final type = content.getAttribute('type')?.toLowerCase();
+  final value =
+      type == 'xhtml' ? content.innerXml.trim() : content.innerText.trim();
+  return value.isEmpty ? null : value;
 }
 
 DateTime? _date(String? value) {

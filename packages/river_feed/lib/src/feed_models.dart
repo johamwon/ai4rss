@@ -9,7 +9,7 @@ FeedDocumentKind detectFeedDocument(String document) {
     return FeedDocumentKind.atom;
   }
   if (RegExp(
-    r'<rss(?:\s|>)|<(?:rdf:)?RDF(?:\s|>)',
+    r'<rss(?:\s|>)|<(?:[A-Za-z_][\w.-]*:)?RDF(?:\s|>)',
     caseSensitive: false,
   ).hasMatch(trimmed)) {
     return FeedDocumentKind.rss;

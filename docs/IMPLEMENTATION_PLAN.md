@@ -368,12 +368,10 @@ Milestone D退出门槛：知识问答必须显示可验证引用；连接器故
 
 当前下一批任务固定为：
 
-1. FND-001：安装SDK并生成三端Runner；
-2. FND-002：完成Composition Root与端口注入；
-3. FND-004：使Fast Lane在真实SDK下通过；
-4. DATA-001：评审SQLite v1 Schema；
-5. DATA-003：在写业务前建立第一份迁移Fixture；
-6. DATA-004：实现持久化任务队列；
-7. FEED-001/002：从FakeHTTP与固定Feed语料开始构建第一个纵向切片。
+1. TTS-004：Android/iOS 真机锁屏、中断、蓝牙与进程后台矩阵；
+2. POD-002：Android/iOS/Windows 真机网络切换、系统清理、磁盘满和长音频矩阵；
+3. POD-004/005：真机章节、文字稿、后台/锁屏队列和页面往返矩阵。
 
-在上述任务完成前，不开始真实AI Provider、Notion OAuth、推荐模型或支付接入。
+支付渠道接入按产品决策继续延期；正式商店签名、云资源与真机验收需要对应账号、密钥、设备和 macOS/Xcode 环境。
+
+> 2026-08-09：FEED-001/002 与 EXT-004/005 遗留代码项已完成。Feed HTTP 覆盖解压后限额、常见传统编码、DNS 私网拦截和跨域头隔离；解析器覆盖 RSS 1.0/RDF、命名空间别名、`xml:base`、Atom XHTML 与安全 URL。100 项兼容语料门禁达到 100%（门槛 99%），40 项微信结构语料达到 100%（门槛 95%）。图片资源可通过 `RIVER_RESOURCE_PROXY_URL` 重写为固定 HTTPS 代理的 URL-safe 编码路径，策略变化会使提取缓存失效。

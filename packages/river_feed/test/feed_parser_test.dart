@@ -98,6 +98,85 @@ void main() {
     );
   });
 
+  test('normalizes RSS 1.0 namespace aliases, rdf identity and xml base', () {
+    final feed = parser.parse(
+      '''
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+        xmlns="http://purl.org/rss/1.0/"
+        xmlns:dublin="http://purl.org/dc/elements/1.1/"
+        xmlns:body="http://purl.org/rss/1.0/modules/content/"
+        xml:base="https://example.test/root/">
+        <channel rdf:about="https://example.test/feed">
+          <title>RDF title</title><link>../</link><description>RDF feed</description>
+        </channel>
+        <item rdf:about="https://example.test/items/rdf-1" xml:base="posts/">
+          <title>RDF item</title><link>one</link>
+          <dublin:creator>Ada</dublin:creator>
+          <dublin:date>2026-08-06T10:00:00+08:00</dublin:date>
+          <body:encoded><![CDATA[<p>Full RDF content</p>]]></body:encoded>
+        </item>
+      </rdf:RDF>
+      ''',
+      sourceUri: Uri.parse('https://fallback.example/feed.xml'),
+    );
+
+    expect(feed.title, 'RDF title');
+    expect(feed.homePageUrl, Uri.parse('https://example.test/'));
+    expect(feed.items.single.id, 'https://example.test/items/rdf-1');
+    expect(
+      feed.items.single.url,
+      Uri.parse('https://example.test/root/posts/one'),
+    );
+    expect(feed.items.single.author, 'Ada');
+    expect(feed.items.single.publishedAt, DateTime.utc(2026, 8, 6, 2));
+    expect(feed.items.single.contentHtml, '<p>Full RDF content</p>');
+  });
+
+  test('preserves Atom XHTML and inherits feed author and xml base', () {
+    final feed = parser.parse(
+      '''
+      <feed xmlns="http://www.w3.org/2005/Atom"
+        xml:base="https://example.test/articles/">
+        <title>Atom XHTML</title><author><name>Feed Author</name></author>
+        <entry xml:base="2026/">
+          <id>xhtml-1</id><title>XHTML item</title><link href="one" />
+          <content type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml"><p>Rich text</p></div></content>
+        </entry>
+      </feed>
+      ''',
+    );
+
+    expect(feed.items.single.author, 'Feed Author');
+    expect(
+      feed.items.single.url,
+      Uri.parse('https://example.test/articles/2026/one'),
+    );
+    expect(feed.items.single.contentHtml, contains('<p>Rich text</p>'));
+  });
+
+  test('drops unsafe item URLs and enforces parser limits', () {
+    final feed = parser.parse(
+      '<rss><channel><title>Safe</title><item><title>One</title>'
+      '<link>file:///private</link><enclosure url="javascript:bad" />'
+      '</item></channel></rss>',
+    );
+    expect(feed.items.single.url, isNull);
+    expect(feed.items.single.enclosureUrl, isNull);
+
+    expect(
+      () => const FeedParser(maximumDocumentCharacters: 8).parse(
+        '<rss><channel /></rss>',
+      ),
+      throwsA(isA<FeedParseException>()),
+    );
+    expect(
+      () => const FeedParser(maximumItems: 1).parse(
+        '<rss><channel><item/><item/></channel></rss>',
+      ),
+      throwsA(isA<FeedParseException>()),
+    );
+  });
+
   test('rejects unknown and malformed documents with typed failures', () {
     expect(
       () => parser.parse('<html></html>'),
