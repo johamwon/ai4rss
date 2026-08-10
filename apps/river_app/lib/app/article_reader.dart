@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:river_ai/river_ai.dart';
@@ -3313,15 +3314,14 @@ TextSpan _annotationSpan(
 TextStyle _readerTextStyle(TextTheme textTheme, ReaderSettings settings) {
   final base = textTheme.bodyLarge ?? const TextStyle(fontSize: 18);
   final baseSize = base.fontSize ?? 18;
+  final sansSerif = RiverTypography.sansSerifFamilies(defaultTargetPlatform);
+  final serif = RiverTypography.serifFamilies(defaultTargetPlatform);
   final (fontFamily, fallbacks) = switch (settings.fontFamily) {
     ReaderFontFamily.system => (null, null),
-    ReaderFontFamily.serif => (
-        'Noto Serif CJK SC',
-        const <String>['Songti SC', 'SimSun', 'Georgia'],
-      ),
+    ReaderFontFamily.serif => (serif.first, serif.skip(1).toList()),
     ReaderFontFamily.sansSerif => (
-        'Noto Sans CJK SC',
-        const <String>['Microsoft YaHei', 'Arial'],
+        sansSerif.first,
+        sansSerif.skip(1).toList(),
       ),
   };
   return base.copyWith(

@@ -113,6 +113,7 @@ final class _ByokProviderSettingsPageState
       if (!mounted) return;
       _message(
         switch (failure.code) {
+          ByokConnectionFailureCode.quotaExhausted => '供应商额度不足，请充值或更换模型',
           ByokConnectionFailureCode.authenticationRejected => '供应商拒绝了 API Key',
           ByokConnectionFailureCode.rateLimited => '供应商限流，请稍后再试',
           ByokConnectionFailureCode.unavailable => '暂时无法连接供应商',
@@ -181,6 +182,7 @@ final class _ByokProviderSettingsPageState
                     onSave: () => unawaited(_save(kind)),
                     onTest: () => unawaited(_test(kind)),
                     onClear: () => unawaited(_clear(kind)),
+                    onDraftChanged: () => setState(() {}),
                   ),
                   const SizedBox(height: 12),
                 ],
@@ -210,6 +212,7 @@ final class _ProviderEditor extends StatelessWidget {
     required this.onSave,
     required this.onTest,
     required this.onClear,
+    required this.onDraftChanged,
   });
 
   final _ProviderKind kind;
@@ -219,6 +222,7 @@ final class _ProviderEditor extends StatelessWidget {
   final VoidCallback onSave;
   final VoidCallback onTest;
   final VoidCallback onClear;
+  final VoidCallback onDraftChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -241,6 +245,42 @@ final class _ProviderEditor extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
+            if (kind == _ProviderKind.tts) ...<Widget>[
+              DropdownButtonFormField<String>(
+                key: const ValueKey<String>('tts-provider-type'),
+                initialValue: draft.providerId,
+                decoration: const InputDecoration(
+                  labelText: 'TTS 服务商类型',
+                  border: OutlineInputBorder(),
+                ),
+                items: const <DropdownMenuItem<String>>[
+                  DropdownMenuItem<String>(
+                    value: 'custom-provider',
+                    child: Text('OpenAI-compatible / 自定义'),
+                  ),
+                  DropdownMenuItem<String>(
+                    value: FishAudioTtsPreset.providerId,
+                    child: Text('Fish Audio'),
+                  ),
+                ],
+                onChanged: blocked
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        draft.selectTtsProvider(value);
+                        onDraftChanged();
+                      },
+              ),
+              if (draft.isFishAudio) ...<Widget>[
+                const SizedBox(height: 8),
+                const Text(
+                  '在 fish.audio/app/api-keys 创建 API Key。可使用默认音色，'
+                  '也可从 Fish Audio 音色页面复制 Voice Model ID。'
+                  '切换服务商后需要重新输入对应的 Key。',
+                ),
+              ],
+              const SizedBox(height: 12),
+            ],
             TextField(
               controller: draft.displayName,
               decoration: const InputDecoration(
@@ -251,6 +291,7 @@ final class _ProviderEditor extends StatelessWidget {
             const SizedBox(height: 12),
             TextField(
               controller: draft.baseUrl,
+              readOnly: kind == _ProviderKind.tts && draft.isFishAudio,
               keyboardType: TextInputType.url,
               decoration: const InputDecoration(
                 labelText: 'API Base URL',
@@ -259,25 +300,62 @@ final class _ProviderEditor extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: draft.model,
-              decoration: const InputDecoration(
-                labelText: '模型',
-                border: OutlineInputBorder(),
+            if (kind == _ProviderKind.tts && draft.isFishAudio)
+              DropdownButtonFormField<String>(
+                key: const ValueKey<String>('fish-audio-model'),
+                initialValue: draft.model.text,
+                decoration: const InputDecoration(
+                  labelText: 'Fish Audio 模型',
+                  border: OutlineInputBorder(),
+                ),
+                items: FishAudioTtsPreset.supportedModels
+                    .map(
+                      (model) => DropdownMenuItem<String>(
+                        value: model,
+                        child: Text(
+                          model == FishAudioTtsPreset.developerModel
+                              ? '$model（开发者免费层）'
+                              : model,
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: blocked
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        draft.model.text = value;
+                        onDraftChanged();
+                      },
+              )
+            else
+              TextField(
+                controller: draft.model,
+                decoration: const InputDecoration(
+                  labelText: '模型',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
             if (kind == _ProviderKind.tts) ...<Widget>[
               const SizedBox(height: 12),
               TextField(
+                key: const ValueKey<String>('tts-voice'),
                 controller: draft.voice,
                 decoration: const InputDecoration(
                   labelText: '音色 Voice',
                   border: OutlineInputBorder(),
                 ),
               ),
+              if (draft.isFishAudio) ...<Widget>[
+                const SizedBox(height: 4),
+                const Text(
+                  'Voice 字段可留空使用默认音色；也可填写 Voice Model ID。',
+                ),
+              ],
             ],
             const SizedBox(height: 12),
             TextField(
+              key: ValueKey<String>('${kind.name}-api-key'),
               controller: draft.apiKey,
               obscureText: true,
               enableSuggestions: false,
@@ -294,6 +372,7 @@ final class _ProviderEditor extends StatelessWidget {
               runSpacing: 8,
               children: <Widget>[
                 FilledButton(
+                  key: ValueKey<String>('${kind.name}-save'),
                   onPressed: blocked ? null : onSave,
                   child: busy
                       ? const SizedBox.square(
@@ -332,12 +411,32 @@ final class _ProviderDraft {
   final TextEditingController model;
   final TextEditingController voice;
   final TextEditingController apiKey;
+  String providerId = 'custom-provider';
   String? _savedKey;
   AiStructuredOutputMode _structuredOutputMode =
       AiStructuredOutputMode.jsonObject;
   AiTokenLimitParameter _tokenLimitParameter = AiTokenLimitParameter.maxTokens;
 
   bool get hasSavedKey => _savedKey != null;
+  bool get isFishAudio => providerId == FishAudioTtsPreset.providerId;
+
+  void selectTtsProvider(String value) {
+    if (value == providerId) return;
+    providerId = value;
+    _savedKey = null;
+    apiKey.clear();
+    if (isFishAudio) {
+      displayName.text = FishAudioTtsPreset.displayName;
+      baseUrl.text = FishAudioTtsPreset.baseUrl;
+      model.text = FishAudioTtsPreset.defaultModel;
+      voice.clear();
+    } else {
+      displayName.text = 'OpenAI-compatible';
+      baseUrl.text = 'https://api.openai.com/v1';
+      model.text = 'gpt-4o-mini-tts';
+      voice.text = 'alloy';
+    }
+  }
 
   void loadAi(AiByokConfiguration? value) {
     if (value == null) return;
@@ -351,6 +450,7 @@ final class _ProviderDraft {
 
   void loadMedia(ByokMediaConfiguration? value) {
     if (value == null) return;
+    providerId = value.providerId;
     displayName.text = value.displayName;
     baseUrl.text = value.baseUri.toString();
     model.text = value.model;
@@ -368,18 +468,24 @@ final class _ProviderDraft {
         tokenLimitParameter: _tokenLimitParameter,
       );
 
-  ByokMediaConfiguration buildMedia(_ProviderKind kind) =>
-      ByokMediaConfiguration(
-        capability: kind == _ProviderKind.tts
-            ? ByokMediaCapability.tts
-            : ByokMediaCapability.podcastTranscription,
-        providerId: 'custom-provider',
-        displayName: displayName.text.trim(),
-        baseUri: Uri.parse(baseUrl.text.trim()),
-        model: model.text.trim(),
-        apiKey: OpaqueByokApiKey(_key()),
-        voice: kind == _ProviderKind.tts ? voice.text.trim() : null,
-      );
+  ByokMediaConfiguration buildMedia(_ProviderKind kind) {
+    final isTts = kind == _ProviderKind.tts;
+    final voiceValue = voice.text.trim();
+    if (isTts && !isFishAudio && voiceValue.isEmpty) {
+      throw ArgumentError('OpenAI-compatible TTS requires a voice');
+    }
+    return ByokMediaConfiguration(
+      capability: isTts
+          ? ByokMediaCapability.tts
+          : ByokMediaCapability.podcastTranscription,
+      providerId: isTts ? providerId : 'custom-provider',
+      displayName: displayName.text.trim(),
+      baseUri: Uri.parse(baseUrl.text.trim()),
+      model: model.text.trim(),
+      apiKey: OpaqueByokApiKey(_key()),
+      voice: isTts && voiceValue.isNotEmpty ? voiceValue : null,
+    );
+  }
 
   String _key() {
     final typed = apiKey.text;

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 export 'src/ai_long_summary_checkpoint_store.dart';
 export 'src/background_refresh_scheduler.dart';
+export 'src/custom_font_asset_repository.dart';
 export 'src/dynamic_page_renderer.dart';
 export 'src/external_uri_gateway.dart';
 export 'src/ima_portable_gateway.dart';

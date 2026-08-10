@@ -15,6 +15,7 @@ import '../knowledge/knowledge_library_page.dart';
 import '../podcast/podcast_library_page.dart';
 import '../preferences/reading_behavior_privacy_page.dart';
 import '../settings/byok_provider_settings_page.dart';
+import '../settings/font_settings_page.dart';
 import '../sync/sync_account_page.dart';
 import 'app_dependencies.dart';
 import 'article_list.dart';
@@ -37,37 +38,48 @@ final class _RiverAppState extends State<RiverApp> {
 
   @override
   Widget build(BuildContext context) {
-    return RiverDependenciesScope(
-      dependencies: widget.dependencies,
-      child: MaterialApp(
-        builder: (context, child) => Overlay(
-          initialEntries: <OverlayEntry>[
-            OverlayEntry(
-              builder: (context) => Positioned.fill(
-                child: Column(
-                  children: <Widget>[
-                    Expanded(child: child ?? const SizedBox.shrink()),
-                    GlobalMiniPlayer(
-                      queue: widget.dependencies.audioQueue,
-                      player: widget.dependencies.audioQueuePlayer,
-                      playback: widget.dependencies.audioController,
-                      onOpenPlayer: _openAudioPlayer,
-                      onOpenQueue: _openAudioQueue,
-                    ),
-                  ],
+    return ListenableBuilder(
+      listenable: widget.dependencies.fonts,
+      builder: (context, _) => RiverDependenciesScope(
+        dependencies: widget.dependencies,
+        child: MaterialApp(
+          builder: (context, child) => Overlay(
+            initialEntries: <OverlayEntry>[
+              OverlayEntry(
+                builder: (context) => Positioned.fill(
+                  child: Column(
+                    children: <Widget>[
+                      Expanded(child: child ?? const SizedBox.shrink()),
+                      GlobalMiniPlayer(
+                        queue: widget.dependencies.audioQueue,
+                        player: widget.dependencies.audioQueuePlayer,
+                        playback: widget.dependencies.audioController,
+                        onOpenPlayer: _openAudioPlayer,
+                        onOpenQueue: _openAudioQueue,
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
+          debugShowCheckedModeBanner: false,
+          darkTheme: RiverTheme.dark(
+            fontFamily: widget.dependencies.fonts.activeFamily,
+          ),
+          highContrastDarkTheme: RiverTheme.highContrastDark(
+            fontFamily: widget.dependencies.fonts.activeFamily,
+          ),
+          highContrastTheme: RiverTheme.highContrastLight(
+            fontFamily: widget.dependencies.fonts.activeFamily,
+          ),
+          home: const RiverHomeScreen(),
+          navigatorKey: _navigatorKey,
+          theme: RiverTheme.light(
+            fontFamily: widget.dependencies.fonts.activeFamily,
+          ),
+          title: 'River',
         ),
-        debugShowCheckedModeBanner: false,
-        darkTheme: RiverTheme.dark(),
-        highContrastDarkTheme: RiverTheme.highContrastDark(),
-        highContrastTheme: RiverTheme.highContrastLight(),
-        home: const RiverHomeScreen(),
-        navigatorKey: _navigatorKey,
-        theme: RiverTheme.light(),
-        title: 'River',
       ),
     );
   }
@@ -572,6 +584,15 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
     );
   }
 
+  Future<void> _openFontSettings() async {
+    final dependencies = RiverDependenciesScope.of(context);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (context) => FontSettingsPage(controller: dependencies.fonts),
+      ),
+    );
+  }
+
   Future<void> _run(Future<String?> Function() operation) async {
     setState(() => _busy = true);
     try {
@@ -803,6 +824,11 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
                         onPressed: () => unawaited(_openByokProviders()),
                         icon: const Icon(Icons.key_outlined),
                         tooltip: 'AI 与音频供应商',
+                      ),
+                      IconButton(
+                        onPressed: () => unawaited(_openFontSettings()),
+                        icon: const Icon(Icons.text_format),
+                        tooltip: '字体与排版',
                       ),
                       IconButton(
                         onPressed: () =>

@@ -17,6 +17,7 @@ import 'package:river_sync/river_sync.dart';
 import '../knowledge/notion_workspace.dart';
 import '../preferences/automatic_summaries.dart';
 import '../preferences/personalized_articles.dart';
+import 'app_font_controller.dart';
 import 'article_summary.dart';
 
 final class AppDependencies {
@@ -51,6 +52,7 @@ final class AppDependencies {
     AiLongSummaryCheckpointStore? aiSummaryCheckpoints,
     ArticleSummaryExperience? articleSummaries,
     ReadingBehaviorRepository? readingBehaviorRepository,
+    AppFontController? fonts,
     this.notionWorkspace,
     this.syncAccount,
   })  : knowledgeFiles =
@@ -75,6 +77,10 @@ final class AppDependencies {
             PlatformSecureAiByokConfigurationVault.standard(),
         mediaConfigurations = mediaConfigurations ??
             PlatformSecureByokMediaConfigurationVault.standard(),
+        fonts = fonts ??
+            AppFontController(
+              repository: const UnavailableCustomFontAssetRepository(),
+            ),
         _database = database {
     jobs = PersistentJobQueue(database);
     feeds = DriftFeedRepository(database);
@@ -231,6 +237,13 @@ final class AppDependencies {
         ? const UnavailableAudioSystemSession()
         : await SystemAudioSession.create();
     final externalUri = UrlLauncherExternalUriGateway();
+    AppFontController? fonts;
+    if (!backgroundExecution) {
+      fonts = AppFontController(
+        repository: PlatformCustomFontAssetRepository(),
+      );
+      await fonts.initialize();
+    }
     KnowledgeConnector? notionConnector;
     NotionWorkspaceExperience? notionWorkspace;
     const notionBrokerUrl = String.fromEnvironment('RIVER_NOTION_BROKER_URL');
@@ -281,6 +294,7 @@ final class AppDependencies {
       podcastTransfer: IoPodcastTransferBackend(),
       http: http,
       database: database,
+      fonts: fonts,
       imaInterop: ImaPortableInterop(
         transfer: PlatformImaPortableTransferGateway(),
         externalUri: externalUri,
@@ -309,6 +323,7 @@ final class AppDependencies {
   final ByokHttpTransport byokTransport;
   final AiByokConfigurationVault aiConfigurations;
   final ByokMediaConfigurationVault mediaConfigurations;
+  final AppFontController fonts;
   final bool automaticRefreshEnabled;
   final bool readingBehaviorIntroductionEnabled;
   final OpmlFileGateway opmlFiles;

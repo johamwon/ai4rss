@@ -79,4 +79,19 @@ void main() {
     );
     expect(flutterWindow, contains('HandleWindowMessage'));
   });
+
+  test('Windows TTS activation failure cannot terminate the application', () {
+    final platformPubspec =
+        File('../../packages/river_platform/pubspec.yaml').readAsStringSync();
+    final windowsPlugin = File(
+      '../../third_party/flutter_tts/windows/flutter_tts_plugin.cpp',
+    ).readAsStringSync();
+
+    expect(platformPubspec, contains('../../third_party/flutter_tts'));
+    expect(
+      windowsPlugin,
+      contains('Never let a WinRT activation failure cross the plugin C ABI'),
+    );
+    expect(windowsPlugin, contains('catch (...)'));
+  });
 }

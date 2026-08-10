@@ -43,6 +43,29 @@ void main() {
     );
     expect(store.values, isNotEmpty);
   });
+
+  test('Fish Audio profile round-trips without requiring a voice ID', () async {
+    final store = _MemorySecureStore();
+    final vault = PlatformSecureByokMediaConfigurationVault(store: store);
+    await vault.write(
+      ByokMediaConfiguration(
+        capability: ByokMediaCapability.tts,
+        providerId: FishAudioTtsPreset.providerId,
+        displayName: FishAudioTtsPreset.displayName,
+        baseUri: Uri.parse(FishAudioTtsPreset.baseUrl),
+        model: FishAudioTtsPreset.defaultModel,
+        apiKey: OpaqueByokApiKey('fish-media-provider-secret'),
+      ),
+    );
+
+    final restored = await vault.read(ByokMediaCapability.tts);
+    expect(restored?.providerId, FishAudioTtsPreset.providerId);
+    expect(restored?.baseUri.toString(), FishAudioTtsPreset.baseUrl);
+    expect(restored?.model, FishAudioTtsPreset.defaultModel);
+    expect(restored?.voice, isNull);
+    expect(restored?.apiKey.reveal(), 'fish-media-provider-secret');
+    expect(restored.toString(), isNot(contains('fish-media-provider-secret')));
+  });
 }
 
 ByokMediaConfiguration _configuration(ByokMediaCapability capability) =>

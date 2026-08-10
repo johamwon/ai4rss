@@ -1,6 +1,6 @@
 # River 实施状态
 
-更新时间：2026-08-09
+更新时间：2026-08-10
 
 ## 已完成
 
@@ -28,6 +28,7 @@
 - READ-001：收件箱、未读、收藏、稍后读和文件夹文章视图，以及最新/最早确定性排序；列表展示来源、时间、阅读时长和状态，支持惰性大列表、分视图滚动恢复、加载/空/失败/重试状态。
 - READ-002：渐进阅读页即时展示已净化的 Feed/缓存内容；摘要或截断 Feed 才下载静态网页并依次回退 Readability/WebView，完整正文在同一文档控件内替换，保留视口文本锚点和可映射选区；缓存/失败不阻断阅读。
 - READ-003：阅读页支持系统/衬线/无衬线字体、字号、行高、内容宽度与系统/浅色/深色主题；设置持久化并保留系统字体缩放，手机、平板和 Windows 宽/窄窗口 Golden 矩阵已覆盖。
+- READ-006：全局主题与正文阅读器统一采用平台常见中文字体栈（Windows 微软雅黑 UI、iOS 苹方、Android Noto Sans CJK SC），保留繁体、拉丁与 Emoji 回退；用户可导入不超过 32 MiB 的单个 TTF/OTF 字体，本地运行时加载、SHA-256 校验、原子持久化并显式恢复默认，字体文件和文件名不上传、不同步、不进入日志。
 - READ-004：已读、收藏、稍后读和阅读进度支持幂等持久写入及重启恢复；阅读 90% 自动完成，系统分享仅发送标题与 Canonical URL，不发送正文。
 - READ-005：本地全文搜索覆盖标题、作者、来源、摘要、正文、知识库标签和笔记；支持中文/英文/特殊字符、未读/收藏/稍后读/文件夹/来源过滤、相关性或时间排序、安全文本高亮、防抖、过期查询替换以及加载/空/失败/重试状态。10,000 篇文章搜索 P95 设有小于 500ms 的自动门槛。
 - KB-001：文章高亮与笔记使用 DOM 点位、原始偏移、正文 revision、精确引文及前后文双锚点；正文重解析时按原定位、DOM、上下文唯一性逐级恢复，重复候选无法消歧时保守标记失联。v12 以文章外键持久化颜色和笔记，阅读器支持选择正文后高亮/添加笔记、颜色编辑、删除、失联提示，并与 TTS 当前句高亮叠加显示。
@@ -59,6 +60,7 @@
 - INTEL-007：完成 FreshRSS Google Reader API 与 Miniflux `/v1` 的供应商无关账户同步。账户仅接受无凭据 HTTPS 基址，凭据和完整 URI 不进入诊断；拉取统一返回完整订阅、有界阅读/收藏状态对账和单调游标，FreshRSS 重查有限窗口，Miniflux 以 `changed_after` 增量，状态写回有界。相同规范 Feed URL 跨账户复用一个本地来源，但保留账户级远端映射和状态；旧状态不能覆盖新状态，游标回退失败关闭，移除账户仅在最后一个映射消失后清理本地来源。六类固定 Replay 全部通过。
 - AI-006：AI 摘要黄金集从单一中文产品样例扩展为中英双语、产品/金融/健康/法律/新闻/研究/教程/安全八类合成文章，其中金融、健康、法律和安全为高风险样例。每条必要事实同时绑定源证据和允许表达，每条禁用声明使用稳定 ID 与表达变体；Harness 实际读取源 Fixture 并校验元数据。Fast Lane 聚合输出必要事实覆盖率、禁用声明命中率、语言/类型分布和高风险数量，硬门槛为覆盖率 ≥90%、禁用声明命中率 0、至少 8 个样例及 4 个高风险样例；负向测试证明漏事实和危险断言会阻断门禁。
 - BYOK-001：三端新增统一“AI 与音频供应商”入口，用户可分别填写 AI、云 TTS 和播客转录的 OpenAI-compatible HTTPS API、模型、Key 与 TTS 音色。Key 仅保存在系统安全仓库且客户端直连供应商，不进入 River 云端、普通数据库或日志。连接检查、TTS 二进制签名、播客 multipart、媒体 SHA-256、能力隔离和稳定失败映射均有确定性测试；BYOK 成本由供应商直接向用户结算，River 用量台账记零成本。
+- BYOK-002：云 TTS 新增 Fish Audio 专用预设和适配器，固定官方 API 域名，支持 `s2.1-pro`、`s2.1-pro-free`、`s2-pro`、`s1`、默认音色及 Voice Model ID。合成按官方协议使用 `/v1/tts`、Bearer Key、`model` 请求头和可选 `reference_id`；连接检查改用只读额度接口，不生成计费语音。协议、端点固定、模型边界、音频签名、凭据脱敏与设置页保存均有确定性测试。
 - PREF-001：定义 `river.reading-event` v1 行为信封及展示、打开、有效阅读、完成、收藏、保存到知识和负反馈七类稳定 wire name；事件包含调用方提供的不可变 ID、文章 ID、UTC 时间和有界进度，不含正文、标题、笔记或 AI 输出。未知 Schema/未来版本、非法类型和事件专属载荷错误均失败关闭。领域仓库返回 inserted/duplicate，复用事件主键与唯一事件键实现顺序及并发重放幂等；同 ID 不同内容显式冲突且不覆盖原始证据。
 - PREF-002：纯 Dart 阅读会话状态机通过注入 Clock 与 IdGenerator 统一三端计时；仅在阅读页可见且处于前台或可见分屏时累计，后台、锁屏、页面不可见和 60 秒无交互后的时间全部排除。最大滚动深度单调保留，默认同时满足 30 秒有效阅读与 90% 深度才产生一次完成事件，直接跳到文末不会误判。增量 flush 只上报新增整秒，长会话按行为 Schema 单事件上限切分；倒退时钟和非法状态失败关闭。
 - PREF-003：行为事件仅写本地，v15 持久化采集开关与 1～3650 天保留期；关闭后仓库事务性返回 captureDisabled 且不新增记录。保留清理严格保留边界事件，完整清空启用 SQLite secure_delete 并截断 WAL。`river.reading-event-export` v1 只导出设置和按时间/ID 排序的行为信封，不关联标题、URL、正文、笔记或 AI 输出；v14→v15 及建表中断恢复均保留禁用选择。
@@ -72,7 +74,7 @@
 - READ-006：离线文章下载使用持久任务、租约恢复、稳定幂等键、有限退避和显式失败重试；飞行模式只入队不请求，启动、回到前台及网络恢复后继续处理。任务仅保存文章 ID，成功正文进入现有净化缓存，关闭并重开数据库后可直接阅读。
 - READ-007：应用遵循系统高对比模式，关键文字配色达到 WCAG AA 4.5:1；首页与阅读页提供阅读顺序焦点路径和 Windows 主操作快捷键。文章行暴露单一可操作语义节点，阅读标题标记为标题，状态同时使用图标、文本和实时播报；200% 系统字号窄屏列表、键盘操作和屏幕阅读器语义均有自动覆盖。
 - TTS-001：定义供应商无关的统一 `AudioEngine` 契约，覆盖能力、音色、加载、事件、播放控制、语速/音调，以及媒体时长或文章句内位置；文章语音计划要求稳定正文版本和连续分段。纯 Dart 分句器保留 UTF-16 正文偏移，覆盖中英文标点、闭合引号、小数、常见缩写、超长句安全切分、围栏代码占位和空正文。
-- TTS-002：`river_platform` 通过固定版本的系统 TTS 适配器接入 Android TextToSpeech、iOS AVSpeechSynthesizer 和 Windows 系统语音，并保持领域层无插件类型。支持能力/音色发现、朗读、暂停/恢复、停止、按句及句内位置跳转、语速、音调、语言与音色；进度映射为正文 UTF-16 偏移，原生错误只输出稳定失败码。三端编译及 Windows 真实系统语音 Smoke 已加入 Merge/Nightly CI。
+- TTS-002：`river_platform` 通过固定版本的系统 TTS 适配器接入 Android TextToSpeech、iOS AVSpeechSynthesizer 和 Windows 系统语音，并保持领域层无插件类型。支持能力/音色发现、朗读、暂停/恢复、停止、按句及句内位置跳转、语速、音调、语言与音色；进度映射为正文 UTF-16 偏移，原生错误只输出稳定失败码。Windows 本地固定依赖在语音/媒体组件无法激活时中止插件注册而不终止应用，三端编译及 Windows 真实系统语音 Smoke 已加入 Merge/Nightly CI。
 - TTS-003：统一播放控制器支持加载、播放/暂停、前后句、重读、自动续句、倍速、音色、两小时内定时停止、过期事件隔离和稳定失败态。SQLite v5 按正文版本保存句子/字符断点与播放设置，暂停、跳转、设置变更及退出立即落盘，最终完成清除断点。阅读页按需创建语音计划，提供可换行的跨尺寸控制条，并在原有可选中文档内高亮当前句；正文版本变化时拒绝旧断点和旧高亮。
 - TTS-004 核心：进程级共享播放控制器接入统一 `AudioSystemSession`，Android/iOS 通过固定版本的 `audio_service` 与 `audio_session` 提供后台服务、通知/锁屏、耳机命令、音频焦点、中断和拔耳机事件；Windows 由仓库内 C++/WinRT `SystemMediaTransportControls` 适配器提供系统媒体控制。只有中断前正在播放且系统明确许可时才能自动恢复，拔耳机只暂停。Windows Debug 原生编译、Runner 测试、隐藏启动 Smoke 和真实 SMTC MethodChannel Integration Test 已通过；Android/iOS 注册已纳入 CI 构建验证。
 - TTS-005 核心：供应商无关的语音段预取管线使用代次取消、当前段加三个前瞻段、最多两个并发任务和默认 8 MiB 保留预算；文章、段落或完整音色设置变化会取消旧代次并释放窗口外资源，忽略取消的后端晚返回时也会立即释放。预取错误只进入稳定降级态，不改变系统 TTS 播放；停止、最终完成、替换加载和控制器关闭均清理资源。108,000 字符合成两小时长文的分段计划估算低于 2 MiB，并在五秒门槛内完成。Free 系统 TTS 保持零额外预取资源，阶段 12 云 TTS 可通过同一接口注入计费缓存后端。
@@ -116,12 +118,12 @@
 - `river_commerce`：22 个测试通过，新增重试精确结算、证据冲突、失败/取消释放、重复返还、并发防透支、80%/100% 单次提醒、能力和周期边界；继续覆盖永久 Free 矩阵、访客访问、选择性 Pro 授权、规范载荷与脱敏、账户绑定、伪造、回滚/突变、未来/过期、离线缓存、在线刷新、试用降级、损坏缓存和 Free 提权拒绝。
 - `river_test_harness`：24 组共 288 项检查通过，新增 100 项 Feed 兼容与 40 项微信静态正文结构门禁；继续覆盖 Feed Server Account、播客音频智能、IMA、便携连接器、知识问答、知识搜索黄金集、向量生命周期、永久 Free、商业/云治理、音频、排序、提取及 AI Replay。
 - `river_preferences`：35 个测试通过，新增稳定分组、来源多样性、样本/置信区间门禁、聚合导出隐私和默认关闭；继续覆盖真实排序贡献解释、主来源封顶、探索配额、强负反馈、主题屏蔽、固定候选多因子解释、1,000 候选/信号属性、画像、重复点击封顶、阅读状态机及模型版本。
-- `river_app`：108 个测试通过，新增 AI/TTS/播客 BYOK 配置、保存、连接检查与凭据状态交互；继续覆盖 IMA 用户辅助分享、时间排序实验、高匹配自动摘要、Wi-Fi/日额度、智能排序、行为采集隐私、AI 摘要确认/恢复、文章→知识保存、Markdown/Notion、同步、统一音频、播客、阅读器与跨尺寸 Golden。
-- `river_design_system`：2 个测试通过，浅色与深色高对比主题的关键文字组合均达到 WCAG AA 4.5:1。
+- `river_app`：112 个测试通过，新增全局中文字体主题、自定义字体导入/预览/恢复、启动损坏恢复与 Windows TTS 注册失败关闭边界；继续覆盖 AI/TTS/播客 BYOK、IMA 用户辅助分享、时间排序实验、高匹配自动摘要、Wi-Fi/日额度、智能排序、行为采集隐私、AI 摘要确认/恢复、文章→知识保存、Markdown/Notion、同步、统一音频、播客、阅读器与跨尺寸 Golden。
+- `river_design_system`：4 个测试通过，新增 Windows、Apple、Android 中文字体首选及自定义字体回退顺序，并继续覆盖浅色与深色高对比主题 WCAG AA 4.5:1。
 - `river_audio`：43 个测试通过，新增云 TTS 精确计费、离线缓存、同键合并、取消晚返回、正文/声音变化、网络权益、无效响应、损坏恢复、LRU 清理和诊断隐私；继续覆盖 Podcast 章节跳转、统一持久队列、节目倍速、文章/Podcast 类型路由、两小时长文预算、有界预取、焦点、系统媒体命令、中断恢复、进度写入、定时暂停与跨语言分句。
 - `river_sync`：75 个测试通过，新增密文服务多租户隔离、授权、原子配额、限流、备份校验、灾演恢复、删除和不可读管理员指标；继续覆盖账号体验、字段/语义合并、幂等重复、墓碑压缩、双设备分页、AES/X25519/HKDF、恢复和设备生命周期。
 - `river_extract`：45 个测试通过，新增 HTTPS 图片代理策略、`srcset` 重写、非公网资源拒绝和缓存版本隔离；继续覆盖公网 IP 固定、IPv4/IPv6 特殊范围、混合 DNS、连接地址复验、重定向 DNS 变化、HTTPS 降级、大小/超时/媒体/编码边界、恶意 HTML、完整 Feed 零网页请求和平台回退编排。
-- `river_platform`：61 个测试通过，新增 TTS/播客转录 BYOK 安全仓库的能力隔离、损坏失败关闭与独立删除；继续覆盖 IMA、跨平台链路、长文检查点、AI BYOK、Notion Token、Markdown 保存、Podcast 播放/下载、安全仓库、系统音频会话、系统 TTS、后台调度及动态渲染契约。
+- `river_platform`：66 个测试通过，新增 TTF/OTF 格式与大小校验、SHA-256 身份、原子本地持久化、损坏失败关闭和限定目录清理；继续覆盖 TTS/播客转录 BYOK、IMA、跨平台链路、长文检查点、AI BYOK、Notion Token、Markdown 保存、Podcast 播放/下载、安全仓库、系统音频会话、系统 TTS、后台调度及动态渲染契约。
 - `river_byok`：8 个测试通过，覆盖 AI/媒体 `/models` 连接检查、配置边界、凭据脱敏、OpenAI-compatible TTS、音频签名、播客 multipart、媒体 SHA-256、稳定失败映射和取消前零媒体读取。
 - Harness：fixtures 23/23、feeds 103/103（兼容率 100%，门槛 99%）、extraction 47/47（微信静态结构兼容率 100%，门槛 95%）、cloud extraction replay 5/5、cloud TTS replay 5/5、podcast transcription replay 5/5、podcast audio intelligence replay 6/6、feed server account replay 6/6（FreshRSS/Miniflux/重复源/游标/状态/移除各 1，凭据诊断泄漏 0）、cloud governance replay 4/4、commerce entitlement replay 6/6、usage ledger replay 5/5、free product replay 18/18、knowledge vector replay 5/5、knowledge search replay 6/6（Recall@K/Precision@K 1.00、证据 10/10）、knowledge question replay 5/5、portable connector replay 5/5、IMA portable replay 5/5、AI replay 8/8、AI provider replay 5/5、AI long replay 1/1、AI cache replay 1/1、managed AI gateway replay 4/4、ranking 7/7、ranking experiment replay 3/3。
 - 本机 Windows Debug 构建通过；原生命令行测试 1/1、隐藏启动 Smoke 与真实 SMTC MethodChannel Integration Test 均通过。Windows 统一启用 `/utf-8` 并保留 `/WX`，避免非英文系统代码页造成第三方插件误失败。

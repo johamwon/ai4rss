@@ -59,6 +59,59 @@ void main() {
     );
     expect(find.text('播客转录'), findsOneWidget);
   });
+  testWidgets('user can configure the Fish Audio TTS preset', (tester) async {
+    tester.view.physicalSize = const Size(1000, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final aiVault = _AiVault();
+    final mediaVault = _MediaVault();
+    final transport = _Transport(
+      ByokHttpResponse(statusCode: 200, body: utf8.encode('{"credit":"1"}')),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ByokProviderSettingsPage(
+          aiVault: aiVault,
+          mediaVault: mediaVault,
+          connections: ByokProviderConnectionService(transport: transport),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final provider = find.byKey(const ValueKey<String>('tts-provider-type'));
+    await tester.scrollUntilVisible(
+      provider,
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(provider);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Fish Audio').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text(FishAudioTtsPreset.baseUrl), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('fish-audio-model')),
+      findsOneWidget,
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('tts-api-key')),
+      'fish-widget-provider-secret',
+    );
+    final save = find.byKey(const ValueKey<String>('tts-save'));
+    await tester.ensureVisible(save);
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    final saved = mediaVault.values[ByokMediaCapability.tts];
+    expect(saved?.providerId, FishAudioTtsPreset.providerId);
+    expect(saved?.baseUri.toString(), FishAudioTtsPreset.baseUrl);
+    expect(saved?.model, FishAudioTtsPreset.defaultModel);
+    expect(saved?.voice, isNull);
+    expect(saved?.apiKey.reveal(), 'fish-widget-provider-secret');
+  });
 }
 
 final class _AiVault implements AiByokConfigurationVault {

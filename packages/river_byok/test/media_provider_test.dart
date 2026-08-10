@@ -52,6 +52,96 @@ void main() {
     expect(transport.requests.single.toString(), isNot(contains('secret')));
   });
 
+  test('Fish Audio TTS uses the vendor endpoint, model header and reference ID',
+      () async {
+    final transport = _Transport(
+      ByokHttpResponse(
+        statusCode: 200,
+        body: const <int>[0x49, 0x44, 0x33, 0x04, 0x00, 0x00],
+        headers: const <String, String>{'content-type': 'audio/mpeg'},
+      ),
+    );
+    final synthesizer = createByokTtsSynthesizer(
+      configuration: _fishAudioConfiguration(voice: 'voice-model-id'),
+      transport: transport,
+    );
+
+    await synthesizer.synthesize(
+      CloudTtsSynthesisRequest(
+        operationId: 'fish-tts-operation-1',
+        text: 'Fish Audio 中文语音测试',
+        profile: CloudTtsProfile(profileId: 'fish-audio', version: 's2-1'),
+        settings: const AudioPlaybackSettings(rate: 1.25),
+      ),
+      AudioPrefetchCancellation(),
+    );
+
+    final request = transport.requests.single;
+    expect(request.uri.toString(), 'https://api.fish.audio/v1/tts');
+    expect(request.headers['model'], FishAudioTtsPreset.defaultModel);
+    expect(request.headers['authorization'], 'Bearer provider-secret-key');
+    final body = jsonDecode(utf8.decode(request.body)) as Map;
+    expect(body['text'], 'Fish Audio 中文语音测试');
+    expect(body['reference_id'], 'voice-model-id');
+    expect(body['format'], 'mp3');
+    expect((body['prosody'] as Map)['speed'], 1.25);
+    expect(request.toString(), isNot(contains('provider-secret-key')));
+  });
+
+  test('Fish Audio supports the documented default voice request', () async {
+    final transport = _Transport(
+      ByokHttpResponse(
+        statusCode: 200,
+        body: const <int>[0x49, 0x44, 0x33, 0x04, 0x00, 0x00],
+      ),
+    );
+    final synthesizer = FishAudioTtsSynthesizer(
+      configuration: _fishAudioConfiguration(),
+      transport: transport,
+    );
+
+    await synthesizer.synthesize(
+      CloudTtsSynthesisRequest(
+        operationId: 'fish-tts-operation-2',
+        text: 'default voice',
+        profile: CloudTtsProfile(profileId: 'fish-audio', version: 's2-1'),
+        settings: const AudioPlaybackSettings(),
+      ),
+      AudioPrefetchCancellation(),
+    );
+
+    final body = jsonDecode(utf8.decode(transport.requests.single.body)) as Map;
+    expect(body, isNot(contains('reference_id')));
+  });
+
+  test(
+      'Fish Audio normalizes generic binary content type after signature check',
+      () async {
+    final transport = _Transport(
+      ByokHttpResponse(
+        statusCode: 200,
+        body: const <int>[0x49, 0x44, 0x33, 0x04, 0x00, 0x00],
+        headers: const <String, String>{
+          'content-type': 'application/octet-stream',
+        },
+      ),
+    );
+    final response = await FishAudioTtsSynthesizer(
+      configuration: _fishAudioConfiguration(),
+      transport: transport,
+    ).synthesize(
+      CloudTtsSynthesisRequest(
+        operationId: 'fish-tts-operation-3',
+        text: 'binary response',
+        profile: CloudTtsProfile(profileId: 'fish-audio', version: 's2-1'),
+        settings: const AudioPlaybackSettings(),
+      ),
+      AudioPrefetchCancellation(),
+    );
+
+    expect(response.mediaType, 'audio/mpeg');
+  });
+
   test('podcast transcription verifies asset and parses timestamp segments',
       () async {
     final mediaBytes = utf8.encode('synthetic-audio-fixture');
@@ -223,6 +313,17 @@ ByokMediaConfiguration _configuration(ByokMediaCapability capability) =>
       model: 'media-model',
       apiKey: OpaqueByokApiKey('provider-secret-key'),
       voice: capability == ByokMediaCapability.tts ? 'alloy' : null,
+    );
+
+ByokMediaConfiguration _fishAudioConfiguration({String? voice}) =>
+    ByokMediaConfiguration(
+      capability: ByokMediaCapability.tts,
+      providerId: FishAudioTtsPreset.providerId,
+      displayName: FishAudioTtsPreset.displayName,
+      baseUri: Uri.parse(FishAudioTtsPreset.baseUrl),
+      model: FishAudioTtsPreset.defaultModel,
+      apiKey: OpaqueByokApiKey('provider-secret-key'),
+      voice: voice,
     );
 
 final class _Transport implements ByokHttpTransport {

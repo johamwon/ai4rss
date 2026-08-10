@@ -7,6 +7,7 @@ import 'http_transport.dart';
 
 enum ByokConnectionFailureCode {
   authenticationRejected,
+  quotaExhausted,
   rateLimited,
   unavailable,
   invalidResponse,
@@ -48,15 +49,21 @@ final class ByokProviderConnectionService {
   Future<ByokConnectionResult> testMedia(
     ByokMediaConfiguration configuration,
   ) =>
-      _test(
-        modelsUri: configuration.modelsUri,
-        model: configuration.model,
-        headers: configuration.authorizationHeaders(),
-      );
+      configuration.providerId == FishAudioTtsPreset.providerId
+          ? _test(
+              modelsUri: configuration.fishAudioCreditUri,
+              model: null,
+              headers: configuration.authorizationHeaders(),
+            )
+          : _test(
+              modelsUri: configuration.modelsUri,
+              model: configuration.model,
+              headers: configuration.authorizationHeaders(),
+            );
 
   Future<ByokConnectionResult> _test({
     required Uri modelsUri,
-    required String model,
+    required String? model,
     required Map<String, String> headers,
   }) async {
     ByokHttpResponse response;
@@ -87,12 +94,17 @@ final class ByokProviderConnectionService {
       case 200:
         return ByokConnectionResult(
           providerResponded: true,
-          modelSeen: _modelSeen(response.body, model),
+          modelSeen: model == null ? null : _modelSeen(response.body, model),
         );
       case 401:
       case 403:
         throw const ByokConnectionFailure(
           ByokConnectionFailureCode.authenticationRejected,
+          retryable: false,
+        );
+      case 402:
+        throw const ByokConnectionFailure(
+          ByokConnectionFailureCode.quotaExhausted,
           retryable: false,
         );
       case 429:

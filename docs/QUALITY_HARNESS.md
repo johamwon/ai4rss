@@ -26,6 +26,11 @@ storage, credential redaction, redirect refusal, bounded binary responses, audio
 signature validation, podcast byte/media/SHA-256 matching, multipart structure,
 cancellation and stable failure mapping. Live credentials never enter fixtures or
 CI; live latency, voice quality and transcription accuracy belong to Nightly only.
+Vendor-specific TTS adapters must additionally pin the documented origin,
+replay the exact endpoint/header/body contract, validate every enabled model and
+audio format, and prove that connection tests do not generate billable speech.
+Fish Audio replays cover its `model` header, optional `reference_id`, read-only
+credit check, 402 quota mapping, cancellation and binary signature validation.
 
 ## Initial gates
 
@@ -94,3 +99,7 @@ Feed server account changes must replay both FreshRSS Google Reader and Miniflux
 Feed transport changes must test gzip and deflate with limits applied after expansion, reject unknown content encodings, and replay GBK, Big5, Windows, Latin, malformed, and unsupported charset declarations. Production DNS validation runs on every redirect and the socket connects to a validated address while retaining the TLS hostname; empty, excessive, mixed, private, loopback, link-local, reserved, documentation, multicast, and mapped-private answers are rejected, and conditional headers cannot cross origins. Feed parser changes run 100 deterministic minimized compatibility cases across RSS 2.0, RSS 1.0/RDF, Atom, and JSON Feed and block below 99%. WeChat static changes run 40 structural variants and block below 95%.
 
 Image proxy policy changes must keep the proxy origin fixed and HTTPS, place the source only in a URL-safe encoded path, reject HTTP, credentials, local-looking hosts, non-default ports, and oversized sources, and change extractor cache versions. Sanitization replays must cover `src`, `srcset`, rejected inputs, and absence of publisher hosts in rendered HTML. The proxy backend remains independently responsible for DNS pinning, redirect revalidation, media signatures, byte/time limits, quotas, and caching.
+
+Typography changes must pin the platform-specific Chinese primary family and ordered fallbacks in design-system tests, then replay the existing phone, tablet, and Windows reader Golden matrix. Custom-font changes must accept only an explicitly selected single TTF/OTF file within the fixed byte limit, validate its SFNT signature and SHA-256 identity before activation and again at startup, and persist it atomically only under the application support directory. Fixed tests cover valid TTF/OTF import, malformed input and font-collection rejection, missing or corrupt persisted bytes, scoped cleanup, app-wide theme rebuilding, restore-default, and diagnostic redaction. Font bytes and user filenames must never be uploaded, synced, or logged.
+
+Windows native plugins that activate optional operating-system components during registration must keep exceptions inside the native ABI boundary. An unavailable speech, media, browser, or secure-storage component may disable only its own capability and must not terminate River before Dart `main`. Release evidence includes a clean Windows build and a startup smoke that verifies the process remains alive; TTS dependency upgrades must also replay system voice discovery and one short Chinese utterance on a supported Windows installation.

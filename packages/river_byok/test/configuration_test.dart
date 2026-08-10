@@ -74,6 +74,96 @@ void main() {
       ),
     );
   });
+
+  test('Fish Audio connection check validates the key without generating audio',
+      () async {
+    final transport = _Transport(
+      ByokHttpResponse(statusCode: 200, body: utf8.encode('{"credit":"1"}')),
+    );
+    final service = ByokProviderConnectionService(transport: transport);
+    final result = await service.testMedia(
+      ByokMediaConfiguration(
+        capability: ByokMediaCapability.tts,
+        providerId: FishAudioTtsPreset.providerId,
+        displayName: FishAudioTtsPreset.displayName,
+        baseUri: Uri.parse(FishAudioTtsPreset.baseUrl),
+        model: FishAudioTtsPreset.defaultModel,
+        apiKey: OpaqueByokApiKey('fish-provider-secret'),
+      ),
+    );
+
+    expect(result.providerResponded, isTrue);
+    expect(result.modelSeen, isNull);
+    expect(
+      transport.requests.single.uri.toString(),
+      'https://api.fish.audio/wallet/self/api-credit',
+    );
+    expect(transport.requests.single.method, 'GET');
+  });
+
+  test('Fish Audio profile rejects alternate endpoints and unknown models', () {
+    ByokMediaConfiguration build({required Uri uri, required String model}) =>
+        ByokMediaConfiguration(
+          capability: ByokMediaCapability.tts,
+          providerId: FishAudioTtsPreset.providerId,
+          displayName: FishAudioTtsPreset.displayName,
+          baseUri: uri,
+          model: model,
+          apiKey: OpaqueByokApiKey('fish-provider-secret'),
+        );
+
+    expect(
+      () => build(
+        uri: Uri.parse('https://proxy.example'),
+        model: FishAudioTtsPreset.defaultModel,
+      ),
+      throwsArgumentError,
+    );
+    expect(
+      () => build(
+        uri: Uri.parse(FishAudioTtsPreset.baseUrl),
+        model: 'unknown-model',
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('Fish Audio connection maps exhausted credit to a stable failure',
+      () async {
+    final service = ByokProviderConnectionService(
+      transport: _Transport(
+        ByokHttpResponse(
+          statusCode: 402,
+          body: utf8.encode('{"message":"private provider response"}'),
+        ),
+      ),
+    );
+    final configuration = ByokMediaConfiguration(
+      capability: ByokMediaCapability.tts,
+      providerId: FishAudioTtsPreset.providerId,
+      displayName: FishAudioTtsPreset.displayName,
+      baseUri: Uri.parse(FishAudioTtsPreset.baseUrl),
+      model: FishAudioTtsPreset.defaultModel,
+      apiKey: OpaqueByokApiKey('fish-provider-secret'),
+    );
+
+    await expectLater(
+      service.testMedia(configuration),
+      throwsA(
+        isA<ByokConnectionFailure>()
+            .having(
+              (failure) => failure.code,
+              'code',
+              ByokConnectionFailureCode.quotaExhausted,
+            )
+            .having(
+              (failure) => failure.toString(),
+              'diagnostic',
+              isNot(contains('private provider response')),
+            ),
+      ),
+    );
+  });
 }
 
 ByokMediaConfiguration _media(

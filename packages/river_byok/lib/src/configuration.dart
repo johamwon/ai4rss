@@ -4,6 +4,22 @@ enum ByokAuthScheme { bearer, xApiKey }
 
 enum ByokAudioFormat { mp3, wav, opus, aac, flac }
 
+abstract final class FishAudioTtsPreset {
+  static const providerId = 'fish-audio';
+  static const displayName = 'Fish Audio';
+  static const baseUrl = 'https://api.fish.audio';
+  static const defaultModel = 's2.1-pro';
+  static const developerModel = 's2.1-pro-free';
+  static const supportedModels = <String>[
+    defaultModel,
+    developerModel,
+    's2-pro',
+    's1',
+  ];
+
+  static bool supportsModel(String model) => supportedModels.contains(model);
+}
+
 final class OpaqueByokApiKey {
   OpaqueByokApiKey(String value) : _value = value {
     if (value.trim() != value ||
@@ -41,8 +57,17 @@ final class ByokMediaConfiguration {
     _requireLabel(model, 'model', 200);
     if (voice != null) _requireLabel(voice!, 'voice', 200);
     _requireBaseUri(baseUri);
-    if (capability == ByokMediaCapability.tts && voice == null) {
-      throw ArgumentError('TTS configuration requires a voice');
+    if (providerId == FishAudioTtsPreset.providerId &&
+        (capability != ByokMediaCapability.tts ||
+            baseUri.toString() != FishAudioTtsPreset.baseUrl ||
+            authScheme != ByokAuthScheme.bearer ||
+            !FishAudioTtsPreset.supportsModel(model) ||
+            !const <ByokAudioFormat>{
+              ByokAudioFormat.mp3,
+              ByokAudioFormat.wav,
+              ByokAudioFormat.opus,
+            }.contains(audioFormat))) {
+      throw ArgumentError('Invalid Fish Audio TTS profile');
     }
     if (capability == ByokMediaCapability.podcastTranscription &&
         voice != null) {
@@ -63,6 +88,8 @@ final class ByokMediaConfiguration {
   Uri get modelsUri => _append('models');
   Uri get speechUri => _append('audio/speech');
   Uri get transcriptionsUri => _append('audio/transcriptions');
+  Uri get fishAudioSpeechUri => _append('v1/tts');
+  Uri get fishAudioCreditUri => _append('wallet/self/api-credit');
 
   Map<String, String> authorizationHeaders() => switch (authScheme) {
         ByokAuthScheme.bearer => <String, String>{
