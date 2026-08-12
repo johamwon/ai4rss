@@ -39,7 +39,7 @@ dependencies:
     path: ../river_sync
   share_plus: 12.0.2
   url_launcher: 6.3.2
-  workmanager: 0.9.0+3
+  workmanager: 0.10.7
 dev_dependencies:
   flutter_test:
     sdk: flutter
