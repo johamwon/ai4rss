@@ -5,6 +5,8 @@ export 'src/byok_configuration.dart';
 export 'src/cloud_governance.dart';
 export 'src/long_summary.dart';
 export 'src/managed_ai_gateway.dart';
+export 'src/model_json.dart';
+export 'src/multi_article_summary.dart';
 export 'src/openai_compatible_provider.dart';
 export 'src/podcast_audio_intelligence.dart';
 export 'src/podcast_transcription.dart';

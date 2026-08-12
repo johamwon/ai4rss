@@ -18,7 +18,8 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_secure_storage: 10.3.1
-  flutter_tts: 4.2.5
+  flutter_tts:
+    path: ../../third_party/flutter_tts
   # 6.2 beta platform packages include AGP 9 and Visual Studio 18 fixes that
   # have not been released on the 21-month-old stable channel.
   flutter_inappwebview: 6.2.0-beta.3
@@ -27,6 +28,8 @@ dependencies:
   path_provider: 2.1.6
   river_ai:
     path: ../river_ai
+  river_byok:
+    path: ../river_byok
   river_commerce:
     path: ../river_commerce
   river_domain:

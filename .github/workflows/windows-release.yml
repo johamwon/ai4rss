@@ -1,0 +1,109 @@
+name: Windows Release
+
+on:
+  push:
+    tags: ['windows-v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Release gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: pubspec.yaml
+          cache: true
+
+      - name: Run deterministic release gate
+        run: dart run tool/ci.dart fast
+
+  package:
+    name: Package Windows x64
+    needs: validate
+    runs-on: windows-latest
+    timeout-minutes: 50
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # Avoid flutter-action's Windows yq bootstrap, which depends on
+          # Chocolatey availability before the release build can start.
+          flutter-version: '3.44.6'
+          cache: true
+
+      - name: Set up NuGet for WebView2
+        uses: NuGet/setup-nuget@v4
+
+      - name: Resolve workspace
+        run: flutter pub get
+
+      - name: Build Windows release
+        run: flutter build windows --release
+        working-directory: apps/river_app
+
+      - name: Run Windows native contract tests
+        run: ctest --test-dir build/windows/x64/runner -C Release --output-on-failure
+        working-directory: apps/river_app
+
+      - name: Package portable application
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^windows-', ''
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $archive = "dist/river-windows-$version.zip"
+          Compress-Archive `
+            -Path 'apps/river_app/build/windows/x64/runner/Release/*' `
+            -DestinationPath $archive
+          $hash = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $(Split-Path $archive -Leaf)" | Set-Content dist/SHA256SUMS.txt
+
+      - name: Upload packaged files
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-release
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish Windows prerelease
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download packaged files
+        uses: actions/download-artifact@v8
+        with:
+          name: windows-release
+          path: dist
+
+      - name: Publish GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#windows-}"
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "River $version Windows x64" \
+            --notes "Portable unsigned Windows x64 test build. Extract the complete archive, then run river_app.exe. Windows SmartScreen may display a warning."

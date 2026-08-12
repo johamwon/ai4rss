@@ -34,6 +34,31 @@ void main() {
     expect(RiverTheme.dark().brightness, Brightness.dark);
     expect(RiverTheme.highContrastDark().brightness, Brightness.dark);
   });
+
+  test('themes prefer common Chinese system fonts on every target', () {
+    final expectations = <TargetPlatform, String>{
+      TargetPlatform.android: 'Noto Sans CJK SC',
+      TargetPlatform.iOS: 'PingFang SC',
+      TargetPlatform.windows: 'Microsoft YaHei UI',
+    };
+    for (final entry in expectations.entries) {
+      final theme = RiverTheme.light(platform: entry.key);
+      expect(theme.textTheme.bodyMedium!.fontFamily, entry.value);
+      expect(theme.textTheme.bodyMedium!.fontFamilyFallback, isNotEmpty);
+    }
+  });
+
+  test('a custom font remains first and keeps Chinese fallbacks', () {
+    final theme = RiverTheme.dark(
+      fontFamily: 'RiverCustomFont_test',
+      platform: TargetPlatform.windows,
+    );
+    expect(theme.textTheme.bodyMedium!.fontFamily, 'RiverCustomFont_test');
+    expect(
+      theme.textTheme.bodyMedium!.fontFamilyFallback,
+      contains('Microsoft YaHei UI'),
+    );
+  });
 }
 
 double _contrast(Color first, Color second) {

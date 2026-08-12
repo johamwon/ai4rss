@@ -45,6 +45,24 @@ void main() {
       _failure(AiSchemaFailureCode.tooLarge),
     );
   });
+
+  test('schema accepts fenced, prose-prefixed, and allow-listed wrappers', () {
+    final encoded = jsonEncode(_valid);
+    for (final output in <String>[
+      '```json\n$encoded\n```',
+      'Here is the requested result:\n$encoded',
+      jsonEncode(<String, Object?>{'result': _valid}),
+      jsonEncode(<String, Object?>{'data': encoded}),
+    ]) {
+      final summary = const ArticleSummarySchema().parse(
+        output,
+        model: 'model',
+        promptVersion: 'article-summary@1',
+        expectedLanguage: 'en',
+      );
+      expect(summary.oneLine, _valid['oneLine']);
+    }
+  });
 }
 
 const Map<String, Object?> _valid = <String, Object?>{

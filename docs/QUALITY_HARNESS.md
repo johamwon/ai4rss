@@ -20,6 +20,18 @@
   idempotent and identity collisions fail closed.
 - Logs never contain article bodies, credentials or provider keys.
 
+Direct BYOK provider changes must replay AI, TTS and transcription connection
+contracts without real network access. Tests must prove capability-scoped secure
+storage, credential redaction, redirect refusal, bounded binary responses, audio
+signature validation, podcast byte/media/SHA-256 matching, multipart structure,
+cancellation and stable failure mapping. Live credentials never enter fixtures or
+CI; live latency, voice quality and transcription accuracy belong to Nightly only.
+Vendor-specific TTS adapters must additionally pin the documented origin,
+replay the exact endpoint/header/body contract, validate every enabled model and
+audio format, and prove that connection tests do not generate billable speech.
+Fish Audio replays cover its `model` header, optional `reference_id`, read-only
+credit check, 402 quota mapping, cancellation and binary signature validation.
+
 ## Initial gates
 
 | Gate | Threshold |
@@ -35,6 +47,10 @@
 Live canaries are advisory for PRs and blocking only after a confirmed regression. Copyrighted full pages must not be committed; use synthetic or minimized fixtures.
 
 AI 摘要黄金集的每个样例必须声明语言、内容类型、风险等级、源证据、允许的输出表达和禁用声明。Fast Lane 至少覆盖中英文、八类内容和四个高风险样例；`ai-replay` 输出必要事实覆盖率、禁用声明命中率及语料分布。增加样例可以提高门槛，不得通过删除难例、减少必需事实或缩小禁用声明集合来“修复”回归。模型或 Prompt 变更还必须在 PR 中报告相同黄金集上的质量差异；静态 Replay 不调用 Provider，因此该 Lane 的延迟和成本差异为零，真实模型延迟与成本由 Nightly live eval 记录。
+
+OpenAI-compatible 响应兼容层必须固定重放纯字符串、Markdown JSON 围栏、前置说明、`data/result/summary/output` 单层包装、content block、parsed object、缺失 usage、截断和空 choices。兼容层只能剥离传输包装，最终对象仍须通过能力 Schema；缺字段、错语言、额外字段和非法值不得用默认值掩盖。多篇摘要必须覆盖 2～20 篇边界、60,000 字符总预算、每篇公平截断、文章 ID 完整且唯一、乱序返回、单次修复和重复文章前置拒绝；正文、Prompt 和输出不得进入日志或测试快照。
+
+阅读器语义排版必须使用净化 HTML 与规范纯文本的稳定偏移映射，固定覆盖标题、粗体、斜体、引用、代码、链接、列表、图注和表格，以及恶意/不匹配 HTML 的纯文本回退。任何排版变更都要重放选区、高亮、笔记、TTS 当前句和正文替换锚点；不得执行站点脚本、事件属性或任意发布者 CSS。
 
 阅读行为 Schema 变更必须覆盖全部稳定事件类型的往返、旧版/未来版本行为和事件专属载荷边界。重复事件测试同时覆盖顺序重放与并发重放；相同 ID 但不同内容必须失败且不得覆盖原始证据。事件 Fixture、日志和快照不得包含正文、标题、笔记或 AI 输出。
 
@@ -87,3 +103,7 @@ Feed server account changes must replay both FreshRSS Google Reader and Miniflux
 Feed transport changes must test gzip and deflate with limits applied after expansion, reject unknown content encodings, and replay GBK, Big5, Windows, Latin, malformed, and unsupported charset declarations. Production DNS validation runs on every redirect and the socket connects to a validated address while retaining the TLS hostname; empty, excessive, mixed, private, loopback, link-local, reserved, documentation, multicast, and mapped-private answers are rejected, and conditional headers cannot cross origins. Feed parser changes run 100 deterministic minimized compatibility cases across RSS 2.0, RSS 1.0/RDF, Atom, and JSON Feed and block below 99%. WeChat static changes run 40 structural variants and block below 95%.
 
 Image proxy policy changes must keep the proxy origin fixed and HTTPS, place the source only in a URL-safe encoded path, reject HTTP, credentials, local-looking hosts, non-default ports, and oversized sources, and change extractor cache versions. Sanitization replays must cover `src`, `srcset`, rejected inputs, and absence of publisher hosts in rendered HTML. The proxy backend remains independently responsible for DNS pinning, redirect revalidation, media signatures, byte/time limits, quotas, and caching.
+
+Typography changes must pin the platform-specific Chinese primary family and ordered fallbacks in design-system tests, then replay the existing phone, tablet, and Windows reader Golden matrix. Custom-font changes must accept only an explicitly selected single TTF/OTF file within the fixed byte limit, validate its SFNT signature and SHA-256 identity before activation and again at startup, and persist it atomically only under the application support directory. Fixed tests cover valid TTF/OTF import, malformed input and font-collection rejection, missing or corrupt persisted bytes, scoped cleanup, app-wide theme rebuilding, restore-default, and diagnostic redaction. Font bytes and user filenames must never be uploaded, synced, or logged.
+
+Windows native plugins that activate optional operating-system components during registration must keep exceptions inside the native ABI boundary. An unavailable speech, media, browser, or secure-storage component may disable only its own capability and must not terminate River before Dart `main`. Release evidence includes a clean Windows build and a startup smoke that verifies the process remains alive; TTS dependency upgrades must also replay system voice discovery and one short Chinese utterance on a supported Windows installation.

@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:river_ai/river_ai.dart';
 import 'package:river_audio/river_audio.dart';
+import 'package:river_byok/river_byok.dart';
 import 'package:river_data/river_data.dart' hide AudioItem, AudioQueueEntry;
 import 'package:river_domain/river_domain.dart';
 import 'package:river_extract/river_extract.dart';
@@ -16,6 +17,7 @@ import 'package:river_sync/river_sync.dart';
 import '../knowledge/notion_workspace.dart';
 import '../preferences/automatic_summaries.dart';
 import '../preferences/personalized_articles.dart';
+import 'app_font_controller.dart';
 import 'article_summary.dart';
 
 final class AppDependencies {
@@ -45,9 +47,12 @@ final class AppDependencies {
     KnowledgeConnector? notionConnector,
     AiHttpTransport? aiTransport,
     AiByokConfigurationVault? aiConfigurations,
+    ByokHttpTransport? byokTransport,
+    ByokMediaConfigurationVault? mediaConfigurations,
     AiLongSummaryCheckpointStore? aiSummaryCheckpoints,
     ArticleSummaryExperience? articleSummaries,
     ReadingBehaviorRepository? readingBehaviorRepository,
+    AppFontController? fonts,
     this.notionWorkspace,
     this.syncAccount,
   })  : knowledgeFiles =
@@ -67,6 +72,15 @@ final class AppDependencies {
         backgroundRefresh =
             backgroundRefresh ?? PlatformBackgroundRefreshScheduler(),
         aiTransport = aiTransport ?? PackageHttpAiTransport(),
+        byokTransport = byokTransport ?? PackageByokHttpTransport(),
+        aiConfigurations = aiConfigurations ??
+            PlatformSecureAiByokConfigurationVault.standard(),
+        mediaConfigurations = mediaConfigurations ??
+            PlatformSecureByokMediaConfigurationVault.standard(),
+        fonts = fonts ??
+            AppFontController(
+              repository: const UnavailableCustomFontAssetRepository(),
+            ),
         _database = database {
     jobs = PersistentJobQueue(database);
     feeds = DriftFeedRepository(database);
@@ -146,8 +160,7 @@ final class AppDependencies {
     );
     this.articleSummaries = articleSummaries ??
         ByokArticleSummaryExperience(
-          configurations: aiConfigurations ??
-              PlatformSecureAiByokConfigurationVault.standard(),
+          configurations: this.aiConfigurations,
           artifacts: DriftAiArtifactRepository(database),
           checkpoints:
               aiSummaryCheckpoints ?? PlatformAiLongSummaryCheckpointStore(),
@@ -224,6 +237,13 @@ final class AppDependencies {
         ? const UnavailableAudioSystemSession()
         : await SystemAudioSession.create();
     final externalUri = UrlLauncherExternalUriGateway();
+    AppFontController? fonts;
+    if (!backgroundExecution) {
+      fonts = AppFontController(
+        repository: PlatformCustomFontAssetRepository(),
+      );
+      await fonts.initialize();
+    }
     KnowledgeConnector? notionConnector;
     NotionWorkspaceExperience? notionWorkspace;
     const notionBrokerUrl = String.fromEnvironment('RIVER_NOTION_BROKER_URL');
@@ -274,6 +294,7 @@ final class AppDependencies {
       podcastTransfer: IoPodcastTransferBackend(),
       http: http,
       database: database,
+      fonts: fonts,
       imaInterop: ImaPortableInterop(
         transfer: PlatformImaPortableTransferGateway(),
         externalUri: externalUri,
@@ -299,6 +320,10 @@ final class AppDependencies {
   final PodcastTransferBackend podcastTransfer;
   final HttpPort http;
   final AiHttpTransport aiTransport;
+  final ByokHttpTransport byokTransport;
+  final AiByokConfigurationVault aiConfigurations;
+  final ByokMediaConfigurationVault mediaConfigurations;
+  final AppFontController fonts;
   final bool automaticRefreshEnabled;
   final bool readingBehaviorIntroductionEnabled;
   final OpmlFileGateway opmlFiles;
@@ -354,6 +379,10 @@ final class AppDependencies {
     final aiHttp = aiTransport;
     if (aiHttp is PackageHttpAiTransport) {
       aiHttp.close();
+    }
+    final byokHttp = byokTransport;
+    if (byokHttp is PackageByokHttpTransport) {
+      byokHttp.close();
     }
     await _database.close();
   }

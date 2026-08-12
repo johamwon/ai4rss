@@ -138,10 +138,59 @@ void main() {
           isA<AiProviderFailure>().having(
             (failure) => failure.code,
             'code',
-            AiProviderFailureCode.unavailable,
+            AiProviderFailureCode.invalidRequest,
           ),
         ),
       );
+    });
+
+    test('accepts content blocks, parsed objects, and omitted usage', () async {
+      final responses = <Map<String, Object?>>[
+        <String, Object?>{
+          'choices': <Object?>[
+            <String, Object?>{
+              'message': <String, Object?>{
+                'content': <Object?>[
+                  <String, Object?>{'type': 'text', 'text': _summaryOutput},
+                ],
+              },
+            },
+          ],
+        },
+        <String, Object?>{
+          'choices': <Object?>[
+            <String, Object?>{
+              'message': <String, Object?>{
+                'parsed': <String, Object?>{
+                  'schemaVersion': ArticleSummarySchema.name,
+                },
+              },
+            },
+          ],
+          'usage': <String, Object?>{
+            'input_tokens': '7',
+            'output_tokens': 3.0,
+          },
+        },
+      ];
+
+      final first = await _provider(
+        transport: _Transport(
+          response:
+              AiHttpResponse(statusCode: 200, body: jsonEncode(responses[0])),
+        ),
+      ).complete(_request());
+      final second = await _provider(
+        transport: _Transport(
+          response:
+              AiHttpResponse(statusCode: 200, body: jsonEncode(responses[1])),
+        ),
+      ).complete(_request());
+
+      expect(first.output, _summaryOutput);
+      expect(first.usage.totalTokens, 0);
+      expect(second.output, _summaryOutput);
+      expect(second.usage.totalTokens, 10);
     });
 
     test('rejects truncation, filtered content, and mismatched models',

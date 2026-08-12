@@ -88,6 +88,11 @@ final class OpenAiCompatibleProvider implements AiProvider {
             retryable: false,
           ),
       };
+    } on FormatException {
+      throw AiProviderFailure(
+        code: AiProviderFailureCode.invalidRequest,
+        retryable: false,
+      );
     } on Object {
       throw AiProviderFailure(
         code: AiProviderFailureCode.unavailable,
@@ -136,10 +141,10 @@ final class OpenAiCompatibleProvider implements AiProvider {
     if (decoded is! Map) throw const FormatException();
     final value = Map<String, Object?>.from(decoded);
     final choices = value['choices'];
-    if (choices is! List<Object?> || choices.length != 1) {
+    if (choices is! List<Object?> || choices.isEmpty) {
       throw const FormatException();
     }
-    final choice = choices.single;
+    final choice = choices.first;
     if (choice is! Map) throw const FormatException();
     final choiceValue = Map<String, Object?>.from(choice);
     final finishReason = choiceValue['finish_reason'];
@@ -150,19 +155,24 @@ final class OpenAiCompatibleProvider implements AiProvider {
       );
     }
     final message = choiceValue['message'];
-    if (message is! Map) throw const FormatException();
-    final output = message['content'];
-    if (output is! String || output.isEmpty) {
+    final messageValue = message is Map
+        ? Map<String, Object?>.from(message)
+        : const <String, Object?>{};
+    final output = _messageOutput(messageValue, choiceValue);
+    if (output == null || output.trim().isEmpty) {
       throw const FormatException();
     }
     final usage = value['usage'];
-    if (usage is! Map) throw const FormatException();
-    final inputTokens = usage['prompt_tokens'];
-    final outputTokens = usage['completion_tokens'];
-    if (inputTokens is! int ||
-        inputTokens < 0 ||
-        outputTokens is! int ||
-        outputTokens < 0) {
+    final usageValue = usage is Map
+        ? Map<String, Object?>.from(usage)
+        : const <String, Object?>{};
+    final inputTokens = _nonNegativeInt(
+      usageValue['prompt_tokens'] ?? usageValue['input_tokens'],
+    );
+    final outputTokens = _nonNegativeInt(
+      usageValue['completion_tokens'] ?? usageValue['output_tokens'],
+    );
+    if (inputTokens == null || outputTokens == null) {
       throw const FormatException();
     }
     final resolvedModel = value['model'];
@@ -213,6 +223,41 @@ final class OpenAiCompatibleProvider implements AiProvider {
         ),
     };
   }
+}
+
+String? _messageOutput(
+  Map<String, Object?> message,
+  Map<String, Object?> choice,
+) {
+  final parsed = message['parsed'];
+  if (parsed is Map || parsed is List) return jsonEncode(parsed);
+  final content = message['content'] ?? choice['text'];
+  if (content is String) return content;
+  if (content is! List) return null;
+  final parts = <String>[];
+  for (final item in content) {
+    if (item is String) {
+      parts.add(item);
+      continue;
+    }
+    if (item is! Map) continue;
+    final value = Map<String, Object?>.from(item);
+    final text = value['text'] ?? value['content'];
+    if (text is String && text.isNotEmpty) parts.add(text);
+  }
+  return parts.isEmpty ? null : parts.join();
+}
+
+int? _nonNegativeInt(Object? value) {
+  if (value == null) return 0;
+  final parsed = switch (value) {
+    final int number => number,
+    final num number when number.isFinite && number == number.roundToDouble() =>
+      number.toInt(),
+    final String text => int.tryParse(text),
+    _ => null,
+  };
+  return parsed != null && parsed >= 0 ? parsed : null;
 }
 
 String _schemaIdentifier(String value) {

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 export 'src/ai_long_summary_checkpoint_store.dart';
 export 'src/background_refresh_scheduler.dart';
+export 'src/custom_font_asset_repository.dart';
 export 'src/dynamic_page_renderer.dart';
 export 'src/external_uri_gateway.dart';
 export 'src/ima_portable_gateway.dart';
@@ -13,6 +14,7 @@ export 'src/opml_file_gateway.dart';
 export 'src/podcast_audio_engine.dart';
 export 'src/podcast_download_backend.dart';
 export 'src/secure_ai_byok_configuration_vault.dart';
+export 'src/secure_byok_media_configuration_vault.dart';
 export 'src/secure_entitlement_snapshot_store.dart';
 export 'src/secure_notion_authorization_vault.dart';
 export 'src/secure_sync_vault.dart';

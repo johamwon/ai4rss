@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:river_ai/river_ai.dart';
@@ -2312,8 +2313,14 @@ final class _ArticleSummaryPanel extends StatelessWidget {
         ArticleSummaryExperienceFailureCode.timeout => 'AI 摘要请求超时，请重试。',
         ArticleSummaryExperienceFailureCode.articleTooLong =>
           '这篇文章超出当前模型的安全处理预算。',
+        ArticleSummaryExperienceFailureCode.responseFormatInvalid =>
+          '供应商已返回结果，但响应不是 River 可识别的 JSON 结构。已尝试自动修复，仍未通过；你可以重试或在供应商设置中更换兼容模式。',
+        ArticleSummaryExperienceFailureCode.responseIncomplete =>
+          '供应商已返回结果，但缺少摘要所需字段。River 没有用空值掩盖问题；请重试，或更换支持结构化输出的模型。',
+        ArticleSummaryExperienceFailureCode.responseLanguageMismatch =>
+          '供应商返回的摘要语言与当前要求不一致。结果未写入缓存，你可以重新生成。',
         ArticleSummaryExperienceFailureCode.invalidResponse =>
-          'AI 返回内容未通过本地结构校验，未保存该结果。',
+          '供应商已返回结果，但字段类型或取值未通过本地校验。结果未写入缓存，你可以重新生成。',
         ArticleSummaryExperienceFailureCode.providerUnavailable =>
           'AI 提供商暂时不可用，请稍后重试。',
         null => 'AI 摘要暂时不可用，正文阅读不受影响。',
@@ -2919,6 +2926,7 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
   late final FocusNode _focusNode;
   late TextSelection _lastSelection;
   late String _displayedRevision;
+  late List<ReaderSemanticRange> _semanticRanges;
   String? _pendingText;
   String? _pendingRevision;
   var _updatingText = false;
@@ -2940,10 +2948,12 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
   void initState() {
     super.initState();
     _scrollController = ScrollController()..addListener(_reportProgress);
+    _semanticRanges = _readerSemantics(widget.content);
     _textController = _HighlightingTextEditingController(
       text: widget.content.text,
       highlightedSegment: widget.highlightedSegment,
       annotations: widget.annotations,
+      semanticRanges: _semanticRanges,
     )..addListener(_handleSelectionChange);
     _lastSelection = _textController.selection;
     _displayedRevision = widget.content.revision;
@@ -2954,6 +2964,12 @@ final class ArticleDocumentViewState extends State<ArticleDocumentView> {
   @override
   void didUpdateWidget(ArticleDocumentView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.content.sanitizedHtml != oldWidget.content.sanitizedHtml ||
+        widget.content.text != oldWidget.content.text) {
+      _semanticRanges = _readerSemantics(widget.content);
+      (_textController as _HighlightingTextEditingController)
+          .setSemanticRanges(_semanticRanges);
+    }
     if (widget.content.text != oldWidget.content.text) {
       if (_replacePreservingAnchors(widget.content.text)) {
         _displayedRevision = widget.content.revision;
@@ -3182,12 +3198,15 @@ final class _HighlightingTextEditingController extends TextEditingController {
     SpeechSegment? highlightedSegment,
     List<ResolvedArticleAnnotation> annotations =
         const <ResolvedArticleAnnotation>[],
+    List<ReaderSemanticRange> semanticRanges = const <ReaderSemanticRange>[],
   })  : _highlightedRange = _rangeFor(text, highlightedSegment),
         _annotations = annotations,
+        _semanticRanges = semanticRanges,
         super(text: text);
 
   TextRange? _highlightedRange;
   List<ResolvedArticleAnnotation> _annotations;
+  List<ReaderSemanticRange> _semanticRanges;
 
   TextRange? get highlightedRange => _highlightedRange;
 
@@ -3200,6 +3219,11 @@ final class _HighlightingTextEditingController extends TextEditingController {
 
   void setAnnotations(List<ResolvedArticleAnnotation> annotations) {
     _annotations = annotations;
+    notifyListeners();
+  }
+
+  void setSemanticRanges(List<ReaderSemanticRange> ranges) {
+    _semanticRanges = ranges;
     notifyListeners();
   }
 
@@ -3228,8 +3252,17 @@ final class _HighlightingTextEditingController extends TextEditingController {
               annotation.start! < annotation.end!,
         )
         .toList(growable: false);
+    final semantics = _semanticRanges
+        .where(
+          (range) =>
+              range.start >= 0 &&
+              range.end <= text.length &&
+              range.start < range.end,
+        )
+        .toList(growable: false);
     if ((range == null || range.isCollapsed || range.end > text.length) &&
-        attached.isEmpty) {
+        attached.isEmpty &&
+        semantics.isEmpty) {
       return super.buildTextSpan(
         context: context,
         style: style,
@@ -3248,6 +3281,11 @@ final class _HighlightingTextEditingController extends TextEditingController {
         ..add(annotation.start!)
         ..add(annotation.end!);
     }
+    for (final semantic in semantics) {
+      boundaries
+        ..add(semantic.start)
+        ..add(semantic.end);
+    }
     final ordered = boundaries.toList()..sort();
     return TextSpan(
       style: style,
@@ -3258,8 +3296,11 @@ final class _HighlightingTextEditingController extends TextEditingController {
             ordered[index],
             ordered[index + 1],
             attached,
+            semantics,
             range,
             foreground,
+            style,
+            Theme.of(context).colorScheme,
           ),
       ],
     );
@@ -3284,8 +3325,11 @@ TextSpan _annotationSpan(
   int start,
   int end,
   List<ResolvedArticleAnnotation> annotations,
+  List<ReaderSemanticRange> semantics,
   TextRange? speechRange,
   Color foreground,
+  TextStyle? baseStyle,
+  ColorScheme colors,
 ) {
   ArticleAnnotationColor? color;
   for (final annotation in annotations) {
@@ -3296,32 +3340,117 @@ TextSpan _annotationSpan(
   final spoken = speechRange != null &&
       speechRange.start <= start &&
       speechRange.end >= end;
+  final activeSemantics = semantics
+      .where((range) => range.start <= start && range.end >= end)
+      .map((range) => range.kind)
+      .toSet();
+  final semanticStyle = _semanticTextStyle(
+    activeSemantics,
+    baseStyle: baseStyle,
+    colors: colors,
+  );
   return TextSpan(
     text: text.substring(start, end),
-    style: TextStyle(
+    style: semanticStyle.copyWith(
       backgroundColor: color == null
           ? spoken
               ? foreground.withValues(alpha: 0.16)
-              : null
+              : semanticStyle.backgroundColor
           : _annotationColor(color).withValues(alpha: 0.34),
-      fontWeight: spoken ? FontWeight.w600 : null,
-      decoration: spoken && color != null ? TextDecoration.underline : null,
+      fontWeight: spoken ? FontWeight.w600 : semanticStyle.fontWeight,
+      decoration: spoken && color != null
+          ? TextDecoration.underline
+          : semanticStyle.decoration,
     ),
   );
+}
+
+List<ReaderSemanticRange> _readerSemantics(ArticleReaderContent content) {
+  final html = content.sanitizedHtml;
+  if (html == null || html.trim().isEmpty) {
+    return const <ReaderSemanticRange>[];
+  }
+  return parseReaderSemanticDocument(
+    sanitizedHtml: html,
+    plainText: content.text,
+  ).ranges;
+}
+
+TextStyle _semanticTextStyle(
+  Set<ReaderSemanticKind> kinds, {
+  required TextStyle? baseStyle,
+  required ColorScheme colors,
+}) {
+  final baseSize = baseStyle?.fontSize ?? 18;
+  var result = const TextStyle();
+  if (kinds.contains(ReaderSemanticKind.heading1)) {
+    result = result.copyWith(
+      fontSize: baseSize * 1.48,
+      height: 1.35,
+      fontWeight: FontWeight.w700,
+    );
+  } else if (kinds.contains(ReaderSemanticKind.heading2)) {
+    result = result.copyWith(
+      fontSize: baseSize * 1.3,
+      height: 1.4,
+      fontWeight: FontWeight.w700,
+    );
+  } else if (kinds.contains(ReaderSemanticKind.heading3) ||
+      kinds.contains(ReaderSemanticKind.heading4)) {
+    result = result.copyWith(
+      fontSize: baseSize * 1.14,
+      height: 1.45,
+      fontWeight: FontWeight.w600,
+    );
+  }
+  if (kinds.contains(ReaderSemanticKind.strong)) {
+    result = result.copyWith(fontWeight: FontWeight.w700);
+  }
+  if (kinds.contains(ReaderSemanticKind.emphasis) ||
+      kinds.contains(ReaderSemanticKind.quote)) {
+    result = result.copyWith(fontStyle: FontStyle.italic);
+  }
+  if (kinds.contains(ReaderSemanticKind.quote)) {
+    result = result.copyWith(color: colors.onSurfaceVariant);
+  }
+  if (kinds.contains(ReaderSemanticKind.code) ||
+      kinds.contains(ReaderSemanticKind.table)) {
+    result = result.copyWith(
+      fontFamily: 'monospace',
+      fontSize: baseSize * 0.92,
+      backgroundColor: colors.surfaceContainerHighest.withValues(alpha: 0.65),
+    );
+  }
+  if (kinds.contains(ReaderSemanticKind.link)) {
+    result = result.copyWith(
+      color: colors.primary,
+      decoration: TextDecoration.underline,
+    );
+  }
+  if (kinds.contains(ReaderSemanticKind.caption)) {
+    result = result.copyWith(
+      color: colors.onSurfaceVariant,
+      fontSize: baseSize * 0.88,
+      fontStyle: FontStyle.italic,
+    );
+  }
+  if (kinds.contains(ReaderSemanticKind.listItem)) {
+    result = result.copyWith(fontWeight: result.fontWeight ?? FontWeight.w500);
+  }
+  return result;
 }
 
 TextStyle _readerTextStyle(TextTheme textTheme, ReaderSettings settings) {
   final base = textTheme.bodyLarge ?? const TextStyle(fontSize: 18);
   final baseSize = base.fontSize ?? 18;
+  final sansSerif = RiverTypography.sansSerifFamilies(defaultTargetPlatform);
+  final serif = RiverTypography.serifFamilies(defaultTargetPlatform);
   final (fontFamily, fallbacks) = switch (settings.fontFamily) {
     ReaderFontFamily.system => (null, null),
-    ReaderFontFamily.serif => (
-        'Noto Serif CJK SC',
-        const <String>['Songti SC', 'SimSun', 'Georgia'],
-      ),
+    ReaderFontFamily.serif => (serif.first, serif.skip(1).toList()),
     ReaderFontFamily.sansSerif => (
-        'Noto Sans CJK SC',
-        const <String>['Microsoft YaHei', 'Arial'],
+        sansSerif.first,
+        sansSerif.skip(1).toList(),
       ),
   };
   return base.copyWith(
