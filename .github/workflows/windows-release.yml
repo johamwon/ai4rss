@@ -43,7 +43,9 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version-file: pubspec.yaml
+          # Avoid flutter-action's Windows yq bootstrap, which depends on
+          # Chocolatey availability before the release build can start.
+          flutter-version: '3.44.6'
           cache: true
 
       - name: Set up NuGet for WebView2
