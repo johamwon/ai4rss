@@ -85,7 +85,64 @@ void main() {
     expect(body['reference_id'], 'voice-model-id');
     expect(body['format'], 'mp3');
     expect((body['prosody'] as Map)['speed'], 1.25);
+    expect((body['prosody'] as Map)['volume'], 0);
+    expect(body['temperature'], 0.7);
+    expect(body['top_p'], 0.7);
+    expect(body['chunk_length'], 300);
+    expect(body['latency'], 'normal');
+    expect(body['mp3_bitrate'], 128);
+    expect(request.headers, isNot(contains('idempotency-key')));
     expect(request.toString(), isNot(contains('provider-secret-key')));
+  });
+
+  test('Fish Audio bounds playback speed and sends only format parameters',
+      () async {
+    final transport = _Transport(
+      ByokHttpResponse(
+        statusCode: 200,
+        body: const <int>[0x4f, 0x67, 0x67, 0x53, 0, 0, 0, 0],
+        headers: const <String, String>{'content-type': 'audio/ogg'},
+      ),
+    );
+    final configuration = ByokMediaConfiguration(
+      capability: ByokMediaCapability.tts,
+      providerId: FishAudioTtsPreset.providerId,
+      displayName: FishAudioTtsPreset.displayName,
+      baseUri: Uri.parse(FishAudioTtsPreset.baseUrl),
+      model: FishAudioTtsPreset.defaultModel,
+      apiKey: OpaqueByokApiKey('provider-secret-key'),
+      audioFormat: ByokAudioFormat.opus,
+      fishAudioOptions: const FishAudioTtsOptions(
+        temperature: 0.4,
+        topP: 0.8,
+        volumeDb: -5,
+        chunkLength: 200,
+        latency: FishAudioLatency.balanced,
+        opusBitrateBps: 32000,
+        qualityGuard: true,
+      ),
+    );
+
+    await FishAudioTtsSynthesizer(
+      configuration: configuration,
+      transport: transport,
+    ).synthesize(
+      CloudTtsSynthesisRequest(
+        operationId: 'fish-bounded-speed',
+        text: 'bounded speed',
+        profile: CloudTtsProfile(profileId: 'fish', version: 'v1'),
+        settings: const AudioPlaybackSettings(rate: 3),
+      ),
+      AudioPrefetchCancellation(),
+    );
+
+    final body = jsonDecode(utf8.decode(transport.requests.single.body)) as Map;
+    expect((body['prosody'] as Map)['speed'], 2.0);
+    expect((body['prosody'] as Map)['volume'], -5);
+    expect(body['format'], 'opus');
+    expect(body['opus_bitrate'], 32000);
+    expect(body, isNot(contains('mp3_bitrate')));
+    expect(body['features'], <Object?>['quality-guard']);
   });
 
   test('Fish Audio supports the documented default voice request', () async {

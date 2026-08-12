@@ -12,9 +12,14 @@ River 通过用户自有 API Key 直连 Fish Audio，不代理、不上传或记
    - `s2.1-pro-free`：开发者免费层，适合试用和开发验证，不应依赖生产级保障。
    - `s2-pro`、`s1`：兼容旧模型。
 5. 可留空 Voice 字段以使用默认音色；如需指定音色，填写 Fish Audio 的 Voice Model ID。
-6. 填入 API Key，先点“测试连接”，再保存。
+6. 选择 MP3、WAV 或 Opus 输出格式；按需要展开“Fish Audio 高级参数”。
+7. 填入 API Key，先点“测试连接”，再保存。
 
-Fish Audio 的服务地址固定为 `https://api.fish.audio`，不可改成其他域名。连接测试读取账户 API 额度状态，不生成语音。正式合成使用 `POST /v1/tts`，默认 MP3，并根据 River 当前倍速传递 prosody speed。
+Fish Audio 的服务地址固定为 `https://api.fish.audio`，不可改成其他域名。连接测试读取账户 API 额度状态，不生成语音。正式合成使用 `POST /v1/tts`。River 以类型化配置保存并校验 `temperature`、`top_p`、`prosody.volume`、`chunk_length`、`normalize`、`normalize_loudness`、`latency`、MP3/Opus 码率和可选 `quality-guard`，不会把任意参数 JSON 直接转发给供应商。
+
+Fish Audio 的合成语速范围是 0.5～2.0。River 的本地播放器仍可选择更高倍速，但发送给 Fish Audio 的 `prosody.speed` 会限制在该官方范围内，避免 2.5/3.0 倍阅读设置导致 `422`。MP3 只发送 MP3 码率，Opus 只发送 Opus 码率，WAV 不携带不适用的码率字段。
+
+高级参数的默认值与官方接口一致：`temperature=0.7`、`top_p=0.7`、`volume=0 dB`、`chunk_length=300`、`latency=normal`。连接测试只验证 Key 和账户接口；Voice Model ID 是否属于当前账户要到首次实际合成时由 Fish Audio 校验。
 
 ## 隐私与费用
 

@@ -351,6 +351,162 @@ final class _ProviderEditor extends StatelessWidget {
                 const Text(
                   'Voice 字段可留空使用默认音色；也可填写 Voice Model ID。',
                 ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<ByokAudioFormat>(
+                  key: const ValueKey<String>('fish-audio-format'),
+                  initialValue: draft.audioFormat,
+                  decoration: const InputDecoration(
+                    labelText: '输出格式',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const <ByokAudioFormat>[
+                    ByokAudioFormat.mp3,
+                    ByokAudioFormat.wav,
+                    ByokAudioFormat.opus,
+                  ]
+                      .map(
+                        (format) => DropdownMenuItem<ByokAudioFormat>(
+                          value: format,
+                          child: Text(format.name.toUpperCase()),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: blocked
+                      ? null
+                      : (value) {
+                          if (value == null) return;
+                          draft.audioFormat = value;
+                          onDraftChanged();
+                        },
+                ),
+                const SizedBox(height: 8),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: const Text('Fish Audio 高级参数'),
+                  subtitle: const Text('参数已按官方范围校验；阅读倍速会限制在 0.5–2.0 倍'),
+                  children: <Widget>[
+                    DropdownButtonFormField<FishAudioLatency>(
+                      initialValue: draft.fishLatency,
+                      decoration: const InputDecoration(
+                        labelText: '延迟与质量',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: FishAudioLatency.values
+                          .map(
+                            (value) => DropdownMenuItem<FishAudioLatency>(
+                              value: value,
+                              child: Text(
+                                switch (value) {
+                                  FishAudioLatency.normal => '最佳质量（normal）',
+                                  FishAudioLatency.balanced => '平衡（balanced）',
+                                  FishAudioLatency.low => '最低延迟（low）',
+                                },
+                              ),
+                            ),
+                          )
+                          .toList(growable: false),
+                      onChanged: blocked
+                          ? null
+                          : (value) {
+                              if (value == null) return;
+                              draft.fishLatency = value;
+                              onDraftChanged();
+                            },
+                    ),
+                    const SizedBox(height: 12),
+                    _ParameterSlider(
+                      label: '表现力 temperature',
+                      value: draft.fishTemperature,
+                      minimum: 0,
+                      maximum: 1,
+                      divisions: 20,
+                      onChanged: blocked
+                          ? null
+                          : (value) {
+                              draft.fishTemperature = value;
+                              onDraftChanged();
+                            },
+                    ),
+                    _ParameterSlider(
+                      label: '多样性 top_p',
+                      value: draft.fishTopP,
+                      minimum: 0,
+                      maximum: 1,
+                      divisions: 20,
+                      onChanged: blocked
+                          ? null
+                          : (value) {
+                              draft.fishTopP = value;
+                              onDraftChanged();
+                            },
+                    ),
+                    _ParameterSlider(
+                      label: '音量（dB）',
+                      value: draft.fishVolumeDb,
+                      minimum: -20,
+                      maximum: 20,
+                      divisions: 40,
+                      onChanged: blocked
+                          ? null
+                          : (value) {
+                              draft.fishVolumeDb = value;
+                              onDraftChanged();
+                            },
+                    ),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('分块长度'),
+                      subtitle: Slider(
+                        value: draft.fishChunkLength.toDouble(),
+                        min: 100,
+                        max: 300,
+                        divisions: 20,
+                        label: '${draft.fishChunkLength}',
+                        onChanged: blocked
+                            ? null
+                            : (value) {
+                                draft.fishChunkLength = value.round();
+                                onDraftChanged();
+                              },
+                      ),
+                      trailing: Text('${draft.fishChunkLength}'),
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('中英文文本规范化'),
+                      value: draft.fishNormalize,
+                      onChanged: blocked
+                          ? null
+                          : (value) {
+                              draft.fishNormalize = value;
+                              onDraftChanged();
+                            },
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('响度规范化'),
+                      value: draft.fishNormalizeLoudness,
+                      onChanged: blocked
+                          ? null
+                          : (value) {
+                              draft.fishNormalizeLoudness = value;
+                              onDraftChanged();
+                            },
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('质量保护（quality-guard）'),
+                      subtitle: const Text('仅在当前模型支持该特性时开启'),
+                      value: draft.fishQualityGuard,
+                      onChanged: blocked
+                          ? null
+                          : (value) {
+                              draft.fishQualityGuard = value;
+                              onDraftChanged();
+                            },
+                    ),
+                  ],
+                ),
               ],
             ],
             const SizedBox(height: 12),
@@ -398,6 +554,39 @@ final class _ProviderEditor extends StatelessWidget {
   }
 }
 
+final class _ParameterSlider extends StatelessWidget {
+  const _ParameterSlider({
+    required this.label,
+    required this.value,
+    required this.minimum,
+    required this.maximum,
+    required this.divisions,
+    required this.onChanged,
+  });
+
+  final String label;
+  final double value;
+  final double minimum;
+  final double maximum;
+  final int divisions;
+  final ValueChanged<double>? onChanged;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: Text(label),
+        subtitle: Slider(
+          value: value,
+          min: minimum,
+          max: maximum,
+          divisions: divisions,
+          label: value.toStringAsFixed(2),
+          onChanged: onChanged,
+        ),
+        trailing: Text(value.toStringAsFixed(2)),
+      );
+}
+
 final class _ProviderDraft {
   _ProviderDraft({required String defaultModel, String? defaultVoice})
       : displayName = TextEditingController(text: 'OpenAI-compatible'),
@@ -412,6 +601,15 @@ final class _ProviderDraft {
   final TextEditingController voice;
   final TextEditingController apiKey;
   String providerId = 'custom-provider';
+  ByokAudioFormat audioFormat = ByokAudioFormat.mp3;
+  FishAudioLatency fishLatency = FishAudioLatency.normal;
+  double fishTemperature = 0.7;
+  double fishTopP = 0.7;
+  double fishVolumeDb = 0;
+  int fishChunkLength = 300;
+  bool fishNormalize = true;
+  bool fishNormalizeLoudness = true;
+  bool fishQualityGuard = false;
   String? _savedKey;
   AiStructuredOutputMode _structuredOutputMode =
       AiStructuredOutputMode.jsonObject;
@@ -430,6 +628,7 @@ final class _ProviderDraft {
       baseUrl.text = FishAudioTtsPreset.baseUrl;
       model.text = FishAudioTtsPreset.defaultModel;
       voice.clear();
+      _loadFishOptions(const FishAudioTtsOptions());
     } else {
       displayName.text = 'OpenAI-compatible';
       baseUrl.text = 'https://api.openai.com/v1';
@@ -455,6 +654,10 @@ final class _ProviderDraft {
     baseUrl.text = value.baseUri.toString();
     model.text = value.model;
     voice.text = value.voice ?? '';
+    audioFormat = value.audioFormat;
+    if (value.providerId == FishAudioTtsPreset.providerId) {
+      _loadFishOptions(value.effectiveFishAudioOptions);
+    }
     _savedKey = value.apiKey.reveal();
   }
 
@@ -484,7 +687,31 @@ final class _ProviderDraft {
       model: model.text.trim(),
       apiKey: OpaqueByokApiKey(_key()),
       voice: isTts && voiceValue.isNotEmpty ? voiceValue : null,
+      audioFormat: isTts ? audioFormat : ByokAudioFormat.mp3,
+      fishAudioOptions: isTts && isFishAudio
+          ? FishAudioTtsOptions(
+              temperature: fishTemperature,
+              topP: fishTopP,
+              volumeDb: fishVolumeDb,
+              chunkLength: fishChunkLength,
+              normalize: fishNormalize,
+              normalizeLoudness: fishNormalizeLoudness,
+              latency: fishLatency,
+              qualityGuard: fishQualityGuard,
+            )
+          : null,
     );
+  }
+
+  void _loadFishOptions(FishAudioTtsOptions value) {
+    fishTemperature = value.temperature;
+    fishTopP = value.topP;
+    fishVolumeDb = value.volumeDb;
+    fishChunkLength = value.chunkLength;
+    fishNormalize = value.normalize;
+    fishNormalizeLoudness = value.normalizeLoudness;
+    fishLatency = value.latency;
+    fishQualityGuard = value.qualityGuard;
   }
 
   String _key() {

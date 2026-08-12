@@ -1,6 +1,6 @@
-import 'dart:convert';
-
 import 'package:river_domain/river_domain.dart';
+
+import 'model_json.dart';
 
 final class ArticleSummarySchema {
   const ArticleSummarySchema();
@@ -95,14 +95,11 @@ final class ArticleSummarySchema {
     if (output.length > maxOutputCharacters) {
       throw const AiSchemaFailure(AiSchemaFailureCode.tooLarge);
     }
-    Object? decoded;
+    Map<String, Object?> decoded;
     try {
-      decoded = jsonDecode(output);
+      decoded = decodeModelJsonObject(output);
     } on FormatException {
       throw const AiSchemaFailure(AiSchemaFailureCode.malformedJson);
-    }
-    if (decoded is! Map<String, Object?>) {
-      throw const AiSchemaFailure(AiSchemaFailureCode.wrongRoot);
     }
     const fields = <String>{
       'schemaVersion',

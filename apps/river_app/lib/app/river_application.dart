@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:river_ai/river_ai.dart';
 import 'package:river_byok/river_byok.dart';
-import 'package:river_data/river_data.dart';
+import 'package:river_data/river_data.dart' hide Article;
 import 'package:river_design_system/river_design_system.dart';
 import 'package:river_domain/river_domain.dart';
+import 'package:river_extract/river_extract.dart';
 import 'package:river_feed/river_feed.dart';
 
 import '../audio/audio_player_page.dart';
@@ -21,6 +23,7 @@ import 'app_dependencies.dart';
 import 'article_list.dart';
 import 'article_reader.dart';
 import 'article_search.dart';
+import 'article_summary.dart';
 import 'automatic_feed_refresh_controller.dart';
 import 'dependency_scope.dart';
 
@@ -473,6 +476,94 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
           readingBehavior: dependencies.readingBehavior,
           rankingExperiment: dependencies.rankingExperiment,
         ),
+      ),
+    );
+  }
+
+  Future<void> _summarizeArticles(List<FeedArticleRecord> records) async {
+    final dependencies = RiverDependenciesScope.of(context);
+    final experience = dependencies.articleSummaries;
+    if (experience is! MultiArticleSummaryExperience) {
+      _showMessage('当前 AI 配置暂不支持多篇综合摘要');
+      return;
+    }
+    final multiExperience = experience as MultiArticleSummaryExperience;
+    final articles = <Article>[];
+    for (final record
+        in records.take(MultiArticleSummaryService.maximumArticles)) {
+      final detail = await dependencies.feeds.watchArticle(record.id).first;
+      if (detail == null) continue;
+      var text = detail.content?.plainText.trim() ?? '';
+      if (text.isEmpty) {
+        text = const FeedContentAssessor()
+            .assess(
+              contentHtml: detail.feedContentHtml,
+              summary: detail.summary,
+              sourceUri: detail.canonicalUrl,
+            )
+            .content
+            .plainText;
+      }
+      if (text.isEmpty) continue;
+      articles.add(
+        Article(
+          id: detail.id,
+          url: detail.canonicalUrl,
+          title: detail.title,
+          source: detail.canonicalUrl.host == 'mp.weixin.qq.com'
+              ? ContentSource.weChat
+              : ContentSource.web,
+          author: detail.author,
+          publishedAt: detail.publishedAt,
+          plainText: text,
+        ),
+      );
+    }
+    if (!mounted) return;
+    if (articles.length < 2) {
+      _showMessage('至少需要两篇已有正文的文章才能生成综合摘要');
+      return;
+    }
+    MultiArticleSummaryInspection inspection;
+    try {
+      inspection = await multiExperience.inspectMany(articles);
+    } on ArticleSummaryExperienceFailure catch (failure) {
+      if (mounted) _showMessage(_multiSummaryFailureLabel(failure.code));
+      return;
+    } on Object {
+      if (mounted) _showMessage('暂时无法准备多篇摘要，请稍后重试');
+      return;
+    }
+    if (!mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('生成多篇综合摘要？'),
+        content: Text(
+          'River 将向 ${inspection.providerLabel} 的 ${inspection.model} 模型发送 '
+          '${inspection.articleCount} 篇文章的标题和正文片段'
+          '（共 ${inspection.contentCharacters} 字符）。最多产生 '
+          '${inspection.maximumProviderCalls} 次模型请求，并计入你的供应商用量。',
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('确认生成'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _MultiArticleSummaryDialog(
+        experience: multiExperience,
+        articles: articles,
       ),
     );
   }
@@ -930,6 +1021,7 @@ final class _RiverHomeScreenState extends State<RiverHomeScreen>
                                 ),
                                 onOpenArticle: (article) =>
                                     unawaited(_openArticle(article)),
+                                onSummarizeArticles: _summarizeArticles,
                               ),
                             ),
                           ],
@@ -1038,6 +1130,7 @@ final class _Inbox extends StatelessWidget {
     required this.onFeedAction,
     required this.onFolderAction,
     required this.onOpenArticle,
+    required this.onSummarizeArticles,
   });
 
   final List<FeedSubscriptionRecord> subscriptions;
@@ -1046,33 +1139,290 @@ final class _Inbox extends StatelessWidget {
   final void Function(FeedSubscriptionRecord, _FeedAction) onFeedAction;
   final void Function(FeedFolderRecord, _FolderAction) onFolderAction;
   final ValueChanged<FeedArticleRecord> onOpenArticle;
+  final MultiArticleSummaryRequest onSummarizeArticles;
 
   @override
   Widget build(BuildContext context) {
     if (subscriptions.isEmpty && folders.isEmpty) {
       return const _EmptyInbox();
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        _SubscriptionPanel(
-          subscriptions: subscriptions,
-          folders: folders,
-          onFeedAction: onFeedAction,
-          onFolderAction: onFolderAction,
-        ),
-        const Divider(height: 1),
-        Expanded(
-          child: ArticleListPane(
-            controller: articleListController,
-            folders: folders,
-            onOpenArticle: onOpenArticle,
-          ),
-        ),
-      ],
+    final articles = ArticleListPane(
+      controller: articleListController,
+      folders: folders,
+      onOpenArticle: onOpenArticle,
+      onSummarizeArticles: onSummarizeArticles,
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 840) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              SizedBox(
+                width: constraints.maxWidth >= 1200 ? 320 : 280,
+                child: Material(
+                  color: Theme.of(context).colorScheme.surfaceContainerLowest,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 12, 8),
+                        child: Row(
+                          children: <Widget>[
+                            Text(
+                              '订阅源',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const Spacer(),
+                            Text('${subscriptions.length}'),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: _SubscriptionPanel(
+                          subscriptions: subscriptions,
+                          folders: folders,
+                          onFeedAction: onFeedAction,
+                          onFolderAction: onFolderAction,
+                          fillAvailable: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(child: articles),
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            ExpansionTile(
+              key: const PageStorageKey<String>('compact-subscriptions'),
+              initiallyExpanded: false,
+              leading: const Icon(Icons.rss_feed),
+              title: const Text('订阅源'),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text('${subscriptions.length} 个订阅，点按展开管理'),
+                  if (folders.isNotEmpty)
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: <Widget>[
+                          for (var index = 0;
+                              index < folders.length && index < 4;
+                              index += 1) ...<Widget>[
+                            if (index > 0) const Text(' · '),
+                            Text(folders[index].displayPath),
+                            const Text(' · '),
+                            Text(
+                              subscriptions
+                                      .where(
+                                        (feed) =>
+                                            feed.folderId == folders[index].id,
+                                      )
+                                      .firstOrNull
+                                      ?.title ??
+                                  '文件夹为空',
+                            ),
+                          ],
+                          if (subscriptions
+                              .where((feed) => feed.folderId == null)
+                              .isNotEmpty) ...<Widget>[
+                            if (folders.isNotEmpty) const Text(' · '),
+                            Text(
+                              subscriptions
+                                  .where((feed) => feed.folderId == null)
+                                  .first
+                                  .title,
+                            ),
+                          ],
+                          if (folders.length > 4)
+                            Text(' · 另 ${folders.length - 4} 个'),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              children: <Widget>[
+                SizedBox(
+                  height: (constraints.maxHeight * 0.34).clamp(180, 300),
+                  child: _SubscriptionPanel(
+                    subscriptions: subscriptions,
+                    folders: folders,
+                    onFeedAction: onFeedAction,
+                    onFolderAction: onFolderAction,
+                    fillAvailable: true,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(height: 1),
+            Expanded(child: articles),
+          ],
+        );
+      },
     );
   }
 }
+
+final class _MultiArticleSummaryDialog extends StatefulWidget {
+  const _MultiArticleSummaryDialog({
+    required this.experience,
+    required this.articles,
+  });
+
+  final MultiArticleSummaryExperience experience;
+  final List<Article> articles;
+
+  @override
+  State<_MultiArticleSummaryDialog> createState() =>
+      _MultiArticleSummaryDialogState();
+}
+
+final class _MultiArticleSummaryDialogState
+    extends State<_MultiArticleSummaryDialog> {
+  late Future<MultiArticleSummary> _result =
+      widget.experience.summarizeMany(widget.articles);
+
+  void _retry() {
+    setState(() => _result = widget.experience.summarizeMany(widget.articles));
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('多篇综合摘要'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720, maxHeight: 680),
+          child: FutureBuilder<MultiArticleSummary>(
+            future: _result,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const SizedBox(
+                  width: 420,
+                  height: 150,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text('正在比较文章主题、要点与差异…'),
+                    ],
+                  ),
+                );
+              }
+              if (snapshot.hasError) {
+                final error = snapshot.error;
+                final message = error is ArticleSummaryExperienceFailure
+                    ? _multiSummaryFailureLabel(error.code)
+                    : '综合摘要生成失败，正文和单篇摘要不受影响。';
+                return SizedBox(
+                  width: 480,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(message),
+                      const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton.icon(
+                          onPressed: _retry,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('重试'),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              final summary = snapshot.requireData;
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      summary.overview,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    Text('共同主题', style: Theme.of(context).textTheme.labelLarge),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: <Widget>[
+                        for (final theme in summary.keyThemes)
+                          Chip(label: Text(theme)),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Text('逐篇要点', style: Theme.of(context).textTheme.labelLarge),
+                    const SizedBox(height: 6),
+                    for (final highlight in summary.articleHighlights)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.article_outlined),
+                        title: Text(highlight.title),
+                        subtitle: Text(highlight.takeaway),
+                      ),
+                    if (summary.connections.isNotEmpty) ...<Widget>[
+                      const SizedBox(height: 12),
+                      Text(
+                        '关联与差异',
+                        style: Theme.of(context).textTheme.labelLarge,
+                      ),
+                      const SizedBox(height: 6),
+                      for (final connection in summary.connections)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Text('• $connection'),
+                        ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('关闭'),
+          ),
+        ],
+      );
+}
+
+String _multiSummaryFailureLabel(ArticleSummaryExperienceFailureCode code) =>
+    switch (code) {
+      ArticleSummaryExperienceFailureCode.configurationRequired =>
+        '请先在“AI 与音频供应商”中配置 AI 模型和 API Key。',
+      ArticleSummaryExperienceFailureCode.secureStorageUnavailable =>
+        '暂时无法读取本机安全配置。',
+      ArticleSummaryExperienceFailureCode.offline => '当前离线，且多篇摘要需要访问所选 AI 供应商。',
+      ArticleSummaryExperienceFailureCode.authenticationRequired =>
+        'AI 供应商拒绝了 API Key，请检查配置。',
+      ArticleSummaryExperienceFailureCode.quotaExceeded => 'AI 供应商额度不足。',
+      ArticleSummaryExperienceFailureCode.rateLimited => 'AI 供应商正在限流，请稍后重试。',
+      ArticleSummaryExperienceFailureCode.timeout => '多篇摘要请求超时，请重试。',
+      ArticleSummaryExperienceFailureCode.articleTooLong =>
+        '所选文章总长度超出安全处理预算，请减少篇数。',
+      ArticleSummaryExperienceFailureCode.responseFormatInvalid =>
+        '供应商返回了结果，但不是可识别的 JSON；自动修复也未通过。',
+      ArticleSummaryExperienceFailureCode.responseIncomplete =>
+        '供应商返回的综合摘要缺少文章或必要字段。',
+      ArticleSummaryExperienceFailureCode.responseLanguageMismatch =>
+        '供应商返回的摘要语言不符合当前要求。',
+      ArticleSummaryExperienceFailureCode.invalidResponse =>
+        '供应商返回的综合摘要未通过字段校验。',
+      ArticleSummaryExperienceFailureCode.providerUnavailable =>
+        'AI 供应商暂时不可用，请稍后重试。',
+    };
 
 final class _SubscriptionPanel extends StatelessWidget {
   const _SubscriptionPanel({
@@ -1080,12 +1430,14 @@ final class _SubscriptionPanel extends StatelessWidget {
     required this.folders,
     required this.onFeedAction,
     required this.onFolderAction,
+    this.fillAvailable = false,
   });
 
   final List<FeedSubscriptionRecord> subscriptions;
   final List<FeedFolderRecord> folders;
   final void Function(FeedSubscriptionRecord, _FeedAction) onFeedAction;
   final void Function(FeedFolderRecord, _FolderAction) onFolderAction;
+  final bool fillAvailable;
 
   @override
   Widget build(BuildContext context) {
@@ -1104,86 +1456,88 @@ final class _SubscriptionPanel extends StatelessWidget {
         ),
       ),
     ];
+    final list = ListView(
+      shrinkWrap: !fillAvailable,
+      padding: const EdgeInsets.only(bottom: 12),
+      children: groups
+          .map(
+            (group) => ExpansionTile(
+              key: PageStorageKey<String>(group.folder?.id ?? 'ungrouped'),
+              initiallyExpanded: true,
+              leading: Icon(
+                group.folder == null ? Icons.inbox_outlined : Icons.folder,
+              ),
+              title: Row(
+                children: <Widget>[
+                  Expanded(child: Text(group.label)),
+                  Text('${group.feeds.length}'),
+                  if (group.folder case final folder?)
+                    PopupMenuButton<_FolderAction>(
+                      onSelected: (action) => onFolderAction(folder, action),
+                      itemBuilder: (context) =>
+                          const <PopupMenuEntry<_FolderAction>>[
+                        PopupMenuItem<_FolderAction>(
+                          value: _FolderAction.rename,
+                          child: Text('重命名'),
+                        ),
+                        PopupMenuItem<_FolderAction>(
+                          value: _FolderAction.delete,
+                          child: Text('删除文件夹'),
+                        ),
+                      ],
+                      tooltip: '管理 ${folder.displayPath}',
+                    ),
+                ],
+              ),
+              children: group.feeds.isEmpty
+                  ? const <Widget>[
+                      ListTile(
+                        dense: true,
+                        title: Text('文件夹为空'),
+                      ),
+                    ]
+                  : group.feeds
+                      .map(
+                        (feed) => ListTile(
+                          dense: true,
+                          leading: Icon(
+                            feed.enabled
+                                ? Icons.rss_feed
+                                : Icons.pause_circle_outline,
+                          ),
+                          title: Text(feed.title),
+                          subtitle: Text(feed.canonicalUrl.host),
+                          trailing: PopupMenuButton<_FeedAction>(
+                            onSelected: (action) => onFeedAction(feed, action),
+                            itemBuilder: (context) =>
+                                <PopupMenuEntry<_FeedAction>>[
+                              PopupMenuItem<_FeedAction>(
+                                value: _FeedAction.toggle,
+                                child: Text(feed.enabled ? '暂停' : '恢复'),
+                              ),
+                              const PopupMenuItem<_FeedAction>(
+                                value: _FeedAction.move,
+                                child: Text('移动到文件夹'),
+                              ),
+                              const PopupMenuItem<_FeedAction>(
+                                value: _FeedAction.delete,
+                                child: Text('删除订阅源'),
+                              ),
+                            ],
+                            tooltip: '管理 ${feed.title}',
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
+            ),
+          )
+          .toList(growable: false),
+    );
+    if (fillAvailable) return list;
     final maxHeight = MediaQuery.sizeOf(context).height * 0.42;
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: maxHeight.clamp(160, 360)),
-      child: ListView(
-        shrinkWrap: true,
-        children: groups
-            .map(
-              (group) => ExpansionTile(
-                key: PageStorageKey<String>(group.folder?.id ?? 'ungrouped'),
-                initiallyExpanded: true,
-                leading: Icon(
-                  group.folder == null ? Icons.inbox_outlined : Icons.folder,
-                ),
-                title: Row(
-                  children: <Widget>[
-                    Expanded(child: Text(group.label)),
-                    Text('${group.feeds.length}'),
-                    if (group.folder case final folder?)
-                      PopupMenuButton<_FolderAction>(
-                        onSelected: (action) => onFolderAction(folder, action),
-                        itemBuilder: (context) =>
-                            const <PopupMenuEntry<_FolderAction>>[
-                          PopupMenuItem<_FolderAction>(
-                            value: _FolderAction.rename,
-                            child: Text('重命名'),
-                          ),
-                          PopupMenuItem<_FolderAction>(
-                            value: _FolderAction.delete,
-                            child: Text('删除文件夹'),
-                          ),
-                        ],
-                        tooltip: '管理 ${folder.displayPath}',
-                      ),
-                  ],
-                ),
-                children: group.feeds.isEmpty
-                    ? const <Widget>[
-                        ListTile(
-                          dense: true,
-                          title: Text('文件夹为空'),
-                        ),
-                      ]
-                    : group.feeds
-                        .map(
-                          (feed) => ListTile(
-                            dense: true,
-                            leading: Icon(
-                              feed.enabled
-                                  ? Icons.rss_feed
-                                  : Icons.pause_circle_outline,
-                            ),
-                            title: Text(feed.title),
-                            subtitle: Text(feed.canonicalUrl.host),
-                            trailing: PopupMenuButton<_FeedAction>(
-                              onSelected: (action) =>
-                                  onFeedAction(feed, action),
-                              itemBuilder: (context) =>
-                                  <PopupMenuEntry<_FeedAction>>[
-                                PopupMenuItem<_FeedAction>(
-                                  value: _FeedAction.toggle,
-                                  child: Text(feed.enabled ? '暂停' : '恢复'),
-                                ),
-                                const PopupMenuItem<_FeedAction>(
-                                  value: _FeedAction.move,
-                                  child: Text('移动到文件夹'),
-                                ),
-                                const PopupMenuItem<_FeedAction>(
-                                  value: _FeedAction.delete,
-                                  child: Text('删除订阅源'),
-                                ),
-                              ],
-                              tooltip: '管理 ${feed.title}',
-                            ),
-                          ),
-                        )
-                        .toList(growable: false),
-              ),
-            )
-            .toList(growable: false),
-      ),
+      child: list,
     );
   }
 }

@@ -55,6 +55,12 @@ void main() {
         baseUri: Uri.parse(FishAudioTtsPreset.baseUrl),
         model: FishAudioTtsPreset.defaultModel,
         apiKey: OpaqueByokApiKey('fish-media-provider-secret'),
+        audioFormat: ByokAudioFormat.opus,
+        fishAudioOptions: const FishAudioTtsOptions(
+          temperature: 0.5,
+          latency: FishAudioLatency.balanced,
+          opusBitrateBps: 32000,
+        ),
       ),
     );
 
@@ -63,8 +69,36 @@ void main() {
     expect(restored?.baseUri.toString(), FishAudioTtsPreset.baseUrl);
     expect(restored?.model, FishAudioTtsPreset.defaultModel);
     expect(restored?.voice, isNull);
+    expect(restored?.audioFormat, ByokAudioFormat.opus);
+    expect(restored?.effectiveFishAudioOptions.temperature, 0.5);
+    expect(
+      restored?.effectiveFishAudioOptions.latency,
+      FishAudioLatency.balanced,
+    );
+    expect(restored?.effectiveFishAudioOptions.opusBitrateBps, 32000);
     expect(restored?.apiKey.reveal(), 'fish-media-provider-secret');
     expect(restored.toString(), isNot(contains('fish-media-provider-secret')));
+  });
+
+  test('legacy Fish Audio profile restores documented parameter defaults',
+      () async {
+    final store = _MemorySecureStore();
+    store.values['river.media.v1.byok.tts'] =
+        '{"schema":1,"capability":"tts","providerId":"fish-audio",'
+        '"displayName":"Fish Audio","baseUri":"https://api.fish.audio",'
+        '"model":"s2.1-pro","apiKey":"legacy-fish-secret",'
+        '"authScheme":"bearer","voice":null,"audioFormat":"mp3"}';
+    final restored = await PlatformSecureByokMediaConfigurationVault(
+      store: store,
+    ).read(ByokMediaCapability.tts);
+
+    expect(restored?.fishAudioOptions, isNull);
+    expect(restored?.effectiveFishAudioOptions.temperature, 0.7);
+    expect(restored?.effectiveFishAudioOptions.chunkLength, 300);
+    expect(
+      restored?.effectiveFishAudioOptions.latency,
+      FishAudioLatency.normal,
+    );
   });
 }
 

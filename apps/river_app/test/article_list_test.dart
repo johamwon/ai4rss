@@ -269,6 +269,52 @@ void main() {
     expect(opened?.id, 'open-me');
   });
 
+  testWidgets('multi-article summary requires at least two selected rows', (
+    tester,
+  ) async {
+    final articles = <FeedArticleRecord>[
+      _article(id: 'one', title: 'Article one'),
+      _article(id: 'two', title: 'Article two'),
+      _article(id: 'three', title: 'Article three'),
+    ];
+    List<FeedArticleRecord>? requested;
+    final controller = ArticleListController(
+      load: (_) => Stream<List<FeedArticleRecord>>.value(articles),
+    );
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ArticleListPane(
+            controller: controller,
+            folders: const <FeedFolderRecord>[],
+            onOpenArticle: (_) {},
+            onSummarizeArticles: (value) async => requested = value,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('multi-article-summary-select')));
+    await tester.pump();
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('multi-article-summary-generate')),
+          )
+          .onPressed,
+      isNull,
+    );
+    await tester.tap(find.text('Article one'));
+    await tester.tap(find.text('Article two'));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('multi-article-summary-generate')));
+    await tester.pumpAndSettle();
+
+    expect(requested?.map((article) => article.id), <String>['one', 'two']);
+  });
+
   testWidgets('smart list exposes exact recommendation reasons', (
     tester,
   ) async {

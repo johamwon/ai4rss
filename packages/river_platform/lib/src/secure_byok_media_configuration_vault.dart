@@ -63,6 +63,7 @@ final class PlatformSecureByokMediaConfigurationVault
             audioFormat: ByokAudioFormat.values.byName(
               _string(value, 'audioFormat'),
             ),
+            fishAudioOptions: _fishOptions(value['fishAudioOptions']),
           );
         } on SecureByokMediaVaultException {
           rethrow;
@@ -88,6 +89,8 @@ final class PlatformSecureByokMediaConfigurationVault
             'authScheme': configuration.authScheme.name,
             'voice': configuration.voice,
             'audioFormat': configuration.audioFormat.name,
+            if (configuration.fishAudioOptions case final options?)
+              'fishAudioOptions': options.toJson(),
           }),
         ),
       );
@@ -128,5 +131,11 @@ final class PlatformSecureByokMediaConfigurationVault
       );
     }
     return field;
+  }
+
+  static FishAudioTtsOptions? _fishOptions(Object? value) {
+    if (value == null) return null;
+    if (value is! Map) throw const FormatException();
+    return FishAudioTtsOptions.fromJson(Map<String, Object?>.from(value));
   }
 }

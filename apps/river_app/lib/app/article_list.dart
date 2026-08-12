@@ -14,6 +14,10 @@ typedef ArticleListLoader = Stream<List<FeedArticleRecord>> Function(
 typedef PersonalizedArticleListLoader = Stream<PersonalizedArticleListSnapshot>
     Function(FeedArticleQuery query);
 
+typedef MultiArticleSummaryRequest = Future<void> Function(
+  List<FeedArticleRecord> articles,
+);
+
 final class ArticleListController extends ChangeNotifier {
   ArticleListController({
     required ArticleListLoader load,
@@ -109,12 +113,14 @@ final class ArticleListPane extends StatefulWidget {
     required this.controller,
     required this.folders,
     required this.onOpenArticle,
+    this.onSummarizeArticles,
     super.key,
   });
 
   final ArticleListController controller;
   final List<FeedFolderRecord> folders;
   final ValueChanged<FeedArticleRecord> onOpenArticle;
+  final MultiArticleSummaryRequest? onSummarizeArticles;
 
   @override
   State<ArticleListPane> createState() => _ArticleListPaneState();
@@ -122,6 +128,44 @@ final class ArticleListPane extends StatefulWidget {
 
 final class _ArticleListPaneState extends State<ArticleListPane> {
   var _retryGeneration = 0;
+  var _selecting = false;
+  var _summarizing = false;
+  final Set<String> _selectedArticleIds = <String>{};
+  List<FeedArticleRecord> _latestArticles = const <FeedArticleRecord>[];
+
+  void _toggleSelection(FeedArticleRecord article, bool selected) {
+    setState(() {
+      _selecting = true;
+      if (selected) {
+        _selectedArticleIds.add(article.id);
+      } else {
+        _selectedArticleIds.remove(article.id);
+      }
+    });
+  }
+
+  void _closeSelection() {
+    setState(() {
+      _selecting = false;
+      _selectedArticleIds.clear();
+    });
+  }
+
+  Future<void> _summarizeSelected() async {
+    final callback = widget.onSummarizeArticles;
+    if (callback == null || _selectedArticleIds.length < 2) return;
+    final selected = _latestArticles
+        .where((article) => _selectedArticleIds.contains(article.id))
+        .toList(growable: false);
+    if (selected.length < 2) return;
+    setState(() => _summarizing = true);
+    try {
+      await callback(selected);
+      if (mounted) _closeSelection();
+    } finally {
+      if (mounted) setState(() => _summarizing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -135,6 +179,15 @@ final class _ArticleListPaneState extends State<ArticleListPane> {
             _ArticleListToolbar(
               controller: widget.controller,
               folders: widget.folders,
+              batchSelectionEnabled: widget.onSummarizeArticles != null,
+              selecting: _selecting,
+              onToggleSelection: () {
+                if (_selecting) {
+                  _closeSelection();
+                } else {
+                  setState(() => _selecting = true);
+                }
+              },
             ),
             const Divider(height: 1),
             Expanded(
@@ -157,6 +210,7 @@ final class _ArticleListPaneState extends State<ArticleListPane> {
                   final list = snapshot.data;
                   final articles =
                       list?.articles ?? const <FeedArticleRecord>[];
+                  _latestArticles = articles;
                   if (articles.isEmpty) {
                     return _ArticleListEmpty(query: query);
                   }
@@ -171,7 +225,24 @@ final class _ArticleListPaneState extends State<ArticleListPane> {
                         key: ValueKey<String>(articles[index].id),
                         article: articles[index],
                         recommendation: list?.explanations[articles[index].id],
-                        onOpen: () => widget.onOpenArticle(articles[index]),
+                        selectionMode: _selecting,
+                        selected:
+                            _selectedArticleIds.contains(articles[index].id),
+                        onSelectionChanged: (selected) =>
+                            _toggleSelection(articles[index], selected),
+                        onOpen: () {
+                          if (_selecting) {
+                            _toggleSelection(
+                              articles[index],
+                              !_selectedArticleIds.contains(articles[index].id),
+                            );
+                          } else {
+                            widget.onOpenArticle(articles[index]);
+                          }
+                        },
+                        onLongPress: widget.onSummarizeArticles == null
+                            ? null
+                            : () => _toggleSelection(articles[index], true),
                       ),
                       separatorBuilder: (context, index) =>
                           const Divider(height: 1, indent: 72),
@@ -181,6 +252,44 @@ final class _ArticleListPaneState extends State<ArticleListPane> {
                 },
               ),
             ),
+            if (_selecting)
+              Material(
+                color: Theme.of(context).colorScheme.secondaryContainer,
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 12, 8),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text('已选择 ${_selectedArticleIds.length} 篇'),
+                        ),
+                        TextButton(
+                          onPressed: _summarizing ? null : _closeSelection,
+                          child: const Text('取消'),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.icon(
+                          key: const Key('multi-article-summary-generate'),
+                          onPressed:
+                              _summarizing || _selectedArticleIds.length < 2
+                                  ? null
+                                  : () => unawaited(_summarizeSelected()),
+                          icon: _summarizing
+                              ? const SizedBox.square(
+                                  dimension: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.auto_awesome),
+                          label: const Text('综合摘要'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         );
       },
@@ -192,10 +301,16 @@ final class _ArticleListToolbar extends StatelessWidget {
   const _ArticleListToolbar({
     required this.controller,
     required this.folders,
+    required this.batchSelectionEnabled,
+    required this.selecting,
+    required this.onToggleSelection,
   });
 
   final ArticleListController controller;
   final List<FeedFolderRecord> folders;
+  final bool batchSelectionEnabled;
+  final bool selecting;
+  final VoidCallback onToggleSelection;
 
   @override
   Widget build(BuildContext context) {
@@ -279,6 +394,18 @@ final class _ArticleListToolbar extends StatelessWidget {
                 label: Text(_sortLabel(query.sort)),
               ),
             ),
+            if (batchSelectionEnabled) ...<Widget>[
+              const SizedBox(width: 8),
+              ActionChip(
+                key: const Key('multi-article-summary-select'),
+                avatar: Icon(
+                  selecting ? Icons.close : Icons.library_add_check_outlined,
+                  size: 18,
+                ),
+                label: Text(selecting ? '退出选择' : '多篇摘要'),
+                onPressed: onToggleSelection,
+              ),
+            ],
           ],
         ),
       ),
@@ -312,12 +439,20 @@ final class ArticleListTile extends StatelessWidget {
     required this.article,
     required this.onOpen,
     this.recommendation,
+    this.selectionMode = false,
+    this.selected = false,
+    this.onSelectionChanged,
+    this.onLongPress,
     super.key,
   });
 
   final FeedArticleRecord article;
   final VoidCallback onOpen;
   final RecommendationExplanation? recommendation;
+  final bool selectionMode;
+  final bool selected;
+  final ValueChanged<bool>? onSelectionChanged;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -341,12 +476,18 @@ final class ArticleListTile extends StatelessWidget {
       onTap: onOpen,
       child: ListTile(
         onTap: onOpen,
-        leading: CircleAvatar(
-          child: Icon(
-            article.read ? Icons.done : Icons.article_outlined,
-            semanticLabel: article.read ? '已读' : '未读',
-          ),
-        ),
+        onLongPress: onLongPress,
+        leading: selectionMode
+            ? Checkbox(
+                value: selected,
+                onChanged: (value) => onSelectionChanged?.call(value ?? false),
+              )
+            : CircleAvatar(
+                child: Icon(
+                  article.read ? Icons.done : Icons.article_outlined,
+                  semanticLabel: article.read ? '已读' : '未读',
+                ),
+              ),
         title: Text(
           article.title,
           maxLines: 2,

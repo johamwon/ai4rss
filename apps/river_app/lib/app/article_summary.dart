@@ -10,6 +10,9 @@ enum ArticleSummaryExperienceFailureCode {
   rateLimited,
   timeout,
   articleTooLong,
+  responseFormatInvalid,
+  responseIncomplete,
+  responseLanguageMismatch,
   invalidResponse,
   providerUnavailable,
 }
@@ -80,7 +83,30 @@ abstract interface class ArticleSummaryExperience {
   Future<ArticleSummary> summarize(Article article);
 }
 
-final class ByokArticleSummaryExperience implements ArticleSummaryExperience {
+final class MultiArticleSummaryInspection {
+  const MultiArticleSummaryInspection({
+    required this.providerLabel,
+    required this.model,
+    required this.articleCount,
+    required this.contentCharacters,
+    required this.maximumProviderCalls,
+  });
+
+  final String providerLabel;
+  final String model;
+  final int articleCount;
+  final int contentCharacters;
+  final int maximumProviderCalls;
+}
+
+abstract interface class MultiArticleSummaryExperience {
+  Future<MultiArticleSummaryInspection> inspectMany(List<Article> articles);
+
+  Future<MultiArticleSummary> summarizeMany(List<Article> articles);
+}
+
+final class ByokArticleSummaryExperience
+    implements ArticleSummaryExperience, MultiArticleSummaryExperience {
   ByokArticleSummaryExperience({
     required AiByokConfigurationVault configurations,
     required AiArtifactRepository artifacts,
@@ -155,6 +181,52 @@ final class ByokArticleSummaryExperience implements ArticleSummaryExperience {
       throw _mapFailure(error);
     }
   }
+
+  @override
+  Future<MultiArticleSummaryInspection> inspectMany(
+    List<Article> articles,
+  ) async {
+    final configuration = await _configuration();
+    try {
+      final service = _multiService(configuration);
+      final prepared = service.prepare(articles);
+      return MultiArticleSummaryInspection(
+        providerLabel: configuration.displayName,
+        model: configuration.model,
+        articleCount: articles.length,
+        contentCharacters: prepared.contentCharacters,
+        maximumProviderCalls: 2,
+      );
+    } on Object catch (error) {
+      throw _mapFailure(error);
+    }
+  }
+
+  @override
+  Future<MultiArticleSummary> summarizeMany(List<Article> articles) async {
+    final configuration = await _configuration();
+    try {
+      if ((await _network.check()).isOffline) {
+        throw const ArticleSummaryExperienceFailure(
+          code: ArticleSummaryExperienceFailureCode.offline,
+          retryable: true,
+        );
+      }
+      return await _multiService(configuration).summarize(articles);
+    } on Object catch (error) {
+      throw _mapFailure(error);
+    }
+  }
+
+  MultiArticleSummaryService _multiService(AiByokConfiguration configuration) =>
+      MultiArticleSummaryService(
+        OpenAiCompatibleProvider(
+          configuration: configuration,
+          transport: _transport,
+          clock: StopwatchAiMonotonicClock(),
+        ),
+        model: configuration.model,
+      );
 
   Future<_SummaryRoute> _route(Article article) async {
     final configuration = await _configuration();
@@ -247,8 +319,8 @@ final class ByokArticleSummaryExperience implements ArticleSummaryExperience {
           ),
         AiProviderFailureCode.invalidRequest =>
           const ArticleSummaryExperienceFailure(
-            code: ArticleSummaryExperienceFailureCode.invalidResponse,
-            retryable: false,
+            code: ArticleSummaryExperienceFailureCode.responseFormatInvalid,
+            retryable: true,
           ),
         AiProviderFailureCode.cancelled =>
           const ArticleSummaryExperienceFailure(
@@ -271,12 +343,28 @@ final class ByokArticleSummaryExperience implements ArticleSummaryExperience {
         retryable: false,
       );
     }
-    if (error is AiSchemaFailure ||
-        error is FormatException ||
-        error is ArgumentError) {
+    if (error is AiSchemaFailure) {
+      return ArticleSummaryExperienceFailure(
+        code: switch (error.code) {
+          AiSchemaFailureCode.malformedJson ||
+          AiSchemaFailureCode.wrongRoot =>
+            ArticleSummaryExperienceFailureCode.responseFormatInvalid,
+          AiSchemaFailureCode.missingField =>
+            ArticleSummaryExperienceFailureCode.responseIncomplete,
+          AiSchemaFailureCode.languageMismatch =>
+            ArticleSummaryExperienceFailureCode.responseLanguageMismatch,
+          AiSchemaFailureCode.unexpectedField ||
+          AiSchemaFailureCode.invalidValue ||
+          AiSchemaFailureCode.tooLarge =>
+            ArticleSummaryExperienceFailureCode.invalidResponse,
+        },
+        retryable: true,
+      );
+    }
+    if (error is FormatException || error is ArgumentError) {
       return const ArticleSummaryExperienceFailure(
-        code: ArticleSummaryExperienceFailureCode.invalidResponse,
-        retryable: false,
+        code: ArticleSummaryExperienceFailureCode.responseFormatInvalid,
+        retryable: true,
       );
     }
     return const ArticleSummaryExperienceFailure(

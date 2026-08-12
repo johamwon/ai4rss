@@ -17,6 +17,8 @@ void main() {
         'article-summary-map@1',
         'article-summary-reduce@1',
         'article-summary-repair@1',
+        'multi-article-summary@1',
+        'multi-article-summary-repair@1',
       ],
     );
   });

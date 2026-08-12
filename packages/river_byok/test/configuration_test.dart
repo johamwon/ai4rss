@@ -128,6 +128,21 @@ void main() {
     );
   });
 
+  test('Fish Audio rejects out-of-range vendor parameters', () {
+    expect(
+      () => ByokMediaConfiguration(
+        capability: ByokMediaCapability.tts,
+        providerId: FishAudioTtsPreset.providerId,
+        displayName: FishAudioTtsPreset.displayName,
+        baseUri: Uri.parse(FishAudioTtsPreset.baseUrl),
+        model: FishAudioTtsPreset.defaultModel,
+        apiKey: OpaqueByokApiKey('fish-provider-secret'),
+        fishAudioOptions: const FishAudioTtsOptions(volumeDb: 30),
+      ),
+      throwsArgumentError,
+    );
+  });
+
   test('Fish Audio connection maps exhausted credit to a stable failure',
       () async {
     final service = ByokProviderConnectionService(

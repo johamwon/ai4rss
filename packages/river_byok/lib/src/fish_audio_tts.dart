@@ -39,15 +39,27 @@ final class FishAudioTtsSynthesizer implements CloudTtsSynthesizer {
   ) async {
     cancellation.throwIfCancelled();
     final referenceId = _configuration.voice;
+    final options = _configuration.effectiveFishAudioOptions;
+    final synthesisRate = request.settings.rate.clamp(0.5, 2.0).toDouble();
     final body = utf8.encode(
       jsonEncode(<String, Object?>{
         'text': request.text,
         if (referenceId != null) 'reference_id': referenceId,
+        'temperature': options.temperature,
+        'top_p': options.topP,
         'format': _configuration.audioFormat.name,
-        'normalize': true,
+        'chunk_length': options.chunkLength,
+        'normalize': options.normalize,
+        'latency': options.latency.name,
+        if (_configuration.audioFormat == ByokAudioFormat.mp3)
+          'mp3_bitrate': options.mp3BitrateKbps,
+        if (_configuration.audioFormat == ByokAudioFormat.opus)
+          'opus_bitrate': options.opusBitrateBps,
+        if (options.qualityGuard) 'features': <String>['quality-guard'],
         'prosody': <String, Object?>{
-          'speed': request.settings.rate,
-          'normalize_loudness': true,
+          'speed': synthesisRate,
+          'volume': options.volumeDb,
+          'normalize_loudness': options.normalizeLoudness,
         },
       }),
     );
@@ -65,7 +77,6 @@ final class FishAudioTtsSynthesizer implements CloudTtsSynthesizer {
               'content-type': 'application/json',
               'model': _configuration.model,
               'user-agent': 'River/0.1',
-              'idempotency-key': request.operationId,
             },
             body: body,
             timeout: const Duration(seconds: 45),
@@ -139,7 +150,8 @@ final class FishAudioTtsSynthesizer implements CloudTtsSynthesizer {
       ]);
 
   Duration _estimatedDuration(CloudTtsSynthesisRequest request) {
-    final seconds = request.text.runes.length / (5 * request.settings.rate);
+    final rate = request.settings.rate.clamp(0.5, 2.0);
+    final seconds = request.text.runes.length / (5 * rate);
     return Duration(milliseconds: max(1000, (seconds * 1000).ceil()));
   }
 
