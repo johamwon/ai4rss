@@ -102,6 +102,7 @@ jobs:
         run: |
           version="${GITHUB_REF_NAME#windows-}"
           gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
             --prerelease \
             --target "$GITHUB_SHA" \
             --title "River $version Windows x64" \
