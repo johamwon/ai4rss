@@ -7,7 +7,7 @@ environment:
   sdk: '>=3.6.0 <4.0.0'
 dependencies:
   enough_convert: 1.6.0
-  html: 0.15.6
+  html: 0.15.7
   http: 1.6.0
   river_domain:
     path: ../river_domain
